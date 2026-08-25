@@ -120,7 +120,7 @@ jobs:
       - name: Check peppy_repository.json5 and every exposure it lists
         run: |
           set -euo pipefail
-          peppy repo index . --check --include-repositories
+          peppy repo index . --check --validate-mcp-exposures
 
       # An exposure document is the whole artifact: the server that serves it
       # is built into peppy, and its catalog is derived on demand. A node

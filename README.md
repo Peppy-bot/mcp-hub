@@ -49,9 +49,9 @@ Commit the updated `peppy_repository.json5` alongside your change. Before pushin
 document against the contracts it references and read what an endpoint for it advertises:
 
 ```sh
-peppy repo refresh                                    # caches the contracts hub
-peppy repo index . --check --include-repositories     # the index, then every exposure against its contracts
-peppy mcp catalog <exposure_name>:<tag>               # the derived catalog: resources, tools, tasks, schemas
+peppy repo refresh                                      # caches the contracts hub
+peppy repo index . --check --validate-mcp-exposures     # the index, then every exposure against its contracts
+peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: resources, tools, tasks, schemas
 ```
 
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
@@ -61,8 +61,8 @@ publishes. Rename yours: within one repository, a `name:tag` is claimed by exact
 
 The [index workflow](.github/workflows/repository-index.yml) runs on every pull request with the
 latest peppy release: it starts an isolated daemon, caches the contract repositories, and runs
-`peppy repo index . --check --include-repositories`, so an exposure selecting a member its contract
-does not declare, breaking a policy rule, or pinning bytes the contracts hub no longer serves fails
-the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
+`peppy repo index . --check --validate-mcp-exposures`, so an exposure selecting a member its
+contract does not declare, breaking a policy rule, or pinning bytes the contracts hub no longer
+serves fails the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
 directory or a `*.bundle.json` file): the server is built into peppy and the catalog is derived on
 demand, so only the documents belong here.
