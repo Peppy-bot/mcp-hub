@@ -121,3 +121,18 @@ jobs:
         run: |
           set -euo pipefail
           peppy repo index . --check --include-repositories
+
+      # An exposure document is the whole artifact: the server that serves it
+      # is built into peppy, and its catalog is derived on demand. A node
+      # crate named after an exposure (`<exposure>_mcp/`) or a catalog file
+      # (`*.bundle.json`) committed beside a document would serve nothing and
+      # drift from it, so either one fails the pull request.
+      - name: Refuse artifacts derived from an exposure
+        run: |
+          set -euo pipefail
+          stray=$(find . -path ./.git -prune -o \( -name '*.bundle.json' -o -type d -name '*_mcp' \) -print)
+          if [[ -n "$stray" ]]; then
+            echo "only exposure documents belong in this repository; remove:" >&2
+            echo "$stray" >&2
+            exit 1
+          fi
