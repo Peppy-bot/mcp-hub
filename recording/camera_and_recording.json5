@@ -1,0 +1,124 @@
+// The public MCP surface of one robot: a live camera to look through and an
+// episode recorder to drive. Everything an MCP client can ever see is named
+// in this file; anything the running stack also carries stays private.
+//
+// This document is the whole artifact. A launcher lists it under
+// `source: { exposures: ["camera_and_recording:v1"] }`, binds each target
+// below to a running implementer of its contract through `links`, and the
+// server built into peppy serves it at `/camera_and_recording/v1/mcp`.
+// `peppy repo index . --check --validate-mcp-exposures` checks it against
+// the contracts it references, and `peppy mcp catalog camera_and_recording:v1`
+// prints what an endpoint for it advertises.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "camera_and_recording", tag: "v1" },
+
+  // Advertised to clients through `server/discover`. `instructions` is the
+  // prose a model reads before it decides what to call.
+  server: {
+    title: "Camera and recording",
+    instructions: "Observe the front camera and record teleoperation episodes.",
+  },
+
+  targets: {
+    // A LOGICAL target, not an instance. `front_camera` becomes a contract
+    // slot of the server, so the launcher decides which running instance
+    // fills it. The same exposure serves a simulated camera and a real one.
+    front_camera: {
+      contract: {
+        name: "rgb_camera",
+        tag: "v1",
+        // An author pin: the sha256 of the exact contract document this file
+        // was written against (`sha256sum cameras/rgb_camera.json5` in the
+        // contracts hub). With it, a launch that resolves other bytes for
+        // `rgb_camera:v1` refuses instead of publishing schemas this file
+        // never saw.
+        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+      },
+
+      // A topic becomes a resource: the latest policy-approved snapshot,
+      // which clients read and subscribe to.
+      topics: [
+        {
+          member: "video_stream",
+          resource: "front_camera.latest_frame",
+          description: "Latest frame from the front-facing camera, JPEG encoded.",
+          // A snapshot older than this reads as stale rather than serving
+          // yesterday's frame as if it were current.
+          freshness: { max_age_ms: 2000 },
+          // Frames arriving faster than this are dropped before any decoding
+          // or transcoding runs. A 30 Hz camera does not become 30 Hz of
+          // JPEG encoding for a client that reads twice a minute.
+          update: { max_hz: 2 },
+          // Interpret the message as an image and publish it as JPEG. The
+          // roles name members of THIS topic's message format.
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          // The frame is a variable-length byte array, so its serialized size
+          // has no static maximum and the runtime size policy is mandatory.
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+
+      // A service becomes a tool that answers within one request.
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "front_camera.info",
+          description: "Report the camera's resolution, frame rate, and encoding.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_brightness",
+          tool: "front_camera.set_brightness",
+          description: "Set the camera brightness in device units.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          // Narrows what the published input schema accepts. The contract's
+          // `i32` allows the whole 32-bit range; this exposure allows -64..64,
+          // and the refusal happens at the endpoint, before the Peppy graph
+          // is touched.
+          restrict: { value: { min: -64, max: 64 } },
+        },
+      ],
+    },
+
+    recorder: {
+      // No pin: the exposure follows `episode_recording:v1` as the contracts
+      // hub evolves, and each launch validates it against the bytes it
+      // resolves.
+      contract: { name: "episode_recording", tag: "v1" },
+
+      // An action becomes a tool backed by an MCP task: the call returns a
+      // task handle, feedback drives the status message, and `tasks/cancel`
+      // forwards to the action's cancel path.
+      actions: [
+        {
+          member: "record_episode",
+          tool: "recorder.record_episode",
+          description: "Record one teleoperation episode into the open session; cancelling the task ends the episode and saves it.",
+          operation: "long_running",
+          // Advertised to the client: this one moves the robot.
+          safety_sensitive: true,
+          // The task parks in `input_required` until the client confirms
+          // through `tasks/update`. No goal is sent before that.
+          confirmation_required: true,
+          deadline_ms: 900000,
+        },
+      ],
+      // `finish_session` and `resume_session` are live on the recorder and
+      // deliberately absent here. A member that is not selected is not
+      // reachable through the endpoint at all.
+    },
+  },
+}

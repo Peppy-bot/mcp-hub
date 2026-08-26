@@ -1,0 +1,86 @@
+// The front camera of one robot as an MCP surface: the latest frame to look
+// at, the stream's properties to read, and the brightness to set. Everything
+// an MCP client can see through the endpoint is named in this file.
+//
+// This document is the whole artifact. A launcher lists it under
+// `source: { exposures: ["front_camera:v1"] }`, binds its one target to a
+// running `rgb_camera:v1` implementer through `links`, and the server built
+// into peppy serves it at `/front_camera/v1/mcp`. The launchers hub deploys
+// it in `examples/mcp_front_camera.json5`.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "front_camera", tag: "v1" },
+
+  // Advertised to clients through `server/discover`.
+  server: {
+    title: "Front camera",
+    instructions: "Observe the robot's front-facing camera and adjust its brightness.",
+  },
+
+  targets: {
+    // A LOGICAL target, not an instance: the launcher decides which running
+    // `rgb_camera:v1` implementer fills it, a mock, a USB camera, or a
+    // simulated one.
+    front_camera: {
+      contract: {
+        name: "rgb_camera",
+        tag: "v1",
+        // The sha256 of the contract document this file was written against
+        // (`sha256sum cameras/rgb_camera.json5` in the contracts hub). A
+        // launch that resolves other bytes for `rgb_camera:v1` refuses.
+        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+      },
+
+      // The topic becomes a resource: the latest policy-approved snapshot,
+      // published as JPEG at no more than 2 Hz however fast the camera runs.
+      topics: [
+        {
+          member: "video_stream",
+          resource: "front_camera.latest_frame",
+          description: "Latest frame from the front-facing camera, JPEG encoded.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          // The frame is a variable-length byte array, so the runtime size
+          // policy is mandatory.
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+
+      // Each service becomes a tool that answers within one request.
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "front_camera.info",
+          description: "Report the camera's resolution, frame rate, and encoding.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_brightness",
+          tool: "front_camera.set_brightness",
+          description: "Set the camera brightness in device units.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          // The contract's `i32` allows the whole 32-bit range; the endpoint
+          // accepts -64..64 and refuses the rest before the Peppy graph is
+          // touched.
+          restrict: { value: { min: -64, max: 64 } },
+        },
+      ],
+      // `set_exposure`, `set_white_balance`, `set_gain`, and `set_contrast`
+      // are live on the camera and deliberately absent here: a member that
+      // is not selected is not reachable through the endpoint at all.
+    },
+  },
+}
