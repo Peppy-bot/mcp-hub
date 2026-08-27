@@ -1,0 +1,103 @@
+// The OpenArm v2 as an MCP command surface: four discrete moves a model can
+// ask the robot for, backed by actions the backbone already runs. Everything
+// an MCP client can see through the endpoint is named in this file; the
+// streamed teleop pairings, the joint-space move, and the governor controls
+// stay private.
+//
+// This document is the whole artifact. A launcher lists it under
+// `source: { exposures: ["openarm_v2:v1"] }`, binds each target below to a
+// running implementer of its contract through `links`, and the server built
+// into peppy serves it at `/openarm_v2/v1/mcp`. The launchers hub deploys it
+// as the `mcp_commander` option of the `openarm_v2` launcher, both targets
+// filled by the backbone, which is the same instance under the real robot,
+// MuJoCo, or Isaac Sim. `openarm_v2_demo.py` beside this file drives the
+// four tools from the command line.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "openarm_v2", tag: "v1" },
+
+  // Advertised to clients through `server/discover`. `instructions` is the
+  // prose a model reads before it decides what to call.
+  server: {
+    title: "OpenArm v2",
+    instructions: "A bimanual OpenArm v2: two arms and two grippers, addressed by name (left_arm / right_arm, left_gripper / right_gripper). Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Call openarm.move_to_ready before any openarm.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each tool's task deadline is 60 s (30 s for openarm.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and the robot refuses posture durations above 600 s outright. Every tool moves the robot.",
+  },
+
+  targets: {
+    // A LOGICAL target, not an instance. `postures` becomes a contract slot
+    // of the server, so the launcher decides which running instance fills
+    // it. One target holds one contract, so the two contracts the backbone
+    // serves are two targets, both bound to it by the launcher.
+    postures: {
+      contract: {
+        name: "postures",
+        tag: "v1",
+        // An author pin: the sha256 of the exact contract document this file
+        // was written against (`sha256sum robot/postures.json5` in the
+        // contracts hub). A launch that resolves other bytes for
+        // `postures:v1` refuses instead of publishing schemas this file
+        // never saw.
+        sha256: "316942d62a1924bc93b08828e2329a5da23b01bd8d169ac7aa525d0aad6b16d9",
+      },
+
+      // An action becomes a tool backed by an MCP task: the call returns a
+      // task handle, `tasks/get` reports its progress, and `tasks/cancel`
+      // forwards to the action's cancel path. Neither contract declares a
+      // feedback topic, so a task carries its state transitions and the
+      // terminal result, not interim progress.
+      actions: [
+        {
+          member: "move_to_ready",
+          tool: "openarm.move_to_ready",
+          description: "Bring both arms to the working posture, raised out in front of the robot. duration_s is the requested move time in seconds; 0 means as fast as the joint limits allow.",
+          operation: "long_running",
+          // Advertised to the client: this one moves the robot.
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+        {
+          member: "move_to_home",
+          tool: "openarm.move_to_home",
+          description: "Bring both arms to the rest posture, hanging at the robot's sides. duration_s is the requested move time in seconds; 0 means as fast as the joint limits allow.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+      ],
+    },
+
+    limb_motion: {
+      contract: {
+        name: "limb_motion",
+        tag: "v1",
+        // Pinned like `postures` above (`sha256sum robot/limb_motion.json5`).
+        sha256: "a1a0c67b7866c66eaac6b76328f2d1312f00368a599d5569967274ff787d157f",
+      },
+
+      actions: [
+        {
+          member: "move_arm",
+          tool: "openarm.move_arm",
+          description: "Move one arm's grasp point to a world-frame pose. arm_name is left_arm or right_arm; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w]; duration_s 0 means as fast as the joint limits allow. plan_position_tolerance_m and plan_orientation_tolerance_rad bound how far the planned pose may sit from the requested one (0 takes the planner's defaults); a pose no plan reaches inside both is refused rather than approximated.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+        {
+          member: "move_gripper",
+          tool: "openarm.move_gripper",
+          description: "Drive one gripper to an opening. gripper_name is left_gripper or right_gripper; opening is a fraction of full jaw travel, 0 closed and 1 fully open; max_effort caps the effort toward the target, 0 meaning no preference.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 30000,
+        },
+      ],
+      // `move_arm_joints` is live on the backbone and deliberately absent
+      // here: raw joint vectors are not a surface for a model, and the
+      // contract leaves the joint count unpinned (the backbone's own
+      // refinement pins 7), so a published schema for it could not say what
+      // a goal means. A member that is not selected is not reachable
+      // through the endpoint at all.
+    },
+  },
+}

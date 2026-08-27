@@ -12,6 +12,11 @@ name: Repository index
 #
 # It runs on every pull request rather than behind a path filter: a removal
 # or a rename drifts the index just as an addition does.
+#
+# The second job covers the one thing here that is not a document: the
+# Python client beside the openarm exposure, tested against a stand-in for
+# the endpoint that answers as the built-in server does. No peppy, no
+# daemon, no robot.
 on:
   pull_request:
 
@@ -136,3 +141,20 @@ jobs:
             echo "$stray" >&2
             exit 1
           fi
+
+  script-tests:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      # The stand-in server the tests run against is part of the test file,
+      # on an ephemeral loopback port; the runner's own python3 is enough.
+      - name: Run the client script's tests
+        run: python3 -m unittest discover --start-directory openarm --pattern 'test_*.py' --verbose
