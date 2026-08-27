@@ -334,7 +334,7 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
     def _tools_call(self, params, meta):
         tool = params.get("name")
         if tool not in self.server.scenario.tools:
-            raise McpRefusal(-32602, f"`{tool}` is not a task of this exposure")
+            raise McpRefusal(-32602, f"`{tool}` is not a tool of this exposure")
         capabilities = meta.get(demo.META_CLIENT_CAPABILITIES) or {}
         if demo.TASKS_EXTENSION not in (capabilities.get("extensions") or {}):
             raise McpRefusal(-32021, "Missing required client capability")
@@ -654,7 +654,7 @@ class ScriptTests(StandInCase):
         server = self.serve(Scenario(tools=[demo.TOOL_MOVE_GRIPPER]))
         code, _, err, _ = self.run_script(server, "move-to-ready")
         self.assertEqual(code, demo.EXIT_ENDPOINT)
-        self.assertIn("refused the request (-32602): `openarm.move_to_ready` is not a task of this exposure", err)
+        self.assertIn("refused the request (-32602): `openarm.move_to_ready` is not a tool of this exposure", err)
         self.assertEqual(server.tasks, {})
 
     def test_an_unreachable_endpoint_exits_2(self):
@@ -683,7 +683,7 @@ class ClientTests(StandInCase):
         with self.assertRaises(demo.ProtocolError) as refused:
             client.request("tools/call", {"name": "openarm.dance", "arguments": {}})
         self.assertEqual(refused.exception.code, -32602)
-        self.assertIn("`openarm.dance` is not a task", refused.exception.message)
+        self.assertIn("`openarm.dance` is not a tool", refused.exception.message)
 
     def test_arguments_failing_the_schema_never_make_a_task(self):
         server = self.serve()
