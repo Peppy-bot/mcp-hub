@@ -15,6 +15,32 @@ Exposures are grouped by what they publish:
 ```text
 cameras/      one camera as resources and tools
 recording/    a camera plus an episode recorder driven through MCP tasks
+openarm/      the OpenArm v2's posture, arm, and gripper moves as tools backed by MCP tasks, with a Python client
+```
+
+## Driving the OpenArm v2 through one
+
+`openarm/openarm_v2.json5` publishes four moves of the OpenArm v2 backbone: both arms to the ready
+or home posture, one arm's grasp point to a world-frame pose, one gripper to an opening. The
+[launchers hub](https://github.com/Peppy-bot/launchers-hub) serves it as the `mcp_commander` option
+of its `openarm_v2` launcher, under the real robot or either simulator:
+
+```sh
+peppy stack launch openarm_v2 --with=mujoco,mcp_commander
+```
+
+The endpoint is `http://127.0.0.1:8900/openarm_v2/v1/mcp`, listed by `peppy stack list` in its
+`Instance endpoints` table. `openarm/openarm_v2_demo.py`, standard library only, drives it from
+the command line: `tools` prints what the endpoint advertises, each tool has a subcommand
+(`move-to-ready`, `move-to-home`, `move-arm`, `move-gripper`), and `demo` brings the arms to
+ready, closes and opens both grippers, and returns home. Ctrl-C cancels the move in flight and
+waits for the robot to settle. The script speaks MCP directly in the shape the built-in server
+expects, so it doubles as a reference for any client of it:
+
+```sh
+python3 openarm/openarm_v2_demo.py tools
+python3 openarm/openarm_v2_demo.py demo
+python3 openarm/openarm_v2_demo.py move-gripper --gripper left_gripper --opening 0
 ```
 
 ## Adding an exposure
@@ -66,3 +92,10 @@ contract does not declare, breaking a policy rule, or pinning bytes the contract
 serves fails the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
 directory or a `*.bundle.json` file): the server is built into peppy and the catalog is derived on
 demand, so only the documents belong here.
+
+The same workflow's `python-tests` job runs `pytest` from the repository root with no path and no
+pattern: it collects every `test_*.py` and `*_test.py` under the checkout (`pytest.ini` lets it into
+dot-directories such as `.github`), so a test added anywhere in the repository runs without the
+workflow naming it. Today that is `openarm/test_openarm_v2_demo.py`: the client script against a
+stand-in for the endpoint that answers as the built-in server does, so the job needs no peppy, no
+daemon, and no robot.
