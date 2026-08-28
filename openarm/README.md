@@ -22,9 +22,9 @@ The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the expos
 `mcp_commander` option of its `openarm_v2` launcher, under the real robot or either simulator:
 
 ```sh
-peppy stack launch openarm_v2 --with=mujoco,mcp_commander     # MuJoCo
-peppy stack launch openarm_v2 --with=isaac_sim,mcp_commander  # Isaac Sim (needs a GPU)
-peppy stack launch openarm_v2 --with=mcp_commander            # the real robot
+peppy stack launch openarm_v2 --with=mujoco,mcp_commander                     # MuJoCo
+peppy stack launch openarm_v2 --with=isaac_sim,scene_commander,mcp_commander  # Isaac Sim (needs a GPU)
+peppy stack launch openarm_v2 --with=mcp_commander                            # the real robot
 ```
 
 The endpoint, the four tools, and every command below are identical under all three: both of the
