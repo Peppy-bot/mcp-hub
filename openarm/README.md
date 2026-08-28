@@ -22,8 +22,15 @@ The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the expos
 `mcp_commander` option of its `openarm_v2` launcher, under the real robot or either simulator:
 
 ```sh
-peppy stack launch openarm_v2 --with=mujoco,mcp_commander
+peppy stack launch openarm_v2 --with=mujoco,mcp_commander     # MuJoCo
+peppy stack launch openarm_v2 --with=isaac_sim,mcp_commander  # Isaac Sim (needs a GPU)
+peppy stack launch openarm_v2 --with=mcp_commander            # the real robot
 ```
+
+The endpoint, the four tools, and every command below are identical under all three: both of the
+exposure's targets are filled by the same backbone instance whichever `robot` option is selected,
+so only the engine under it differs. The Isaac selection additionally brings up the webviewer for
+that engine's WebRTC livestream.
 
 The endpoint is `http://127.0.0.1:8900/openarm_v2/v1/mcp`, listed by `peppy stack list` in its
 `Instance endpoints` table. It needs peppy v0.26.2 or later.
