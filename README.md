@@ -92,7 +92,3 @@ contract does not declare, breaking a policy rule, or pinning bytes the contract
 serves fails the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
 directory or a `*.bundle.json` file): the server is built into peppy and the catalog is derived on
 demand, so only the documents belong here.
-
-The same workflow's `script-tests` job runs `openarm/test_openarm_v2_demo.py` under
-`python3 -m unittest`: the client script against a stand-in for the endpoint that answers as the
-built-in server does, so the job needs no peppy, no daemon, and no robot.
