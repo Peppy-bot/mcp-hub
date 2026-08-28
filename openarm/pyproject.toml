@@ -1,0 +1,26 @@
+# The OpenArm v2 client and its tests as a uv project.
+#
+# The client script imports nothing outside the standard library, so the
+# environment exists for the tests: pytest, pinned to the release the pull
+# request workflow installs, so a local run and a CI run resolve the same
+# thing. `.python-version` holds the interpreter that workflow uses.
+#
+# Nothing here is a package. `openarm_v2_demo.py` is a script beside this
+# file and the tests import it by path, so uv builds the environment without
+# installing anything of this project into it.
+#
+# Pytest reads its configuration from the repository's `pytest.ini`, which
+# covers the whole checkout. This file carries no `[tool.pytest.ini_options]`
+# table, so it does not shadow it.
+[project]
+name = "openarm-v2-demo"
+version = "0.1.0"
+description = "Command-line client for the openarm_v2:v1 MCP exposure"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest==9.1.1"]
+
+[tool.uv]
+package = false

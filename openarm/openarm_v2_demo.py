@@ -16,7 +16,7 @@ polled through `tasks/get` until it settles.
     openarm_v2_demo.py tools
     openarm_v2_demo.py move-to-ready --duration-s 4
     openarm_v2_demo.py move-gripper --gripper left_gripper --opening 0
-    openarm_v2_demo.py move-arm --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0 0 1
+    openarm_v2_demo.py move-arm --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
     openarm_v2_demo.py move-to-home --duration-s 4
     openarm_v2_demo.py demo
 

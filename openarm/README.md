@@ -35,15 +35,15 @@ MCP (revision 2026-07-28) directly, in the stateless shape the built-in server e
 request carries its own protocol version and client capabilities in `_meta` and the `Mcp-Method`
 and `Mcp-Name` headers, answers arrive as event streams, and a move is an MCP task polled through
 `tasks/get` at the interval the server suggests. It doubles as a reference for any client of the
-endpoint.
+endpoint. Its commands run from this directory, where uv finds the project:
 
 ```sh
-python3 openarm/openarm_v2_demo.py tools
-python3 openarm/openarm_v2_demo.py move-to-ready --duration-s 4
-python3 openarm/openarm_v2_demo.py move-arm --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0 0 1
-python3 openarm/openarm_v2_demo.py move-gripper --gripper left_gripper --opening 0
-python3 openarm/openarm_v2_demo.py move-to-home --duration-s 4
-python3 openarm/openarm_v2_demo.py demo
+uv run openarm_v2_demo.py tools
+uv run openarm_v2_demo.py move-to-ready --duration-s 4
+uv run openarm_v2_demo.py move-arm --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
+uv run openarm_v2_demo.py move-gripper --gripper left_gripper --opening 0
+uv run openarm_v2_demo.py move-to-home --duration-s 4
+uv run openarm_v2_demo.py demo
 ```
 
 `tools` asks the endpoint what it advertises (`server/discover`, then `tools/list`) and prints the
@@ -56,14 +56,33 @@ Exit codes: 0 the move completed and the robot reported success; 1 the robot did
 refused goal, a failed move, or a completed move reporting no success); 2 the endpoint could not
 be reached or refused the request; 130 the move was cancelled.
 
+## The environment
+
+`pyproject.toml` declares this directory as a uv project. The script itself takes nothing from it:
+the only dependency is pytest, pinned to the release the pull request workflow installs, and
+`uv.lock` fixes that resolution so a run here and a run in CI test against the same pytest.
+`.python-version` holds the 3.12 the workflow runs on. Nothing here is a package, so `.venv` holds
+pytest and nothing else:
+
+```sh
+uv sync
+```
+
+Every `uv run` syncs that environment first, so `uv sync` is only worth running on its own to
+build it up front. Any Python 3.12 or later runs the script as it stands, with or without uv,
+since it imports nothing outside the standard library.
+
 ## Tests
 
 `test_openarm_v2_demo.py` holds the script to that shape against a stand-in for the endpoint that
 answers as the built-in server does: the same HTTP refusals, header requirements, task shapes,
 error codes and statuses. Its tasks advance one step per poll, so no test waits on a clock, and it
-needs no peppy, no daemon, and no robot. Run it from the repository root, as the pull request
-workflow does:
+needs no peppy, no daemon, and no robot:
 
 ```sh
-pytest
+uv run pytest
 ```
+
+pytest takes its configuration from the repository's `pytest.ini`, found from here as from
+anywhere else in the checkout, so this run and the `pytest` the pull request workflow runs from
+the repository root over every test in the repository collect these tests the same way.
