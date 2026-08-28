@@ -92,3 +92,10 @@ contract does not declare, breaking a policy rule, or pinning bytes the contract
 serves fails the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
 directory or a `*.bundle.json` file): the server is built into peppy and the catalog is derived on
 demand, so only the documents belong here.
+
+The same workflow's `python-tests` job runs `pytest` from the repository root with no path and no
+pattern: it collects every `test_*.py` and `*_test.py` under the checkout (`pytest.ini` lets it into
+dot-directories such as `.github`), so a test added anywhere in the repository runs without the
+workflow naming it. Today that is `openarm/test_openarm_v2_demo.py`: the client script against a
+stand-in for the endpoint that answers as the built-in server does, so the job needs no peppy, no
+daemon, and no robot.

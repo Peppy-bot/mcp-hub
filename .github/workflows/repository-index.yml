@@ -12,6 +12,10 @@ name: Repository index
 #
 # It runs on every pull request rather than behind a path filter: a removal
 # or a rename drifts the index just as an addition does.
+#
+# The second job runs the repository's Python tests. pytest collects every
+# test file under the checkout on its own, so a test added anywhere in the
+# repository runs there without this file naming it.
 on:
   pull_request:
 
@@ -136,3 +140,32 @@ jobs:
             echo "$stray" >&2
             exit 1
           fi
+
+  python-tests:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      # A Python with pip, whatever the runner image ships beside its own
+      # python3; 3.12 is what the client scripts run on (Ubuntu 24.04).
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      # No path and no pattern: pytest walks the whole checkout (pytest.ini
+      # lets it into dot-directories such as .github), so this step stays as
+      # it is when tests are added. The tests bring their own stand-ins on
+      # ephemeral loopback ports, so pytest is the only install, pinned like
+      # the actions above.
+      - name: Run every Python test in the repository
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pytest==9.1.1
+          python -m pytest --verbose

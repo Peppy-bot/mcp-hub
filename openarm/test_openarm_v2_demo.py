@@ -9,7 +9,7 @@ task-handle and `tasks/get` shapes, the same error codes and HTTP statuses
 for them. Its tasks advance one step per `tasks/get`, so no test waits on a
 clock: the script's sleep is injected and recorded, never run.
 
-    python3 -m unittest discover --start-directory openarm --pattern 'test_*.py'
+    pytest    # from the repository root, as the pull request workflow runs it
 """
 
 import base64
