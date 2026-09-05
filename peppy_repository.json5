@@ -11,6 +11,11 @@
         path: "cameras/front_camera.json5"
       }
     },
+    openarm_ai_brain: {
+      v1: {
+        path: "openarm/ai_brain.json5"
+      }
+    },
     openarm_v2: {
       v1: {
         path: "openarm/openarm_v2.json5"
