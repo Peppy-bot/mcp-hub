@@ -61,6 +61,19 @@ peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: r
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
 publishes. Rename yours: within one repository, a `name:tag` is claimed by exactly one file.
 
+## What an exposure never publishes
+
+An exposure is the one surface a model drives on the real robot and in simulation alike: the same
+tools and resources, whatever the launcher binds behind its targets. A contract that reports what
+only a simulation can know has no real-world implementer, so a target on it would exist only in
+simulation and split the two surfaces. Simulation ground truth therefore stays inside the peppy
+framework, where harness tests, recorders and the evaluation of a trained behaviour read it, and
+never reaches an endpoint. Today that is `object_state` (the live pose, velocities and contacts of
+every object a scene commander spawned, in the contracts hub's `simulation/` category).
+[`test_no_simulation_ground_truth.py`](test_no_simulation_ground_truth.py) reads every
+`mcp_exposure/v1` document in the checkout and fails the pull request that targets such a
+contract; extend its `GROUND_TRUTH_CONTRACTS` when the contracts hub gains another.
+
 ## Continuous integration
 
 The [index workflow](.github/workflows/repository-index.yml) runs on every pull request with the
