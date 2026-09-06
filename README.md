@@ -68,8 +68,10 @@ tools and resources, whatever the launcher binds behind its targets. A contract 
 only a simulation can know has no real-world implementer, so a target on it would exist only in
 simulation and split the two surfaces. Simulation ground truth therefore stays inside the peppy
 framework, where harness tests, recorders and the evaluation of a trained behaviour read it, and
-never reaches an endpoint. Today that is `object_state` (the live pose, velocities and contacts of
-every object a scene commander spawned, in the contracts hub's `simulation/` category).
+never reaches an endpoint. Today that is `object_state` (the live pose and velocities of every
+object a scene commander spawned), `contact_state` (every contact the physics resolves, from both
+sides, with its normal force) and `sensor_readout` (the reading of every sensor the simulated model
+declares), all in the contracts hub's `simulation/` category.
 [`test_no_simulation_ground_truth.py`](test_no_simulation_ground_truth.py) reads every
 `mcp_exposure/v1` document in the checkout and fails the pull request that targets such a
 contract; extend its `GROUND_TRUTH_CONTRACTS` when the contracts hub gains another.
