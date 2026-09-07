@@ -3,11 +3,11 @@
 An exposure is the one surface a model drives on the real robot and in
 simulation alike: the same tools and resources, whatever the launcher binds
 behind its targets. A contract that reports what only a simulation can know
-(``object_state``: the live pose, velocities and contacts of every object a
-scene commander spawned) has no real-world implementer, so a target on it
+(``object_state``, ``contact_state`` and the raw MuJoCo
+``sensor_readout`` stream) has no real-world implementer, so a target on it
 would exist only in simulation and split the two surfaces. Ground truth stays
 inside the peppy framework, for harness tests, recorders and the evaluation
-of a trained behaviour. This test reads every ``mcp_exposure/v1`` document in
+of simulated behaviour. This test reads every ``mcp_exposure/v1`` document in
 the checkout and fails on one that targets such a contract.
 
 pytest collects it from the repository root without the workflow naming it;
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent
 # what it alone can know. Nothing on a real robot implements them, so no
 # exposure may select their members. Contract names, any tag. Extend it when
 # the contracts hub gains another such contract.
-GROUND_TRUTH_CONTRACTS = frozenset({"object_state"})
+GROUND_TRUTH_CONTRACTS = frozenset({"object_state", "contact_state", "sensor_readout"})
 
 EXPOSURE_SCHEMA = "mcp_exposure/v1"
 
@@ -131,11 +131,19 @@ _OFFENDING = """// A target on ground truth, which this repository refuses.
 """
 
 
-def test_a_target_on_object_state_is_refused(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("contract", "member"),
+    [("object_state", "object_states"), ("contact_state", "contacts"), ("sensor_readout", "sensor_readings")],
+)
+def test_a_target_on_simulation_ground_truth_is_refused(
+    tmp_path: Path, contract: str, member: str
+) -> None:
     path = tmp_path / "sim_objects.json5"
-    path.write_text(_OFFENDING, encoding="utf-8")
+    document = _OFFENDING.replace('member: "object_states"', f'member: "{member}"')
+    document = document.replace('name: "object_state"', f'name: "{contract}"')
+    path.write_text(document, encoding="utf-8")
     assert exposure_documents(tmp_path) == [path]
-    assert ground_truth_targets(path) == ["object_state"]
+    assert ground_truth_targets(path) == [contract]
 
 
 def test_other_contracts_comments_and_prose_pass() -> None:
