@@ -67,7 +67,7 @@ An exposure is the one surface a model drives on the real robot and in simulatio
 tools and resources, whatever the launcher binds behind its targets. A contract that reports what
 only a simulation can know has no real-world implementer, so a target on it would exist only in
 simulation and split the two surfaces. Simulation ground truth therefore stays inside the peppy
-framework, where harness tests, recorders and the evaluation of a trained behaviour read it, and
+framework, where harness tests, recorders and the evaluation of simulated behaviour read it, and
 never reaches an endpoint. Today that is `object_state` (the live pose and velocities of every
 object a scene commander spawned), `contact_state` (every contact the physics resolves, from both
 sides, with its normal force) and `sensor_readout` (the reading of every sensor the simulated model

@@ -9,7 +9,7 @@ with its normal force; ``sensor_readout``: the reading of every sensor the
 simulated model declares) has no real-world implementer, so a target on it
 would exist only in simulation and split the two surfaces. Ground truth stays
 inside the peppy framework, for harness tests, recorders and the evaluation
-of a trained behaviour. This test reads every ``mcp_exposure/v1`` document in
+of simulated behaviour. This test reads every ``mcp_exposure/v1`` document in
 the checkout and fails on one that targets such a contract.
 
 pytest collects it from the repository root without the workflow naming it;
@@ -133,11 +133,19 @@ _OFFENDING = """// A target on ground truth, which this repository refuses.
 """
 
 
-def test_a_target_on_object_state_is_refused(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("contract", "member"),
+    [("object_state", "object_states"), ("contact_state", "contacts"), ("sensor_readout", "sensor_readings")],
+)
+def test_a_target_on_simulation_ground_truth_is_refused(
+    tmp_path: Path, contract: str, member: str
+) -> None:
     path = tmp_path / "sim_objects.json5"
-    path.write_text(_OFFENDING, encoding="utf-8")
+    document = _OFFENDING.replace('member: "object_states"', f'member: "{member}"')
+    document = document.replace('name: "object_state"', f'name: "{contract}"')
+    path.write_text(document, encoding="utf-8")
     assert exposure_documents(tmp_path) == [path]
-    assert ground_truth_targets(path) == ["object_state"]
+    assert ground_truth_targets(path) == [contract]
 
 
 _OFFENDING_CONTACTS_AND_SENSORS = """// Targets on the contact list and the sensor readout, refused too.
