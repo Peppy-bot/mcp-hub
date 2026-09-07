@@ -3,8 +3,10 @@
 An exposure is the one surface a model drives on the real robot and in
 simulation alike: the same tools and resources, whatever the launcher binds
 behind its targets. A contract that reports what only a simulation can know
-(``object_state``, ``contact_state`` and the raw MuJoCo
-``sensor_readout`` stream) has no real-world implementer, so a target on it
+(``object_state``: the live pose and velocities of every object a scene
+commander spawned; ``contact_state``: every contact the physics resolves,
+with its normal force; ``sensor_readout``: the reading of every sensor the
+simulated model declares) has no real-world implementer, so a target on it
 would exist only in simulation and split the two surfaces. Ground truth stays
 inside the peppy framework, for harness tests, recorders and the evaluation
 of simulated behaviour. This test reads every ``mcp_exposure/v1`` document in
@@ -144,6 +146,38 @@ def test_a_target_on_simulation_ground_truth_is_refused(
     path.write_text(document, encoding="utf-8")
     assert exposure_documents(tmp_path) == [path]
     assert ground_truth_targets(path) == [contract]
+
+
+_OFFENDING_CONTACTS_AND_SENSORS = """// Targets on the contact list and the sensor readout, refused too.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "sim_touch", tag: "v1" },
+  server: { title: "Touch", instructions: "Read what the gripper feels." },
+  targets: {
+    contacts: {
+      contract: { name: "contact_state", tag: "v1" },
+      topics: [
+        { member: "contacts", resource: "touch.contacts", description: "What touches what.",
+          freshness: { max_age_ms: 200 } },
+      ],
+    },
+    sensors: {
+      contract: { name: "sensor_readout", tag: "v1" },
+      topics: [
+        { member: "sensor_readings", resource: "touch.sensors", description: "The pads.",
+          freshness: { max_age_ms: 200 } },
+      ],
+    },
+  },
+}
+"""
+
+
+def test_targets_on_contacts_and_sensors_are_refused(tmp_path: Path) -> None:
+    path = tmp_path / "sim_touch.json5"
+    path.write_text(_OFFENDING_CONTACTS_AND_SENSORS, encoding="utf-8")
+    assert exposure_documents(tmp_path) == [path]
+    assert ground_truth_targets(path) == ["contact_state", "sensor_readout"]
 
 
 def test_other_contracts_comments_and_prose_pass() -> None:
