@@ -1,6 +1,11 @@
 {
   peppy_schema: "repository/v1",
   mcp_exposures: {
+    ai_brain: {
+      v1: {
+        path: "manipulation/ai_brain.json5"
+      }
+    },
     camera_and_recording: {
       v1: {
         path: "recording/camera_and_recording.json5"

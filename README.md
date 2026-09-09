@@ -16,6 +16,7 @@ Exposures are grouped by what they publish:
 cameras/      one camera as resources and tools
 recording/    a camera plus an episode recorder driven through MCP tasks
 openarm/      the OpenArm v2's posture, arm, and gripper moves as tools backed by MCP tasks, with a Python client
+manipulation/ an AI brain's item perception and manipulation as tools backed by MCP tasks, for any embodiment
 ```
 
 The OpenArm v2 exposure, its client script, and its tests have their own guide:
