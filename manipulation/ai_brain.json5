@@ -1,5 +1,5 @@
-// An AI brain as an MCP command surface: the item search, the four
-// manipulation sequences, and the state query a model can ask a robot for,
+// An AI brain as an MCP command surface: the item scan, the item search, the
+// four manipulation sequences, and the state query a model can ask a robot for,
 // backed by the item_perception and item_manipulation contracts. Both are
 // embodiment agnostic and so is this document: it names no robot, and the
 // gripper names a model addresses come from brain.get_state at run time.
@@ -22,7 +22,7 @@
   // contracts' comments reach it.
   server: {
     title: "AI brain",
-    instructions: "A robot with an AI brain that finds, picks up, and puts down items. Call brain.get_state first: it lists the gripper names this robot has, which gripper holds which item, and which sequence is running. Distances are meters. A pose is a gripper's grasp point in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Orientation is optional everywhere; leave it out to let the robot choose how to approach or release. The usual sequence is brain.identify_item, then brain.grab_item with the item_id it returned, then brain.place_item or brain.drop_item. One manipulation sequence at a time: a manipulation tool called while another sequence is running is refused with the running action's name, and brain.abort stops whatever is running. brain.grab_item, brain.drop_item and brain.place_item move the robot; brain.identify_item and brain.abort start no motion.",
+    instructions: "A robot with an AI brain that finds, picks up, and puts down items. Call brain.get_state first: it lists the gripper names this robot has, which gripper holds which item, and which sequence is running. Distances are meters. A pose is a gripper's grasp point in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Orientation is optional everywhere; leave it out to let the robot choose how to approach or release. The usual sequence is brain.scan_items to see what is there, or brain.identify_item to find one item by description, then brain.grab_item with the item_id returned, then brain.place_item or brain.drop_item. Item ids from either perception tool are the same ids the manipulation tools take. One perception search at a time and one manipulation sequence at a time: a tool called while another of its kind is running is refused with the running action's name, and brain.abort stops whatever manipulation is running. brain.grab_item, brain.drop_item and brain.place_item move the robot; brain.scan_items, brain.identify_item and brain.abort start no motion.",
   },
 
   targets: {
@@ -38,11 +38,19 @@
         // contracts hub). A launch that resolves other bytes for
         // `item_perception:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "72d6be95359a5829691920510f03fed94973d849d673640bb4bc60f94149acb0",
+        sha256: "94ea53062bc160c72802a3213a0bfd89de03ac80fa05fb85581e63ac3b64e7a2",
       },
-      // The search becomes a tool backed by an MCP task: the call returns a
-      // task handle and `tasks/get` reports its state until the result.
+      // The scan and the search become tools backed by MCP tasks: the call
+      // returns a task handle and `tasks/get` reports its state until the
+      // result.
       actions: [
+        {
+          member: "scan_items",
+          tool: "brain.scan_items",
+          description: "Look at the scene and report every item the robot can act on, minting an item_id for each. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 world-frame coordinates in meters per item, and confidences from 0 to 1. An empty scene is a success with empty arrays. Scanning again keeps the id of an item the robot recognises. Starts no motion.",
+          operation: "long_running",
+          deadline_ms: 30000,
+        },
         {
           member: "identify_item",
           tool: "brain.identify_item",
