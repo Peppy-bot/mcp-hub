@@ -3,14 +3,14 @@
 An exposure is the one surface a model drives on the real robot and in
 simulation alike: the same tools and resources, whatever the launcher binds
 behind its targets. A contract that reports what only a simulation can know
-(``object_state``: the live pose and velocities of every object a scene
-commander spawned; ``contact_state``: every contact the physics resolves,
-with its normal force; ``sensor_readout``: the reading of every sensor the
-simulated model declares) has no real-world implementer, so a target on it
-would exist only in simulation and split the two surfaces. Ground truth stays
-inside the peppy framework, for harness tests, recorders and the evaluation
-of simulated behaviour. This test reads every ``mcp_exposure/v1`` document in
-the checkout and fails on one that targets such a contract.
+(``object_state``: the pose and velocities of every spawned object, streamed
+and answered on demand from the same snapshot; ``contact_state``: every contact
+the physics resolves, with its normal force; ``sensor_readout``: the reading of
+every sensor the simulated model declares) has no real-world implementer, so a
+target on it would exist only in simulation and split the two surfaces. Ground
+truth stays inside the peppy framework, for harness tests, recorders and the
+evaluation of simulated behaviour. This test reads every ``mcp_exposure/v1``
+document in the checkout and fails on one that targets such a contract.
 
 pytest collects it from the repository root without the workflow naming it;
 the exposures it checks are discovered the same way.
@@ -171,6 +171,30 @@ _OFFENDING_CONTACTS_AND_SENSORS = """// Targets on the contact list and the sens
   },
 }
 """
+
+
+_OFFENDING_SNAPSHOT = """// A tool on the on-demand object snapshot, refused like the stream.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "sim_snapshot", tag: "v1" },
+  server: { title: "Snapshot", instructions: "Ask where the objects are." },
+  targets: {
+    objects: {
+      contract: { name: "object_state", tag: "v1" },
+      services: [
+        { member: "get_object_states", tool: "objects_snapshot", description: "Every spawned object." },
+      ],
+    },
+  },
+}
+"""
+
+
+def test_a_target_on_the_object_snapshot_service_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "sim_snapshot.json5"
+    path.write_text(_OFFENDING_SNAPSHOT, encoding="utf-8")
+    assert exposure_documents(tmp_path) == [path]
+    assert ground_truth_targets(path) == ["object_state"]
 
 
 def test_targets_on_contacts_and_sensors_are_refused(tmp_path: Path) -> None:
