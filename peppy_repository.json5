@@ -20,6 +20,26 @@
       v1: {
         path: "openarm/openarm_v2.json5"
       }
+    },
+    openarm_v2_sim_cameras: {
+      v1: {
+        path: "simulation/openarm_v2_sim_cameras.json5"
+      }
+    },
+    scene_lighting: {
+      v1: {
+        path: "simulation/scene_lighting.json5"
+      }
+    },
+    scene_manipulation: {
+      v1: {
+        path: "simulation/scene_manipulation.json5"
+      }
+    },
+    scene_materials: {
+      v1: {
+        path: "simulation/scene_materials.json5"
+      }
     }
   }
 }

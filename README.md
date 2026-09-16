@@ -17,6 +17,7 @@ cameras/      one camera as resources and tools
 recording/    a camera plus an episode recorder driven through MCP tasks
 openarm/      the OpenArm v2's posture, arm, and gripper moves as tools backed by MCP tasks, with a Python client
 manipulation/ an AI brain's item perception and manipulation as tools backed by MCP tasks, for any embodiment
+simulation/   the simulated world's scene, lighting, materials, and rendered cameras; simulation launch options only
 ```
 
 The OpenArm v2 exposure, its client script, and its tests have their own guide:
@@ -62,20 +63,53 @@ peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: r
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
 publishes. Rename yours: within one repository, a `name:tag` is claimed by exactly one file.
 
-## What an exposure never publishes
+## Simulation contracts
 
 An exposure is the one surface a model drives on the real robot and in simulation alike: the same
-tools and resources, whatever the launcher binds behind its targets. A contract that reports what
-only a simulation can know has no real-world implementer, so a target on it would exist only in
-simulation and split the two surfaces. Simulation ground truth therefore stays inside the peppy
-framework, where harness tests, recorders and the evaluation of simulated behaviour read it, and
-never reaches an endpoint. Today that is `object_state` (the pose and velocities of every spawned
-object, streamed and answered on demand from the same snapshot), `contact_state` (every contact
-the physics resolves, from both sides, with its normal force) and `sensor_readout` (the reading of
-every sensor the simulated model declares), all in the contracts hub's `simulation/` category.
+tools and resources, whatever the launcher binds behind its targets. The contracts hub's
+`simulation/` category holds two kinds of contract, and this repository treats them differently.
+
+### Ground truth and the internal camera channel, never published
+
+A contract that reports what only a simulation can know has no real-world implementer, so a
+target on it would exist only in simulation and split the two surfaces. Simulation ground truth
+therefore stays inside the peppy framework, where harness tests, recorders and the evaluation of
+simulated behaviour read it, and never reaches an endpoint. That is `object_state` (the pose and
+velocities of every spawned object, streamed and answered on demand from the same snapshot),
+`contact_state` (every contact the physics resolves, from both sides, with its normal force) and
+`sensor_readout` (the reading of every sensor the simulated model declares). `sim_camera_control`
+is refused the same way: it is the internal channel through which a rendered camera's relay
+forwards the controls it receives to the engine, a relay drives it on a model's behalf, and the
+relay's own `rgb_camera` / `rgbd_camera` surface is what an exposure publishes.
 [`test_no_simulation_ground_truth.py`](test_no_simulation_ground_truth.py) reads every
 `mcp_exposure/v1` document in the checkout and fails the pull request that targets such a
-contract; extend its `GROUND_TRUTH_CONTRACTS` when the contracts hub gains another.
+contract; extend its `GROUND_TRUTH_CONTRACTS` or `INTERNAL_CONTRACTS` when the contracts hub gains
+another.
+
+### Simulation configuration, published under a wording rule
+
+`scene_manipulation` (assets, scene loading, spawned objects, the robot's base), `scene_lighting`
+and `scene_materials` edit the simulated world and have no physical counterpart either, but a
+model legitimately drives them, as it does the cameras the simulation renders at the real rig's
+viewpoints. Exposures on them live under `simulation/`, and only a simulation launch option
+serves them: the `mcp_sim_commander` option of the simulated OpenArm v2 fragment in the
+[launchers hub](https://github.com/Peppy-bot/launchers-hub), which its `openarm_simulation_mcp`
+launcher deploys at `/<name>/v1/mcp` on port 8900 beside the robot endpoint
+`/openarm_v2/v1/mcp`. No real-robot fragment lists them.
+
+A model reading one of these endpoints must never mistake it for a real-robot surface, so every
+document under `simulation/` says what it is, and the same test enforces the wording:
+
+- the server `title` ends with `(simulation only)`;
+- the server `instructions` open with the exact sentence
+  `This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot.`;
+- every `description` of every topic, service and action contains the word `simulation` or
+  `simulated` (a whole word, any case).
+
+The test also fails an exposure that targets `scene_manipulation`, `scene_lighting` or
+`scene_materials` from any other directory (its `SIMULATION_CONFIGURATION_CONTRACTS`). A pull
+request that adds a `simulation/` document without the suffix, the opening sentence, or the word
+in one of its descriptions fails, naming the part that is missing.
 
 ## Continuous integration
 
