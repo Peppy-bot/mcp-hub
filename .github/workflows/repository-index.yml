@@ -87,6 +87,20 @@ jobs:
           installed="Installed $("$dest/bin/peppy" --version) (channel: $channel)"
           printf '\n%s\n' "$installed" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The daemon runs a pre-flight check on the apptainer beside it and
+      # refuses to start where unprivileged user namespaces are unavailable,
+      # which on Ubuntu 24.04 means an AppArmor profile for the `starter`
+      # binary of this install. The Blacksmith image mounted no AppArmor
+      # securityfs, so the check passed with nothing to do and this workflow
+      # needed no such step; the self-hosted runner does restrict userns, so
+      # the profile has to be installed. `peppy container setup` writes it
+      # through sudo (stdin is not a terminal, so it applies rather than
+      # prompts) and rechecks before exiting 0, and it is keyed to the
+      # install's path under RUNNER_TEMP, so it grants nothing beyond this
+      # run's binary. Needs passwordless sudo on the box.
+      - name: Ready the bundled apptainer for unprivileged use
+        run: peppy container setup
+
       # The daemon gets its own data root and port under RUNNER_TEMP: the CLI
       # finds it through PEPPY_HOME/daemon_state.json5, so pointing PEPPY_HOME
       # at the run's directory is discovery and isolation from any other
