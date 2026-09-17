@@ -25,7 +25,11 @@ concurrency:
 
 jobs:
   check-index:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Every job runs on the self-hosted runner; no job uses a GitHub-hosted
+    # one. A pull request from a fork lands here too, so what keeps fork code
+    # off the box is the repository's fork-PR approval gate, not the runner it
+    # is scheduled on.
+    runs-on: self-hosted
     # The runners are shared, so a step that hangs holds one hostage. Nothing
     # here legitimately takes minutes.
     timeout-minutes: 15
@@ -83,6 +87,20 @@ jobs:
 
           installed="Installed $("$dest/bin/peppy" --version) (channel: $channel)"
           printf '\n%s\n' "$installed" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # The daemon runs a pre-flight check on the apptainer beside it and
+      # refuses to start where unprivileged user namespaces are unavailable,
+      # which on Ubuntu 24.04 means an AppArmor profile for the `starter`
+      # binary of this install. The Blacksmith image mounted no AppArmor
+      # securityfs, so the check passed with nothing to do and this workflow
+      # needed no such step; the self-hosted runner does restrict userns, so
+      # the profile has to be installed. `peppy container setup` writes it
+      # through sudo (stdin is not a terminal, so it applies rather than
+      # prompts) and rechecks before exiting 0, and it is keyed to the
+      # install's path under RUNNER_TEMP, so it grants nothing beyond this
+      # run's binary. Needs passwordless sudo on the box.
+      - name: Ready the bundled apptainer for unprivileged use
+        run: peppy container setup
 
       # The daemon gets its own data root and port under RUNNER_TEMP: the CLI
       # finds it through PEPPY_HOME/daemon_state.json5, so pointing PEPPY_HOME
@@ -142,7 +160,8 @@ jobs:
           fi
 
   python-tests:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # The self-hosted runner, as check-index above.
+    runs-on: self-hosted
     timeout-minutes: 10
     permissions:
       contents: read
