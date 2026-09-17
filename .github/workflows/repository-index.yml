@@ -25,7 +25,10 @@ concurrency:
 
 jobs:
   check-index:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # The self-hosted runner, except on a pull request from a fork: fork code
+    # must not run on a box that persists between jobs, so those runs go to a
+    # GitHub-hosted one. `head.repo.fork` is null on push, read as false.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || 'self-hosted' }}
     # The runners are shared, so a step that hangs holds one hostage. Nothing
     # here legitimately takes minutes.
     timeout-minutes: 15
@@ -142,7 +145,8 @@ jobs:
           fi
 
   python-tests:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Same runner choice as check-index above.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || 'self-hosted' }}
     timeout-minutes: 10
     permissions:
       contents: read
