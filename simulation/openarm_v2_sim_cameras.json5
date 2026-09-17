@@ -1,0 +1,365 @@
+// The three cameras the simulation renders for an OpenArm v2 as an MCP
+// surface: the latest frame of each to look at, the stream's properties to
+// read, the device profile to discover which controls the simulated device
+// models, the controls themselves to set, and a reset to the device
+// defaults. The cameras sit at the viewpoints of the real rig and each
+// answers as the device it stands for (an Arducam B0495 module on either
+// wrist, a ZED Mini on the chest), but every frame is rendered and every
+// control drives the engine's device model: none of it reaches the physical
+// cameras, the title says so, the instructions open by saying so, and every
+// description says so, so a model reading the endpoint never mistakes it
+// for a real-robot surface.
+//
+// This document is the whole artifact. A launcher lists it under
+// `source: { exposures: ["openarm_v2_sim_cameras:v1"] }`, binds each
+// target below to the matching camera relay of the simulated rig through
+// `links`, and the server built into peppy serves it at
+// `/openarm_v2_sim_cameras/v1/mcp`. The launchers hub serves it through the
+// `mcp_sim_commander` option of its simulated OpenArm v2 fragment
+// (`openarm/fragments/openarm_v2_sim.json5`), on port 8900 beside the robot
+// endpoint `/openarm_v2/v1/mcp`, and its `openarm_simulation_mcp` launcher
+// deploys it together with the scene, lighting and materials exposures
+// beside this file. Exposures listed by one deployment share one server
+// process, and a target name shared across them binds one contract, so the
+// six targets here carry the rig's own instance ids and their `_profile`
+// twins, apart from every target of the robot exposure and of the three
+// sibling documents.
+//
+// Six targets for three cameras: a relay implements its camera contract
+// (`rgb_camera:v1` on a wrist, `rgbd_camera:v1` on the chest) and
+// `camera_profile:v1` side by side, and one target holds one contract, so
+// each camera is a camera target plus a profile target, both bound to the
+// same relay by the launcher.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "openarm_v2_sim_cameras", tag: "v1" },
+
+  // Advertised to clients through `server/discover`. `instructions` is the
+  // prose a model reads before it decides what to call, and the only place
+  // it learns which device each camera stands for, the units and the
+  // read-then-set pattern: none of the contracts' comments reach it. The
+  // opening sentence and the title suffix are the wording rule
+  // test_no_simulation_ground_truth.py enforces on every document under
+  // simulation/.
+  server: {
+    title: "OpenArm v2 rendered cameras (simulation only)",
+    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. Three cameras rendered by the simulation the OpenArm v2 runs in, at the viewpoints of the real rig: wrist_left and wrist_right, each modelled after an Arducam B0495 wrist module, and chest, modelled after a ZED Mini. For each camera, <camera>.latest_frame is the latest rendered frame as a JPEG resource, <camera>.info reports the stream's resolution, frame rate and encoding, <camera>.profile lists which controls the simulated device models with each control's modes, unit, bounds, default and current value, the set_exposure, set_gain and set_white_balance tools drive those controls, and <camera>.reset puts every control back to the device defaults. Read <camera>.profile before setting a control: its modes and bounds are what the setters accept. Units: exposure on a wrist camera is in units of 100 microseconds, exposure on the chest camera is automatic only, gain is in device units (0 to 100 on a wrist camera, 0 to 8 on the chest camera), white balance temperature is in kelvin. Brightness and contrast are not offered on any camera. A control the simulated device does not model is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+  },
+
+  targets: {
+    // LOGICAL targets, not instances: each becomes a contract slot of the
+    // server, and the launcher binds it to the rig's relay of the same
+    // name. `wrist_left` and `wrist_right` are the two Arducam viewpoints.
+    wrist_left: {
+      contract: {
+        name: "rgb_camera",
+        tag: "v1",
+        // An author pin: the sha256 of the exact contract document this file
+        // was written against (`sha256sum cameras/rgb_camera.json5` in the
+        // contracts hub). A launch that resolves other bytes for
+        // `rgb_camera:v1` refuses instead of publishing schemas this file
+        // never saw.
+        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+      },
+
+      // The topic becomes a resource: the latest policy-approved snapshot,
+      // published as JPEG at no more than 2 Hz however fast the simulation
+      // renders.
+      topics: [
+        {
+          member: "video_stream",
+          resource: "wrist_left.latest_frame",
+          description: "Latest frame from the simulated left wrist camera, JPEG encoded, rendered by the simulation at the viewpoint of the left Arducam wrist module.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          // The frame is a variable-length byte array, so the runtime size
+          // policy is mandatory.
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+
+      // Each service becomes a tool that answers within one request. The
+      // controls are the ones the Arducam B0495 has a measured response
+      // for, so the simulation has a device model to answer them with;
+      // `restrict` narrows each request to that device's range at the
+      // endpoint, before the Peppy graph is touched.
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "wrist_left.info",
+          description: "Report the simulated left wrist camera stream's resolution, frame rate and encoding. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_exposure",
+          tool: "wrist_left.set_exposure",
+          description: "Set the simulated left wrist camera's exposure. mode is auto or manual; value is the manual exposure in units of 100 microseconds, 1 to 5000, and is ignored in auto mode. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          // The contract's `i32` allows the whole 32-bit range; the Arducam
+          // exposes 1..5000 hundred-microsecond steps.
+          restrict: { value: { min: 1, max: 5000 } },
+        },
+        {
+          member: "set_gain",
+          tool: "wrist_left.set_gain",
+          description: "Set the simulated left wrist camera's gain in device units, 0 to 100. A refused request changes nothing. Answers with current_value, the effective gain after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { value: { min: 0, max: 100 } },
+        },
+        {
+          member: "set_white_balance",
+          tool: "wrist_left.set_white_balance",
+          description: "Set the simulated left wrist camera's white balance. mode is auto or manual; temperature is the manual colour temperature in kelvin, 2800 to 6500, and is ignored in auto mode. A refused request changes nothing. Answers with current_temperature, the effective temperature after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { temperature: { min: 2800, max: 6500 } },
+        },
+      ],
+      // `set_brightness` and `set_contrast` are live on the relay and
+      // deliberately absent here, on every camera of this rig: the real
+      // devices have no measured response for either, so the simulation
+      // has no device model to answer them with and would only refuse. A
+      // member that is not selected is not reachable through the endpoint
+      // at all.
+    },
+
+    wrist_right: {
+      contract: {
+        name: "rgb_camera",
+        tag: "v1",
+        // Pinned like `wrist_left` above (`sha256sum cameras/rgb_camera.json5`).
+        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+      },
+
+      topics: [
+        {
+          member: "video_stream",
+          resource: "wrist_right.latest_frame",
+          description: "Latest frame from the simulated right wrist camera, JPEG encoded, rendered by the simulation at the viewpoint of the right Arducam wrist module.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "wrist_right.info",
+          description: "Report the simulated right wrist camera stream's resolution, frame rate and encoding. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_exposure",
+          tool: "wrist_right.set_exposure",
+          description: "Set the simulated right wrist camera's exposure. mode is auto or manual; value is the manual exposure in units of 100 microseconds, 1 to 5000, and is ignored in auto mode. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { value: { min: 1, max: 5000 } },
+        },
+        {
+          member: "set_gain",
+          tool: "wrist_right.set_gain",
+          description: "Set the simulated right wrist camera's gain in device units, 0 to 100. A refused request changes nothing. Answers with current_value, the effective gain after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { value: { min: 0, max: 100 } },
+        },
+        {
+          member: "set_white_balance",
+          tool: "wrist_right.set_white_balance",
+          description: "Set the simulated right wrist camera's white balance. mode is auto or manual; temperature is the manual colour temperature in kelvin, 2800 to 6500, and is ignored in auto mode. A refused request changes nothing. Answers with current_temperature, the effective temperature after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { temperature: { min: 2800, max: 6500 } },
+        },
+      ],
+      // `set_brightness` and `set_contrast` deliberately absent, as on
+      // `wrist_left`.
+    },
+
+    // The chest viewpoint, an RGB-D producer: colour and depth come from one
+    // rendered camera. Only the colour stream and the colour controls are
+    // published; `depth_stream` and `depth_stream_info` are live on the
+    // relay and deliberately absent here, since a z16 depth map is data,
+    // not a picture a JPEG resource renders for a model to look at.
+    chest: {
+      contract: {
+        name: "rgbd_camera",
+        tag: "v1",
+        // An author pin (`sha256sum cameras/rgbd_camera.json5` in the
+        // contracts hub); a launch that resolves other bytes for
+        // `rgbd_camera:v1` refuses.
+        sha256: "61a2cc33ad04a82dd57e2afaf66b18c76ebfa1ca9b23f466825103e4513cef06",
+      },
+
+      topics: [
+        {
+          member: "video_stream",
+          resource: "chest.latest_frame",
+          description: "Latest colour frame from the simulated chest camera, JPEG encoded, rendered by the simulation at the viewpoint of the ZED Mini.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+
+      // The colour controls the ZED Mini has a measured response for. The
+      // tool names match the wrist cameras' so a model addresses every
+      // camera the same way; the members are the rgbd contract's
+      // `set_color_*`.
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "chest.info",
+          description: "Report the simulated chest camera colour stream's resolution, frame rate and encoding. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_color_exposure",
+          tool: "chest.set_exposure",
+          description: "Set the simulated chest camera's colour exposure mode. The ZED Mini it is modelled after runs automatic exposure only, so only mode auto is accepted and mode manual is refused with success false; value is ignored either way and nothing changes on a refusal. Answers with current_value, the effective exposure after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          // No `restrict` on `value`: the device model reads only `mode`.
+        },
+        {
+          member: "set_color_gain",
+          tool: "chest.set_gain",
+          description: "Set the simulated chest camera's colour gain in device units, 0 to 8. A refused request changes nothing. Answers with current_value, the effective gain after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          // The ZED Mini's gain runs 0..8, a narrower range than the wrists'.
+          restrict: { value: { min: 0, max: 8 } },
+        },
+        {
+          member: "set_color_white_balance",
+          tool: "chest.set_white_balance",
+          description: "Set the simulated chest camera's colour white balance. mode is auto or manual; temperature is the manual colour temperature in kelvin, 2800 to 6500, and is ignored in auto mode. A refused request changes nothing. Answers with current_temperature, the effective temperature after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+          restrict: { temperature: { min: 2800, max: 6500 } },
+        },
+      ],
+      // `set_color_brightness` and `set_color_contrast` deliberately
+      // absent, as on the wrists: no measured response on the real device.
+    },
+
+    // The profile twin of each camera target: `camera_profile:v1` is the
+    // relay's second contract, bound to the same relay by the launcher.
+    wrist_left_profile: {
+      contract: {
+        name: "camera_profile",
+        tag: "v1",
+        // An author pin (`sha256sum cameras/camera_profile.json5` in the
+        // contracts hub); a launch that resolves other bytes for
+        // `camera_profile:v1` refuses.
+        sha256: "ebe24d01a9d916a91a229ca6b14c59d635902bbf9220f40898af8ee505dd2382",
+      },
+      services: [
+        {
+          member: "get_camera_profile",
+          tool: "wrist_left.profile",
+          description: "Describe the simulated left wrist camera as a JSON object in profile_json: device, label, encoding, reference (where the ranges come from and when they were captured) and controls keyed by control name (exposure, gain, white_balance, brightness, contrast), each with supported and, when supported, modes (auto and manual, or manual), unit, min, max, default_mode, default_value, mode and value, the effective reading in auto mode. success is false, with message saying why, while the camera is not attached to the simulation yet. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "reset_camera",
+          tool: "wrist_left.reset",
+          description: "Put every control of the simulated left wrist camera back to the Arducam's device defaults. Takes no arguments.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+      ],
+    },
+
+    wrist_right_profile: {
+      contract: {
+        name: "camera_profile",
+        tag: "v1",
+        // Pinned like `wrist_left_profile` above.
+        sha256: "ebe24d01a9d916a91a229ca6b14c59d635902bbf9220f40898af8ee505dd2382",
+      },
+      services: [
+        {
+          member: "get_camera_profile",
+          tool: "wrist_right.profile",
+          description: "Describe the simulated right wrist camera as a JSON object in profile_json: device, label, encoding, reference (where the ranges come from and when they were captured) and controls keyed by control name (exposure, gain, white_balance, brightness, contrast), each with supported and, when supported, modes (auto and manual, or manual), unit, min, max, default_mode, default_value, mode and value, the effective reading in auto mode. success is false, with message saying why, while the camera is not attached to the simulation yet. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "reset_camera",
+          tool: "wrist_right.reset",
+          description: "Put every control of the simulated right wrist camera back to the Arducam's device defaults. Takes no arguments.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+      ],
+    },
+
+    chest_profile: {
+      contract: {
+        name: "camera_profile",
+        tag: "v1",
+        // Pinned like `wrist_left_profile` above.
+        sha256: "ebe24d01a9d916a91a229ca6b14c59d635902bbf9220f40898af8ee505dd2382",
+      },
+      services: [
+        {
+          member: "get_camera_profile",
+          tool: "chest.profile",
+          description: "Describe the simulated chest camera as a JSON object in profile_json: device, label, encoding, reference (where the ranges come from and when they were captured) and controls keyed by control name (exposure, gain, white_balance, brightness, contrast), each with supported and, when supported, modes (auto and manual, or manual), unit, min, max, default_mode, default_value, mode and value, the effective reading in auto mode. success is false, with message saying why, while the camera is not attached to the simulation yet. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "reset_camera",
+          tool: "chest.reset",
+          description: "Put every control of the simulated chest camera back to the ZED Mini's device defaults. Takes no arguments.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+      ],
+    },
+  },
+}
