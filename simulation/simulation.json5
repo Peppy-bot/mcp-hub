@@ -1,5 +1,5 @@
-// The simulated world an OpenArm v2 runs in, as one MCP surface: the
-// scene (assets, spawned objects, the robot's placement), its light
+// The simulated world OpenArm v2 robots run in, as one MCP surface: the
+// scene (assets, spawned objects, the robots and their placement), its light
 // sources and the optical properties of its materials. Nothing here has a
 // counterpart on the physical robot; the title says so, the instructions
 // open by saying so, and every description says so, so a model reading
@@ -32,7 +32,7 @@
   // simulation/.
   server: {
     title: "Simulated world (simulation only)",
-    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation the OpenArm v2 runs in: scene.* for the scene (what the engine can place, the loaded scene, spawned objects, the robot's placement), lighting.* for its light sources and materials.* for the optical properties of its materials. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with the robot through the robot's own endpoint; scene.move_object teleports and proves nothing about the robot. Read, then set: call scene.get_assets_list, lighting.get_lighting and materials.get_materials first, since every asset_id, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object. Positions are world-frame [x, y, z] in metres, Z up; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own.",
+    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation OpenArm v2 robots run in: scene.* for the scene (what the engine can place, the loaded scene, spawned objects, the robots standing and their placement), lighting.* for its light sources and materials.* for the optical properties of its materials. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with the robot through the robot's own endpoint; scene.move_object teleports and proves nothing about the robot. Read, then set: call scene.get_assets_list, scene.get_robots_list, lighting.get_lighting and materials.get_materials first, since every asset_id, robot, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object. Positions are world-frame [x, y, z] in metres, Z up; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own.",
   },
 
   targets: {
@@ -49,7 +49,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "0b9e083f9fce7e9f0b81feb742c289f8bb9d81f7a671684e0db0e6d30f264a6f",
+        sha256: "d8394a20abe356bbed4fafcb7a33e69c4b6dfdfba18302e5f87518305584d152",
       },
 
       // The catalogue becomes a tool that answers within one request.
@@ -58,6 +58,13 @@
           member: "get_assets_list",
           tool: "scene.get_assets_list",
           description: "List the assets the simulation can place, as a JSON array in assets_json. Every entry carries at least asset_id, display_name, kind (scene or object) and category, and the engine may add fields of its own. The asset_id values, scene/<id> and object/<id>, are what scene.load_scene and scene.spawn_object take. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "get_robots_list",
+          tool: "scene.get_robots_list",
+          description: "List the robots standing in the simulation, one entry each in robots: robot, the name scene.move_robot takes; model, the robot catalogue id it stands as; position, its base's world-frame [x, y, z] in metres; attached, true for a robot that joined and false for one the world stands itself. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -123,7 +130,7 @@
         {
           member: "move_robot",
           tool: "scene.move_robot",
-          description: "Relocate the simulated robot's base to a world-frame position [x, y, z] in metres, keeping its joint configuration. The robot moves inside the simulation and nowhere else.",
+          description: "Relocate one simulated robot's base, named by robot as scene.get_robots_list reports it, to a world-frame position [x, y, z] in metres, keeping its joint configuration; every other robot stays where it stands. The robot moves inside the simulation and nowhere else.",
           operation: "long_running",
           // Advertised to the client: this one moves the (simulated) robot.
           safety_sensitive: true,

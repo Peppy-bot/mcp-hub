@@ -101,7 +101,7 @@ another.
 
 ### Simulation configuration, published under a wording rule
 
-`scene_manipulation` (assets, scene loading, spawned objects, the robot's base), `scene_lighting`
+`scene_manipulation` (assets, scene loading, spawned objects, the robots and their bases), `scene_lighting`
 and `scene_materials` edit the simulated world and have no physical counterpart either, but a
 model legitimately drives them to set the world up. Exposures on them live under `simulation/`:
 today one document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the
