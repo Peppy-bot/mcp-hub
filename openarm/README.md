@@ -1,7 +1,9 @@
 # OpenArm v2 over MCP
 
-`openarm_v2.json5` (manifest `openarm_v2:v1`) publishes four moves of the OpenArm v2 backbone as
-tools backed by MCP tasks:
+`openarm_v2.json5` (manifest `openarm_v2:v1`) is the robot's own surface: the same document is
+served on the physical robot and on its simulated twin, so everything a model does through it
+transfers between them. It publishes four moves of the OpenArm v2 backbone as tools backed by MCP
+tasks:
 
 | Tool                    | Contract member             | Task deadline |
 | ----------------------- | --------------------------- | ------------- |
@@ -10,27 +12,51 @@ tools backed by MCP tasks:
 | `openarm.move_arm`      | `limb_motion:v1` `move_arm`   | 60 s        |
 | `openarm.move_gripper`  | `limb_motion:v1` `move_gripper` | 30 s      |
 
-Every tool is `safety_sensitive` and moves the robot; none asks for confirmation. Both contracts
-are pinned by sha256 to the documents this exposure was written against, and the backbone's
-joint-space move (`move_arm_joints`) stays private. The server's `instructions` tell a model how
-to address the limbs, which units and frames apply, and to call `openarm.move_to_ready` before any
+and the robot's three cameras, `wrist_left` and `wrist_right` (`rgb_camera:v1`, the Arducam B0495
+wrist modules) and `chest` (`rgbd_camera:v1`, the ZED Mini), each as one resource and four tools:
+
+| Name                         | Kind     | Contract member                                 | Policy |
+| ---------------------------- | -------- | ----------------------------------------------- | ------ |
+| `<camera>.latest_frame`      | resource | `video_stream`                                  | JPEG, 2 Hz at most, 2 s fresh, downscaled above 512 KiB |
+| `<camera>.info`              | tool     | `video_stream_info`                             | read only, 2 s |
+| `<camera>.set_exposure`      | tool     | `set_exposure` (`set_color_exposure` on `chest`) | wrists 1 to 5000, in units of 100 microseconds; `chest` automatic only |
+| `<camera>.set_gain`          | tool     | `set_gain` (`set_color_gain`)                   | wrists 0 to 100, `chest` 0 to 8 |
+| `<camera>.set_white_balance` | tool     | `set_white_balance` (`set_color_white_balance`) | 2800 to 6500 K |
+
+Sixteen tools and three resources over five targets. Every `openarm` tool is `safety_sensitive`
+and moves the robot; none asks for confirmation. Every contract is pinned by sha256 to the
+document this exposure was written against. The backbone's joint-space move (`move_arm_joints`),
+the chest's depth stream, and the cameras' brightness and contrast stay private. So does
+`camera_profile:v1`: no physical camera node implements it, so publishing it would split the
+surface between hardware and simulation; the setters carry their bounds through `restrict` and
+their modes and units in their descriptions, and its tools return here when the `uvc_camera` and
+`zed_camera` nodes implement the contract. The server's `instructions` tell a model that this is
+the surface to prefer over any simulation endpoint, how to address the limbs, which units and
+frames apply, to look before moving, and to call `openarm.move_to_ready` before any
 `openarm.move_arm`.
 
 ## Launching it
 
 The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the exposure as the
-`mcp_commander` option of its `openarm_v2` launcher, under the real robot or either simulator:
+`mcp_commander` option of its OpenArm robot fragments. A deployment's exposure list is fixed and
+every target takes a link, so the option requires the robot's camera rig, `cameras` on hardware
+and `cameras_sim` in simulation, which fills the three camera targets under the same ids:
 
 ```sh
-peppy stack launch openarm_v2 --with=mujoco,mcp_commander                     # MuJoCo
-peppy stack launch openarm_v2 --with=isaac_sim,scene_commander,mcp_commander  # Isaac Sim (needs a GPU)
-peppy stack launch openarm_v2 --with=mcp_commander                            # the real robot
+peppy stack launch openarm_simulation_mcp                                     # Waldo, beside the simulated world's endpoint
+peppy stack launch openarm_simulation_mcp --with mujoco,simulation_mcp=none   # MuJoCo, this endpoint alone
+peppy stack launch fleet
+peppy stack join openarm_v2 -i alpha --with mcp_commander,cameras             # the real robot
 ```
 
-The endpoint, the four tools, and every command below are identical under all three: both of the
-exposure's targets are filled by the same backbone instance whichever `robot` option is selected,
-so only the engine under it differs. The Isaac selection additionally brings up the webviewer for
-that engine's WebRTC livestream.
+The endpoint, the tools, the resources, and every command below are identical under all of them:
+the backbone fills the two move targets whichever robot option is selected, and the rig fills the
+camera targets, the `uvc_camera` and `zed_camera` nodes on hardware and the simulation's relays on
+the twin. Only Waldo models the cameras' response, so under MuJoCo and Isaac Sim the frames and
+`<camera>.info` work and the three setters refuse with a message, as the `instructions` tell a
+model to expect. The first launch also serves the simulated world's own endpoint,
+[`simulation:v1`](../simulation/simulation.json5), on port 8902; it has no counterpart on the
+real robot, and a client moving there drops that one entry.
 
 The endpoint is `http://127.0.0.1:8900/openarm_v2/v1/mcp`, listed by `peppy stack list` in its
 `Instance endpoints` table. It needs peppy v0.26.2 or later.
@@ -54,7 +80,8 @@ uv run openarm_v2_demo.py demo
 ```
 
 `tools` asks the endpoint what it advertises (`server/discover`, then `tools/list`) and prints the
-title, the instructions, and every tool with its description. Each tool has a subcommand;
+title, the instructions, and every tool with its description, the camera tools included. Each move
+has a subcommand; the script drives the moves alone and reads no camera;
 `demo` brings the arms to ready, closes and opens both grippers, and returns home, stopping at the
 first move that does not complete. `--endpoint <url>` points the script at another endpoint.
 Ctrl-C cancels the move in flight through `tasks/cancel` and waits for the robot to settle.
