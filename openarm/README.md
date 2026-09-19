@@ -2,8 +2,19 @@
 
 `openarm_v2.json5` (manifest `openarm_v2:v1`) is the robot's own surface: the same document is
 served on the physical robot and on its simulated twin, so everything a model does through it
-transfers between them. It publishes four moves of the OpenArm v2 backbone as tools backed by MCP
-tasks:
+transfers between them. It publishes who the robot is, as one tool that answers within a request:
+
+| Tool                   | Contract member                    | Policy         |
+| ---------------------- | ---------------------------------- | -------------- |
+| `openarm.get_identity` | `robot_identity:v1` `get_identity` | read only, 2 s |
+
+It reports `robot`, the name the robot stands under everywhere, its `model` and the `core_node`
+hosting it. An endpoint speaks for one robot, so this is how a model driving several tells them
+apart, and when the robot runs in a simulation `robot` is its entry in the simulated world's
+`scene.get_robots_list`. The robot's initializer serves it, on hardware and under every
+simulation.
+
+It publishes four moves of the OpenArm v2 backbone as tools backed by MCP tasks:
 
 | Tool                    | Contract member             | Task deadline |
 | ----------------------- | --------------------------- | ------------- |
@@ -23,8 +34,8 @@ wrist modules) and `chest` (`rgbd_camera:v1`, the ZED Mini), each as one resourc
 | `<camera>.set_gain`          | tool     | `set_gain` (`set_color_gain`)                   | wrists 0 to 100, `chest` 0 to 8 |
 | `<camera>.set_white_balance` | tool     | `set_white_balance` (`set_color_white_balance`) | 2800 to 6500 K |
 
-Sixteen tools and three resources over five targets. Every `openarm` tool is `safety_sensitive`
-and moves the robot; none asks for confirmation. Every contract is pinned by sha256 to the
+Seventeen tools and three resources over six targets. Every `openarm` tool but
+`openarm.get_identity` is `safety_sensitive` and moves the robot; none asks for confirmation. Every contract is pinned by sha256 to the
 document this exposure was written against. The backbone's joint-space move (`move_arm_joints`),
 the chest's depth stream, and the cameras' brightness and contrast stay private. So does
 `camera_profile:v1`: no physical camera node implements it, so publishing it would split the

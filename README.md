@@ -25,7 +25,7 @@ whether what a model does transfers to the physical robot:
 
 | Family | Document | What it publishes | On the physical robot |
 | --- | --- | --- | --- |
-| Robot | [`openarm/openarm_v2.json5`](openarm/openarm_v2.json5) (`openarm_v2:v1`) | the arm and gripper moves, the three cameras and their controls | yes |
+| Robot | [`openarm/openarm_v2.json5`](openarm/openarm_v2.json5) (`openarm_v2:v1`) | who the robot is, the arm and gripper moves, the three cameras and their controls | yes |
 | Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene, its light sources, its materials | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
