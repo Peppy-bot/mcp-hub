@@ -6,7 +6,8 @@
 // `source: { exposures: ["front_camera:v1"] }`, binds its one target to a
 // running `rgb_camera:v1` implementer through `links`, and the server built
 // into peppy serves it at `/front_camera/v1/mcp`. The launchers hub deploys
-// it in `examples/mcp_front_camera.json5`.
+// it in `so101/fragments/mcp_commander.json5`, bound to the rendered `front`
+// camera of a simulated SO-101.
 {
   peppy_schema: "mcp_exposure/v1",
   manifest: { name: "front_camera", tag: "v1" },
