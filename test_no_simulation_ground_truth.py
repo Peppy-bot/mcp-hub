@@ -50,7 +50,8 @@ ROOT = Path(__file__).resolve().parent
 GROUND_TRUTH_CONTRACTS = frozenset({"object_state", "contact_state", "sensor_readout"})
 
 # Contracts internal to the simulation stack: a relay drives them on a model's
-# behalf, and their members name engine slots no model addresses.
+# behalf, and their members name an engine's rendered cameras, which no model
+# addresses.
 INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
 
 # Everything an exposure may not target.
@@ -315,7 +316,7 @@ _OFFENDING_CAMERA_CHANNEL = """// A tool on the relay-to-engine camera channel, 
     engine: {
       contract: { name: "sim_camera_control", tag: "v1" },
       services: [
-        { member: "set_camera_exposure", tool: "engine.set_exposure", description: "Exposure by slot.",
+        { member: "set_camera_exposure", tool: "engine.set_exposure", description: "Exposure by camera.",
           operation: "mutating", deadline_ms: 2000 },
       ],
     },
