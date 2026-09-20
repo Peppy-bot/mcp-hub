@@ -1,5 +1,6 @@
-// The OpenArm v2 as an MCP surface: its posture, arm and gripper moves as
-// tools backed by MCP tasks, and its three cameras as resources and tools.
+// The OpenArm v2 as an MCP surface: who the robot is as a tool, its posture,
+// arm and gripper moves as tools backed by MCP tasks, and its three cameras
+// as resources and tools.
 // This is the robot's own surface. The same document is served on the
 // physical robot and on its simulated twin, whichever a launcher binds
 // behind its targets, so everything a model does here transfers between
@@ -16,10 +17,11 @@
 // `source: { exposures: ["openarm_v2:v1"] }`, binds each target below to a
 // running implementer of its contract through `links`, and the server built
 // into peppy serves it at `/openarm_v2/v1/mcp`. The launchers hub deploys it
-// as the `mcp_commander` option of its OpenArm robot fragments: the two move
-// targets filled by the backbone, which is the same instance under the real
-// robot and every simulation, and the three camera targets by the copy's
-// rig, `cameras` on hardware and `cameras_sim` in simulation. A deployment's
+// as the `mcp_commander` option of its OpenArm robot fragments: the identity
+// target filled by the robot's initializer and the two move targets by the
+// backbone, which are the same instances under the real robot and every
+// simulation, and the three camera targets by the copy's rig, `cameras` on
+// hardware and `cameras_sim` in simulation. A deployment's
 // exposure list is fixed and every target takes a link, so the option
 // requires a rig. `openarm_v2_demo.py` beside this file drives the four
 // moves from the command line.
@@ -33,10 +35,35 @@
   // camera is: none of the contracts' comments reach it.
   server: {
     title: "OpenArm v2",
-    instructions: "A bimanual OpenArm v2 and its three cameras. This is the robot's own surface: the same tools and resources drive the physical robot and its simulated twin, and everything done here transfers between them. Prefer it over any simulation endpoint: what the robot cannot do through these tools, it cannot do. Two arms and two grippers are addressed by name (left_arm / right_arm, left_gripper / right_gripper). Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: wrist_left.latest_frame, wrist_right.latest_frame and chest.latest_frame are the latest JPEG frames of the two Arducam B0495 wrist modules and of the ZED Mini on the chest, and <camera>.info reports each stream's resolution, frame rate and encoding. Call openarm.move_to_ready before any openarm.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's task deadline is 60 s (30 s for openarm.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and the robot refuses posture durations above 600 s outright. Every openarm tool moves the robot. The camera setters drive the device's controls: exposure on a wrist camera is in units of 100 microseconds, exposure on the chest camera is automatic only, gain is in device units (0 to 100 on a wrist camera, 0 to 8 on the chest camera), white balance temperature is in kelvin; brightness and contrast are not offered. A control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "A bimanual OpenArm v2 and its three cameras. This is the robot's own surface: the same tools and resources drive the physical robot and its simulated twin, and everything done here transfers between them. Prefer it over any simulation endpoint: what the robot cannot do through these tools, it cannot do. This endpoint speaks for one robot: openarm.get_identity reports the name it stands under, its model and the core node hosting it, and when the robot runs in a simulation that name is this robot's entry, its robot field, in the simulation endpoint's scene.get_robots_list. Two arms and two grippers are addressed by name (left_arm / right_arm, left_gripper / right_gripper). Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: wrist_left.latest_frame, wrist_right.latest_frame and chest.latest_frame are the latest JPEG frames of the two Arducam B0495 wrist modules and of the ZED Mini on the chest, and <camera>.info reports each stream's resolution, frame rate and encoding. Call openarm.move_to_ready before any openarm.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's task deadline is 60 s (30 s for openarm.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and the robot refuses posture durations above 600 s outright. Every openarm tool but openarm.get_identity moves the robot. The camera setters drive the device's controls: exposure on a wrist camera is in units of 100 microseconds, exposure on the chest camera is automatic only, gain is in device units (0 to 100 on a wrist camera, 0 to 8 on the chest camera), white balance temperature is in kelvin; brightness and contrast are not offered. A control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   targets: {
+    // Who the robot behind this endpoint is. The launcher binds it to the
+    // robot's initializer, the node that works the name out and joins a
+    // simulation under it, so the name reported here is the one a simulation
+    // lists the robot under.
+    identity: {
+      contract: {
+        name: "robot_identity",
+        tag: "v1",
+        // An author pin (`sha256sum robot/robot_identity.json5` in the
+        // contracts hub); a launch that resolves other bytes for
+        // `robot_identity:v1` refuses.
+        sha256: "ebdd513c16af87a3ef326ba57f0e88cb5be2890a1634e23329621c159cbe9983",
+      },
+
+      services: [
+        {
+          member: "get_identity",
+          tool: "openarm.get_identity",
+          description: "Report which robot this endpoint drives: robot is the name it stands under everywhere, model its model id, for example openarm_v2, and core_node the machine hosting it. When the robot runs in a simulation, robot is its entry in the simulation endpoint's scene.get_robots_list. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
     // A LOGICAL target, not an instance. `postures` becomes a contract slot
     // of the server, so the launcher decides which running instance fills
     // it. One target holds one contract, so the two contracts the backbone
