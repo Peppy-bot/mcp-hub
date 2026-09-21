@@ -70,11 +70,13 @@
         },
       ],
 
-      // Each action becomes a tool backed by an MCP task: the call returns a
-      // task handle, `tasks/get` reports its state, and `tasks/cancel`
-      // forwards to the action's cancel path. The contract declares no
-      // feedback topic, so a task carries its state transitions and the
-      // terminal result, not interim progress.
+      // Each action becomes a tool. For a client that declares the MCP
+      // tasks extension the call returns a task handle, `tasks/get` reports
+      // its state, and `tasks/cancel` forwards to the action's cancel path;
+      // for any other client the goal runs inside the call, which answers
+      // with the terminal result. The contract declares no feedback topic,
+      // so a goal reports its state transitions and the terminal result,
+      // not interim progress.
       //
       // The bounds on scale, mass and duration_s live in the prose: an
       // action's goal fields take no `restrict` (the exposure format
@@ -121,7 +123,7 @@
         {
           member: "apply_force",
           tool: "scene.apply_force",
-          description: "Push a dynamic spawned object in the simulation with a constant world-frame force [x, y, z] in newtons for duration_s seconds, between 0.01 and 30. object_id is the id scene.spawn_object reported. The task completes once the push is scheduled, not when it ends.",
+          description: "Push a dynamic spawned object in the simulation with a constant world-frame force [x, y, z] in newtons for duration_s seconds, between 0.01 and 30. object_id is the id scene.spawn_object reported. The tool reports completion once the push is scheduled, not when it ends.",
           operation: "long_running",
           // Advertised to the client: this one sets something in motion.
           safety_sensitive: true,

@@ -5,9 +5,11 @@ The stand-in is an http.server on an ephemeral port that answers the way
 the server built into peppy does (peppy-mcp-runtime on rmcp's Streamable
 HTTP transport, sessions off): the same HTTP refusals (406, 415, 405, 404),
 the same per-request `_meta` and SEP-2243 header requirements, the same
-task-handle and `tasks/get` shapes, the same error codes and HTTP statuses
-for them. Its tasks advance one step per `tasks/get`, so no test waits on a
-clock: the script's sleep is injected and recorded, never run.
+task-handle and `tasks/get` shapes for a client that declares the tasks
+extension and the same in-call tool result for one that does not, the same
+error codes and HTTP statuses for them. Its tasks advance one step per
+`tasks/get`, so no test waits on a clock: the script's sleep is injected and
+recorded, never run.
 
     pytest    # from the repository root, as the pull request workflow runs it
 """
@@ -102,6 +104,12 @@ def confirmation_required(tool):
     return {"status": "input_required", "inputRequests": {"confirmation": request}}
 
 
+def tool_error(message):
+    """A tool result reporting an error, the runtime's shape for a goal that
+    ends without a completed result inside the call."""
+    return {"resultType": "complete", "content": [{"type": "text", "text": message}], "isError": True}
+
+
 def posture_done():
     return completed({"success": True, "message": "both arms at the posture"})
 
@@ -177,10 +185,11 @@ class StandInTask:
 
 
 class McpRefusal(Exception):
-    def __init__(self, code, message):
+    def __init__(self, code, message, data=None):
         super().__init__(message)
         self.code = code
         self.message = message
+        self.data = data
 
 
 Received = namedtuple("Received", "method params headers")
@@ -205,6 +214,22 @@ def argument_problems(tool, arguments):
         if expected and (isinstance(value, bool) or not isinstance(value, JSON_TYPES[expected])):
             problems.append(f"`{name}` is not a {expected}")
     return problems
+
+
+def in_call_result(tool, steps):
+    """The call's answer when the goal runs inside it, for a client without
+    the tasks extension: the view the goal settles on becomes the tool
+    result, with the runtime's tool error for a goal that failed or was
+    cancelled and its deadline error for one that never settled."""
+    settled = steps[-1]
+    status = settled["status"]
+    if status == "completed":
+        return settled["result"]
+    if status == "failed":
+        return tool_error("the action failed: " + settled["error"]["message"])
+    if status == "cancelled":
+        return tool_error("the action was cancelled")
+    return tool_error(f"deadline exceeded: the goal did not reach a terminal state within {DEADLINE_MS[tool]} ms")
 
 
 class StandInHandler(http.server.BaseHTTPRequestHandler):
@@ -335,14 +360,26 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
         tool = params.get("name")
         if tool not in self.server.scenario.tools:
             raise McpRefusal(-32602, f"`{tool}` is not a tool of this exposure")
+        steps = self.server.scenario.steps_for(tool)
         capabilities = meta.get(demo.META_CLIENT_CAPABILITIES) or {}
-        if demo.TASKS_EXTENSION not in (capabilities.get("extensions") or {}):
-            raise McpRefusal(-32021, "Missing required client capability")
+        client_declared_tasks = demo.TASKS_EXTENSION in (capabilities.get("extensions") or {})
+        # A tool whose goal parks for confirmation is a task's to run: a
+        # client without the extension is refused, naming the tool and the
+        # extension in the message and the capability in the data.
+        if not client_declared_tasks and any(step["status"] == demo.INPUT_REQUIRED for step in steps):
+            raise McpRefusal(
+                -32021,
+                f"`{tool}` asks for confirmation before it runs, which only an MCP task can carry: "
+                f"declare the `{demo.TASKS_EXTENSION}` extension in the request's client capabilities to call it",
+                {"requiredCapabilities": demo.CLIENT_CAPABILITIES},
+            )
         problems = argument_problems(tool, params.get("arguments") or {})
         if problems:
             raise McpRefusal(-32602, f"invalid arguments for `{tool}`: " + "; ".join(problems))
+        if not client_declared_tasks:
+            return in_call_result(tool, steps)
         task_id = f"task-{len(self.server.tasks) + 1}"
-        task = StandInTask(task_id, self.server.scenario.steps_for(tool))
+        task = StandInTask(task_id, steps)
         self.server.tasks[task_id] = task
         return {"resultType": "task", **self._task_fields(task, DEADLINE_MS[tool] + TTL_GRACE_MS), **working()}
 
@@ -390,6 +427,8 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
 
     def _json_error(self, request_id, refusal):
         error = {"code": refusal.code, "message": refusal.message}
+        if refusal.data is not None:
+            error["data"] = refusal.data
         body = json.dumps({"jsonrpc": "2.0", "id": request_id, "error": error}).encode("utf-8")
         self.send_response(HTTP_STATUS_BY_CODE[refusal.code])
         self.send_header("Content-Type", "application/json")
@@ -669,12 +708,45 @@ class ScriptTests(StandInCase):
 
 
 class ClientTests(StandInCase):
-    def test_without_the_tasks_capability_no_task_is_created(self):
+    def test_without_the_tasks_capability_the_move_runs_inside_the_call(self):
         server = self.serve()
         client = demo.McpClient(server.url, client_capabilities={})
+        result = client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": 1.0}})
+        self.assertEqual(result, posture_done()["result"])
+        self.assertEqual(server.tasks, {})
+
+    def test_without_the_tasks_capability_a_goal_ending_without_a_result_is_a_tool_error(self):
+        steps = {
+            demo.TOOL_MOVE_TO_READY: [working(), failed("the provider abandoned the goal")],
+            demo.TOOL_MOVE_TO_HOME: [working(), cancelled()],
+            demo.TOOL_MOVE_GRIPPER: [working()],
+        }
+        server = self.serve(Scenario(steps))
+        client = demo.McpClient(server.url, client_capabilities={})
+        arguments = {"gripper_name": "left_gripper", "opening": 0.0, "max_effort": 1.0}
+        self.assertEqual(
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": 1.0}}),
+            tool_error("the action failed: the provider abandoned the goal"),
+        )
+        self.assertEqual(
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_HOME, "arguments": {"duration_s": 1.0}}),
+            tool_error("the action was cancelled"),
+        )
+        self.assertEqual(
+            client.request("tools/call", {"name": demo.TOOL_MOVE_GRIPPER, "arguments": arguments}),
+            tool_error("deadline exceeded: the goal did not reach a terminal state within 30000 ms"),
+        )
+        self.assertEqual(server.tasks, {})
+
+    def test_a_confirmation_gated_tool_without_the_tasks_capability_is_refused_naming_the_extension(self):
+        steps = [confirmation_required(demo.TOOL_MOVE_TO_READY), working(), posture_done()]
+        server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: steps}))
+        client = demo.McpClient(server.url, client_capabilities={})
         with self.assertRaises(demo.ProtocolError) as refused:
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": 1.0}})
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": "soon"}})
         self.assertEqual(refused.exception.code, -32021)
+        self.assertIn(f"`{demo.TOOL_MOVE_TO_READY}`", refused.exception.message)
+        self.assertIn(demo.TASKS_EXTENSION, refused.exception.message)
         self.assertEqual(server.tasks, {})
 
     def test_an_unknown_tool_is_invalid_params_before_the_capability(self):
@@ -828,14 +900,28 @@ class StandInFidelityTests(StandInCase):
         self.assertEqual(status, 400)
         self.assertEqual(json.loads(body)["error"]["code"], -32020)
 
-    def test_a_missing_tasks_capability_is_400_json_before_any_task(self):
+    def test_a_missing_tasks_capability_answers_the_call_with_the_result(self):
         params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={"duration_s": 1})
         params["_meta"][demo.META_CLIENT_CAPABILITIES] = {}
         call = json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": params}).encode("utf-8")
         status, headers, body = raw_request(self.server.url, proper_headers("tools/call", demo.TOOL_MOVE_TO_HOME), call)
-        self.assertEqual((status, headers["Content-Type"]), (400, "application/json"))
-        self.assertEqual(json.loads(body)["error"]["code"], -32021)
+        self.assertEqual((status, headers["Content-Type"]), (200, "text/event-stream"))
+        (event,) = demo.sse_events(body.decode("utf-8").splitlines())
+        self.assertEqual(json.loads(event)["result"], posture_done()["result"])
         self.assertEqual(self.server.tasks, {})
+
+    def test_a_confirmation_gated_tool_names_the_capability_in_the_error_data(self):
+        steps = [confirmation_required(demo.TOOL_MOVE_TO_HOME), working(), posture_done()]
+        server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: steps}))
+        params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={"duration_s": 1})
+        params["_meta"][demo.META_CLIENT_CAPABILITIES] = {}
+        call = json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": params}).encode("utf-8")
+        status, headers, body = raw_request(server.url, proper_headers("tools/call", demo.TOOL_MOVE_TO_HOME), call)
+        self.assertEqual((status, headers["Content-Type"]), (400, "application/json"))
+        error = json.loads(body)["error"]
+        self.assertEqual(error["code"], -32021)
+        self.assertEqual(error["data"], {"requiredCapabilities": {"extensions": {demo.TASKS_EXTENSION: {}}}})
+        self.assertEqual(server.tasks, {})
 
     def test_an_unknown_method_is_404_json(self):
         body = json.dumps({"jsonrpc": "2.0", "id": 5, "method": "prompts/list", "params": proper_params()}).encode(

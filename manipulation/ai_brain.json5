@@ -40,8 +40,10 @@
         // file never saw.
         sha256: "94ea53062bc160c72802a3213a0bfd89de03ac80fa05fb85581e63ac3b64e7a2",
       },
-      // The scan and the search become tools backed by MCP tasks: the call
-      // returns a task handle and `tasks/get` reports its state until the
+      // The scan and the search become tools. For a client that declares
+      // the MCP tasks extension the call returns a task handle and
+      // `tasks/get` reports its state until the result; for any other
+      // client the goal runs inside the call, which answers with the
       // result.
       actions: [
         {
@@ -69,10 +71,12 @@
         // (`sha256sum robot/item_manipulation.json5`).
         sha256: "ea7c74526d902445231e3933f9943396399f5d2f9b54694664140e3f1a25bae0",
       },
-      // Each action becomes a tool backed by an MCP task: the call returns a
-      // task handle, `tasks/get` reports its state, and `tasks/cancel`
-      // forwards to the action's cancel path. A goal the implementer refuses
-      // at admission fails the task with the refusal as its message.
+      // Each action becomes a tool. For a client that declares the MCP
+      // tasks extension the call returns a task handle, `tasks/get` reports
+      // its state, and `tasks/cancel` forwards to the action's cancel path;
+      // for any other client the goal runs inside the call, which answers
+      // with the terminal result. A goal the implementer refuses at
+      // admission fails with the refusal as its message.
       actions: [
         {
           member: "grab_item",
@@ -105,7 +109,7 @@
         {
           member: "abort",
           tool: "brain.abort",
-          description: "Stop whatever sequence is running and leave the robot where it stopped, still holding whatever it held. reason is recorded by the robot; empty is accepted. Succeeds even when nothing was running, reporting an empty aborted_action. This is distinct from cancelling a task: any caller may abort, without holding the running task's handle.",
+          description: "Stop whatever sequence is running and leave the robot where it stopped, still holding whatever it held. reason is recorded by the robot; empty is accepted. Succeeds even when nothing was running, reporting an empty aborted_action. This is distinct from cancelling the running call or task: any caller may abort, not only the one that started the sequence.",
           operation: "long_running",
           deadline_ms: 5000,
         },
