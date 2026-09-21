@@ -17,7 +17,7 @@ cameras/      one camera as resources and tools
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
 openarm/      the OpenArm v2's own surface: its posture, arm, and gripper moves as action-backed tools and its three cameras as resources and tools, with a Python client
 manipulation/ an AI brain's item perception and manipulation as action-backed tools, for any embodiment
-simulation/   the simulated world's scene, lighting, and materials as one document; a simulation launch option only
+simulation/   the simulated world's scene, its objects' controls, lighting, and materials as one document; a simulation launch option only
 ```
 
 An OpenArm v2 stack publishes two endpoints, one per family, and the boundary between them is
@@ -26,7 +26,7 @@ whether what a model does transfers to the physical robot:
 | Family | Document | What it publishes | On the physical robot |
 | --- | --- | --- | --- |
 | Robot | [`openarm/openarm_v2.json5`](openarm/openarm_v2.json5) (`openarm_v2:v1`) | who the robot is, the arm and gripper moves, the three cameras and their controls | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene, its light sources, its materials | no |
+| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene, the controls of its spawned objects, its light sources, its materials | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
 model reads two preambles: the robot's says it is the robot's own surface and is to be preferred,
@@ -101,18 +101,19 @@ another.
 
 ### Simulation configuration, published under a wording rule
 
-`scene_manipulation` (assets, scene loading, spawned objects, the robots and their bases), `scene_lighting`
+`scene_manipulation` (assets, scene loading, spawned objects, the robots and their bases),
+`object_controls` (what a spawned object lets a caller set, a desk's height), `scene_lighting`
 and `scene_materials` edit the simulated world and have no physical counterpart either, but a
 model legitimately drives them to set the world up. Exposures on them live under `simulation/`:
 today one document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the
-three contracts as its `scene`, `lighting` and `materials` targets. Only a simulation launch
+four contracts as its `scene`, `controls`, `lighting` and `materials` targets. Only a simulation launch
 option serves it: the `mcp_scene_commander` option of the `simulation_mcp` axis of the
 [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `openarm_simulation_mcp` launcher,
 at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the robot endpoint
 `http://127.0.0.1:8900/openarm_v2/v1/mcp`. It binds the simulation alone, so it needs nothing
-from a robot copy and outlives it. Waldo is the one simulation implementing the lighting and
-materials contracts, so the launcher requires it beside that option. No real-robot fragment
-lists the document.
+from a robot copy and outlives it. Waldo is the one simulation implementing the controls,
+lighting and materials contracts, so the launcher requires it beside that option. No real-robot
+fragment lists the document.
 
 The cameras are not simulation configuration. The rig the simulation renders publishes
 `rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera` and `zed_camera`
@@ -132,8 +133,9 @@ document under `simulation/` says what it is, and the same test enforces the wor
 - every `description` of every topic, service and action contains the word `simulation` or
   `simulated` (a whole word, any case).
 
-The test also fails an exposure that targets `scene_manipulation`, `scene_lighting` or
-`scene_materials` from any other directory (its `SIMULATION_CONFIGURATION_CONTRACTS`). A pull
+The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
+`scene_lighting` or `scene_materials` from any other directory (its
+`SIMULATION_CONFIGURATION_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
 

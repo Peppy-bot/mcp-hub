@@ -20,10 +20,11 @@ refused the same way: a relay drives it, never a model, and the relay's own
 ``rgb_camera`` / ``rgbd_camera`` surface is what an exposure publishes.
 
 Simulation configuration reaches an endpoint under a wording rule.
-``scene_manipulation``, ``scene_lighting`` and ``scene_materials`` edit the
-simulated world and have no physical counterpart either, but a model
-legitimately drives them, as it does the cameras the simulation renders.
-An exposure targeting one of the three lives under ``simulation/``, and every
+``scene_manipulation``, ``object_controls``, ``scene_lighting`` and
+``scene_materials`` edit the simulated world and have no physical counterpart
+either, but a model legitimately drives them, as it does the cameras the
+simulation renders. An exposure targeting one of the four lives under
+``simulation/``, and every
 document there says what it is: the server title ends with
 ``SIMULATION_TITLE_SUFFIX``, the instructions open with the sentence
 ``SIMULATION_INSTRUCTIONS_OPENING``, and every ``description`` of every topic,
@@ -60,7 +61,7 @@ FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 # Contracts that configure the simulated world. A model drives them, so an
 # exposure may target them, from under `simulation/` only.
 SIMULATION_CONFIGURATION_CONTRACTS = frozenset(
-    {"scene_manipulation", "scene_lighting", "scene_materials"}
+    {"scene_manipulation", "object_controls", "scene_lighting", "scene_materials"}
 )
 
 # The directory of every exposure that exists only in simulation, and the
