@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for openarm_v2_demo.py against a stand-in for the endpoint.
+"""Tests for robot_control_demo.py against a stand-in for the endpoint.
 
 The stand-in is an http.server on an ephemeral port that answers the way
 the server built into peppy does (peppy-mcp-runtime on rmcp's Streamable
@@ -29,17 +29,39 @@ from collections import namedtuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import openarm_v2_demo as demo  # noqa: E402
+import robot_control_demo as demo  # noqa: E402
 
-ENDPOINT_PATH = "/openarm_v2/v1/mcp"
-TITLE = "OpenArm v2"
-INSTRUCTIONS = "Two arms and two grippers, addressed by name."
+ENDPOINT_PATH = "/robot_control/v1/mcp"
+TITLE = "Robots"
+INSTRUCTIONS = "Every robot of the stack, addressed by name."
 TIMESTAMP = "2026-08-27T12:00:00Z"
+# The robot every move addresses in these tests, and the fleet the stand-in
+# lists: alpha, a bimanual robot, and charlie, a one-armed one.
+ROBOT = "alpha"
+ROBOTS = [
+    {
+        "robot": "alpha",
+        "capabilities": ["identity", "postures", "limb_motion", "limb_state", "camera", "depth_camera"],
+        "members": {"camera": ["wrist_left", "wrist_right"], "depth_camera": ["chest"]},
+        "notes": [],
+        "identity": {"robot": "alpha", "model": "openarm_v2", "core_node": "cn-lab"},
+        "limbs": {"arm_names": ["left_arm", "right_arm"], "gripper_names": ["left_gripper", "right_gripper"]},
+    },
+    {
+        "robot": "charlie",
+        "capabilities": ["identity", "postures", "limb_motion", "limb_state", "camera"],
+        "members": {"camera": ["front"]},
+        "notes": ["identity: deadline exceeded: the provider did not answer within 2000 ms"],
+        "identity": None,
+        "limbs": {"arm_names": ["arm"], "gripper_names": ["gripper"]},
+    },
+]
 # The goal fields of each tool and their JSON types, as the derived catalog
-# publishes them (every field required, nothing else allowed).
+# publishes them (every field required, nothing else allowed): the
+# contract's fields and the routing argument the server adds.
 TOOL_FIELDS = {
-    demo.TOOL_MOVE_TO_READY: {"duration_s": "number"},
-    demo.TOOL_MOVE_TO_HOME: {"duration_s": "number"},
+    demo.TOOL_MOVE_TO_READY: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
+    demo.TOOL_MOVE_TO_HOME: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
     demo.TOOL_MOVE_ARM: {
         "arm_name": "string",
         "position": "array",
@@ -47,14 +69,23 @@ TOOL_FIELDS = {
         "duration_s": "number",
         "plan_position_tolerance_m": "number",
         "plan_orientation_tolerance_rad": "number",
+        demo.ROBOT_ARGUMENT: "string",
     },
-    demo.TOOL_MOVE_GRIPPER: {"gripper_name": "string", "opening": "number", "max_effort": "number"},
+    demo.TOOL_MOVE_GRIPPER: {
+        "gripper_name": "string",
+        "opening": "number",
+        "max_effort": "number",
+        demo.ROBOT_ARGUMENT: "string",
+    },
+    # The listing tool takes nothing and answers within the call.
+    demo.TOOL_LIST: {},
 }
 DEADLINE_MS = {
     demo.TOOL_MOVE_TO_READY: 60000,
     demo.TOOL_MOVE_TO_HOME: 60000,
     demo.TOOL_MOVE_ARM: 60000,
     demo.TOOL_MOVE_GRIPPER: 30000,
+    demo.TOOL_LIST: 2000,
 }
 TTL_GRACE_MS = 1000
 STANDARD_HEADERS_VERSION = "2026-07-28"
@@ -124,11 +155,12 @@ class Scenario:
     the view a task settles on after tasks/cancel, and the poll interval the
     handles suggest."""
 
-    def __init__(self, steps_by_tool=None, after_cancel=None, poll_interval_ms=0, tools=None):
+    def __init__(self, steps_by_tool=None, after_cancel=None, poll_interval_ms=0, tools=None, robots=None):
         self.steps_by_tool = steps_by_tool or {}
         self.after_cancel = after_cancel or cancelled()
         self.poll_interval_ms = poll_interval_ms
         self.tools = tuple(TOOL_FIELDS) if tools is None else tuple(tools)
+        self.robots = ROBOTS if robots is None else robots
 
     def steps_for(self, tool):
         return list(self.steps_by_tool.get(tool, [working(), posture_done()]))
@@ -360,6 +392,11 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
         tool = params.get("name")
         if tool not in self.server.scenario.tools:
             raise McpRefusal(-32602, f"`{tool}` is not a tool of this exposure")
+        if tool == demo.TOOL_LIST:
+            problems = argument_problems(tool, params.get("arguments") or {})
+            if problems:
+                raise McpRefusal(-32602, f"`{tool}` takes no arguments; it lists every robot of the stack")
+            return completed({"robots": self.server.scenario.robots})["result"]
         steps = self.server.scenario.steps_for(tool)
         capabilities = meta.get(demo.META_CLIENT_CAPABILITIES) or {}
         client_declared_tasks = demo.TASKS_EXTENSION in (capabilities.get("extensions") or {})
@@ -376,6 +413,14 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
         problems = argument_problems(tool, params.get("arguments") or {})
         if problems:
             raise McpRefusal(-32602, f"invalid arguments for `{tool}`: " + "; ".join(problems))
+        # The server routes the call to the robot named, and a robot that
+        # is not on the stack is refused naming the ones that are.
+        robot = params["arguments"][demo.ROBOT_ARGUMENT]
+        listed = [entry["robot"] for entry in self.server.scenario.robots]
+        if robot not in listed:
+            raise McpRefusal(
+                -32602, f"`{robot}` is not a robot of this stack; the robots are " + ", ".join(f"`{name}`" for name in listed)
+            )
         if not client_declared_tasks:
             return in_call_result(tool, steps)
         task_id = f"task-{len(self.server.tasks) + 1}"
@@ -550,20 +595,20 @@ class ScriptTests(StandInCase):
 
     def test_a_move_completes_and_quotes_the_result(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: [working(), working("planning"), posture_done()]}))
-        code, out, err, sleeps = self.run_script(server, "move-to-ready", "--duration-s", "3")
+        code, out, err, sleeps = self.run_script(server, "move-to-ready", "--robot", ROBOT, "--duration-s", "3")
         self.assertEqual(code, demo.EXIT_OK, err)
-        self.assertIn("openarm.move_to_ready: completed: both arms at the posture", out)
+        self.assertIn("robot.move_to_ready: completed: both arms at the posture", out)
         self.assertIn("planning", out)
         self.assertIn('"success": true', out)
         (call,) = server.calls("tools/call")
         self.assertEqual(call.params["name"], demo.TOOL_MOVE_TO_READY)
-        self.assertEqual(call.params["arguments"], {"duration_s": 3.0})
+        self.assertEqual(call.params["arguments"], {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 3.0})
         self.assertEqual(len(server.calls("tasks/get")), 3)
         self.assertEqual(sleeps, [0.0, 0.0, 0.0])
 
     def test_every_request_carries_the_stateless_shape(self):
         server = self.serve()
-        code, _, err, _ = self.run_script(server, "move-gripper", "--gripper", "left_gripper", "--opening", "0")
+        code, _, err, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "0")
         self.assertEqual(code, demo.EXIT_OK, err)
         for received in server.received:
             meta = received.params["_meta"]
@@ -581,15 +626,17 @@ class ScriptTests(StandInCase):
     def test_a_refused_goal_is_a_failed_task_quoting_the_reason(self):
         reason = "the provider rejected the goal: opening 2 outside [0, 1]"
         server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [failed(reason)]}))
-        code, out, _, _ = self.run_script(server, "move-gripper", "--gripper", "right_gripper", "--opening", "2")
+        code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "right_gripper", "--opening", "2")
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn(f"openarm.move_gripper: failed: {reason}", out)
+        self.assertIn(f"robot.move_gripper: failed: {reason}", out)
 
     def test_an_abandoned_goal_is_a_failed_task(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed("the provider abandoned the goal")]}))
         code, out, _, _ = self.run_script(
             server,
             "move-arm",
+            "--robot",
+            ROBOT,
             "--arm",
             "left_arm",
             "--position",
@@ -603,11 +650,12 @@ class ScriptTests(StandInCase):
             "1",
         )
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn("openarm.move_arm: failed: the provider abandoned the goal", out)
+        self.assertIn("robot.move_arm: failed: the provider abandoned the goal", out)
         (call,) = server.calls("tools/call")
         self.assertEqual(
             call.params["arguments"],
             {
+                demo.ROBOT_ARGUMENT: ROBOT,
                 "arm_name": "left_arm",
                 "position": [0.3, 0.2, 0.4],
                 "orientation": [0.0, 0.0, 0.0, 1.0],
@@ -620,32 +668,32 @@ class ScriptTests(StandInCase):
     def test_a_move_the_robot_did_not_finish_is_reported_without_success(self):
         outcome = {"success": False, "message": "goal cancelled", "final_opening": 0.4, "action_time": 1.2}
         server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [completed(outcome)]}))
-        code, out, _, _ = self.run_script(server, "move-gripper", "--gripper", "left_gripper", "--opening", "1")
+        code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "1")
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn("openarm.move_gripper: completed without success: goal cancelled", out)
+        self.assertIn("robot.move_gripper: completed without success: goal cancelled", out)
         self.assertIn('"final_opening": 0.4', out)
 
     def test_ctrl_c_cancels_the_move_in_flight_and_waits_for_it_to_settle(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: [working(), working(), posture_done()]}))
-        code, out, _, _ = self.run_script(server, "move-to-home", sleep=InterruptOnce())
+        code, out, _, _ = self.run_script(server, "move-to-home", "--robot", ROBOT, sleep=InterruptOnce())
         self.assertEqual(code, demo.EXIT_CANCELLED)
-        self.assertIn("openarm.move_to_home: cancelling task task-1", out)
-        self.assertIn("openarm.move_to_home: cancelled", out)
+        self.assertIn("robot.move_to_home: cancelling task task-1", out)
+        self.assertIn("robot.move_to_home: cancelled", out)
         (cancel,) = server.calls("tasks/cancel")
         self.assertEqual(cancel.params["taskId"], "task-1")
         self.assertEqual(cancel.headers["mcp-name"], "task-1")
 
     def test_a_move_that_completes_despite_the_cancel_reads_completed(self):
         server = self.serve(Scenario(after_cancel=posture_done()))
-        code, out, _, _ = self.run_script(server, "move-to-ready", sleep=InterruptOnce())
+        code, out, _, _ = self.run_script(server, "move-to-ready", "--robot", ROBOT, sleep=InterruptOnce())
         self.assertEqual(code, demo.EXIT_OK)
         self.assertEqual(len(server.calls("tasks/cancel")), 1)
-        self.assertIn("openarm.move_to_ready: completed: both arms at the posture", out)
+        self.assertIn("robot.move_to_ready: completed: both arms at the posture", out)
 
     def test_a_confirmation_request_is_accepted_before_the_goal_runs(self):
         steps = [confirmation_required(demo.TOOL_MOVE_TO_READY), working(), posture_done()]
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: steps}))
-        code, out, _, _ = self.run_script(server, "move-to-ready")
+        code, out, _, _ = self.run_script(server, "move-to-ready", "--robot", ROBOT)
         self.assertEqual(code, demo.EXIT_OK)
         self.assertIn("confirming: confirmation", out)
         (update,) = server.calls("tasks/update")
@@ -656,44 +704,89 @@ class ScriptTests(StandInCase):
 
     def test_the_poll_interval_the_server_suggests_is_honored(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: [working(), posture_done()]}, poll_interval_ms=250))
-        code, _, _, sleeps = self.run_script(server, "move-to-home")
+        code, _, _, sleeps = self.run_script(server, "move-to-home", "--robot", ROBOT)
         self.assertEqual(code, demo.EXIT_OK)
         self.assertEqual(sleeps, [0.25, 0.25])
 
     def test_the_demo_runs_the_sequence_in_order(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [gripper_done(0.0)]}))
-        code, out, _, _ = self.run_script(server, "demo", "--duration-s", "2")
+        code, out, _, _ = self.run_script(server, "demo", "--robot", ROBOT, "--duration-s", "2")
         self.assertEqual(code, demo.EXIT_OK)
         self.assertIn("demo complete", out)
         goals = [(call.params["name"], call.params["arguments"]) for call in server.calls("tools/call")]
+        addressed = lambda goal: demo.addressed(ROBOT, goal)  # noqa: E731
         self.assertEqual(
             goals,
             [
-                (demo.TOOL_MOVE_TO_READY, {"duration_s": 2.0}),
-                (demo.TOOL_MOVE_GRIPPER, demo.gripper_goal("left_gripper", demo.GRIPPER_CLOSED)),
-                (demo.TOOL_MOVE_GRIPPER, demo.gripper_goal("right_gripper", demo.GRIPPER_CLOSED)),
-                (demo.TOOL_MOVE_GRIPPER, demo.gripper_goal("left_gripper", demo.GRIPPER_OPEN)),
-                (demo.TOOL_MOVE_GRIPPER, demo.gripper_goal("right_gripper", demo.GRIPPER_OPEN)),
-                (demo.TOOL_MOVE_TO_HOME, {"duration_s": 2.0}),
+                (demo.TOOL_LIST, {}),
+                (demo.TOOL_MOVE_TO_READY, addressed({"duration_s": 2.0})),
+                (demo.TOOL_MOVE_GRIPPER, addressed(demo.gripper_goal("left_gripper", demo.GRIPPER_CLOSED))),
+                (demo.TOOL_MOVE_GRIPPER, addressed(demo.gripper_goal("right_gripper", demo.GRIPPER_CLOSED))),
+                (demo.TOOL_MOVE_GRIPPER, addressed(demo.gripper_goal("left_gripper", demo.GRIPPER_OPEN))),
+                (demo.TOOL_MOVE_GRIPPER, addressed(demo.gripper_goal("right_gripper", demo.GRIPPER_OPEN))),
+                (demo.TOOL_MOVE_TO_HOME, addressed({"duration_s": 2.0})),
             ],
         )
+
+    def test_the_demo_takes_the_grippers_from_the_listing(self):
+        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [gripper_done(0.0)]}))
+        code, out, _, _ = self.run_script(server, "demo", "--robot", "charlie")
+        self.assertEqual(code, demo.EXIT_OK, out)
+        goals = [(call.params["name"], call.params["arguments"].get("gripper_name")) for call in server.calls("tools/call")]
+        self.assertEqual(
+            goals,
+            [
+                (demo.TOOL_LIST, None),
+                (demo.TOOL_MOVE_TO_READY, None),
+                (demo.TOOL_MOVE_GRIPPER, "gripper"),
+                (demo.TOOL_MOVE_GRIPPER, "gripper"),
+                (demo.TOOL_MOVE_TO_HOME, None),
+            ],
+        )
+        code, out, _, _ = self.run_script(server, "demo", "--robot", "ghost")
+        self.assertEqual(code, demo.EXIT_NOT_DONE)
+        self.assertIn("`ghost` is not a robot of this stack; the robots are alpha, charlie", out)
+
+    def test_list_prints_every_robot_with_what_the_listing_reports(self):
+        server = self.serve()
+        code, out, err, _ = self.run_script(server, "list")
+        self.assertEqual(code, demo.EXIT_OK, err)
+        self.assertIn("alpha: model openarm_v2 on cn-lab", out)
+        self.assertIn("arms left_arm, right_arm; grippers left_gripper, right_gripper", out)
+        self.assertIn("camera: wrist_left, wrist_right", out)
+        self.assertIn("depth_camera: chest", out)
+        self.assertIn("charlie: model ? on ?", out)
+        self.assertIn("note: identity: deadline exceeded", out)
+        (call,) = server.calls("tools/call")
+        self.assertEqual((call.params["name"], call.params["arguments"]), (demo.TOOL_LIST, {}))
+        empty = self.serve(Scenario(robots=[]))
+        code, out, _, _ = self.run_script(empty, "list")
+        self.assertEqual(code, demo.EXIT_OK)
+        self.assertIn("no robot is on the stack", out)
+
+    def test_a_move_naming_a_robot_that_is_not_there_is_refused_naming_the_fleet(self):
+        server = self.serve()
+        code, _, err, _ = self.run_script(server, "move-to-ready", "--robot", "ghost")
+        self.assertEqual(code, demo.EXIT_ENDPOINT)
+        self.assertIn("`ghost` is not a robot of this stack; the robots are `alpha`, `charlie`", err)
+        self.assertEqual(server.tasks, {})
 
     def test_the_demo_stops_at_the_first_move_the_robot_did_not_do(self):
         refusal = "the provider rejected the goal: gripper is already executing a move"
         server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [failed(refusal)]}))
-        code, out, _, _ = self.run_script(server, "demo")
+        code, out, _, _ = self.run_script(server, "demo", "--robot", ROBOT)
         self.assertEqual(code, demo.EXIT_NOT_DONE)
         self.assertIn("demo stopped at step 2", out)
         self.assertEqual(
             [call.params["name"] for call in server.calls("tools/call")],
-            [demo.TOOL_MOVE_TO_READY, demo.TOOL_MOVE_GRIPPER],
+            [demo.TOOL_LIST, demo.TOOL_MOVE_TO_READY, demo.TOOL_MOVE_GRIPPER],
         )
 
     def test_a_refused_request_exits_2_with_the_endpoint_message(self):
         server = self.serve(Scenario(tools=[demo.TOOL_MOVE_GRIPPER]))
-        code, _, err, _ = self.run_script(server, "move-to-ready")
+        code, _, err, _ = self.run_script(server, "move-to-ready", "--robot", ROBOT)
         self.assertEqual(code, demo.EXIT_ENDPOINT)
-        self.assertIn("refused the request (-32602): `openarm.move_to_ready` is not a tool of this exposure", err)
+        self.assertIn("refused the request (-32602): `robot.move_to_ready` is not a tool of this exposure", err)
         self.assertEqual(server.tasks, {})
 
     def test_an_unreachable_endpoint_exits_2(self):
@@ -702,7 +795,7 @@ class ScriptTests(StandInCase):
             port = probe.getsockname()[1]
         url = f"http://127.0.0.1:{port}{ENDPOINT_PATH}"
         out, err = io.StringIO(), io.StringIO()
-        code = demo.main(["--endpoint", url, "move-to-home"], out=out, err=err, sleep=lambda seconds: None)
+        code = demo.main(["--endpoint", url, "move-to-home", "--robot", ROBOT], out=out, err=err, sleep=lambda seconds: None)
         self.assertEqual(code, demo.EXIT_ENDPOINT)
         self.assertIn(f"cannot reach {url}", err.getvalue())
 
@@ -711,7 +804,7 @@ class ClientTests(StandInCase):
     def test_without_the_tasks_capability_the_move_runs_inside_the_call(self):
         server = self.serve()
         client = demo.McpClient(server.url, client_capabilities={})
-        result = client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": 1.0}})
+        result = client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}})
         self.assertEqual(result, posture_done()["result"])
         self.assertEqual(server.tasks, {})
 
@@ -723,13 +816,13 @@ class ClientTests(StandInCase):
         }
         server = self.serve(Scenario(steps))
         client = demo.McpClient(server.url, client_capabilities={})
-        arguments = {"gripper_name": "left_gripper", "opening": 0.0, "max_effort": 1.0}
+        arguments = {demo.ROBOT_ARGUMENT: ROBOT, "gripper_name": "left_gripper", "opening": 0.0, "max_effort": 1.0}
         self.assertEqual(
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": 1.0}}),
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}}),
             tool_error("the action failed: the provider abandoned the goal"),
         )
         self.assertEqual(
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_HOME, "arguments": {"duration_s": 1.0}}),
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_HOME, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}}),
             tool_error("the action was cancelled"),
         )
         self.assertEqual(
@@ -743,7 +836,7 @@ class ClientTests(StandInCase):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: steps}))
         client = demo.McpClient(server.url, client_capabilities={})
         with self.assertRaises(demo.ProtocolError) as refused:
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {"duration_s": "soon"}})
+            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": "soon"}})
         self.assertEqual(refused.exception.code, -32021)
         self.assertIn(f"`{demo.TOOL_MOVE_TO_READY}`", refused.exception.message)
         self.assertIn(demo.TASKS_EXTENSION, refused.exception.message)
@@ -753,9 +846,9 @@ class ClientTests(StandInCase):
         server = self.serve()
         client = demo.McpClient(server.url, client_capabilities={})
         with self.assertRaises(demo.ProtocolError) as refused:
-            client.request("tools/call", {"name": "openarm.dance", "arguments": {}})
+            client.request("tools/call", {"name": "robot.dance", "arguments": {}})
         self.assertEqual(refused.exception.code, -32602)
-        self.assertIn("`openarm.dance` is not a tool", refused.exception.message)
+        self.assertIn("`robot.dance` is not a tool", refused.exception.message)
 
     def test_arguments_failing_the_schema_never_make_a_task(self):
         server = self.serve()
@@ -807,7 +900,7 @@ class WireTests(unittest.TestCase):
         self.assertEqual(list(demo.sse_events(stream)), ['{"a":\n1}', "last"])
 
     def test_header_value_wraps_only_what_cannot_travel_bare(self):
-        self.assertEqual(demo.header_value("openarm.move_arm"), "openarm.move_arm")
+        self.assertEqual(demo.header_value("robot.move_arm"), "robot.move_arm")
         self.assertEqual(demo.header_value("two words"), "two words")
         self.assertEqual(demo.header_value(""), "")
         wrapped = demo.header_value(" leading")
@@ -870,7 +963,7 @@ class StandInFidelityTests(StandInCase):
                 "jsonrpc": "2.0",
                 "id": 2,
                 "method": "tools/call",
-                "params": proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={"duration_s": 1}),
+                "params": proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1}),
             }
         ).encode("utf-8")
         status, _, body = raw_request(self.server.url, proper_headers("tools/call"), call)
@@ -901,7 +994,7 @@ class StandInFidelityTests(StandInCase):
         self.assertEqual(json.loads(body)["error"]["code"], -32020)
 
     def test_a_missing_tasks_capability_answers_the_call_with_the_result(self):
-        params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={"duration_s": 1})
+        params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1})
         params["_meta"][demo.META_CLIENT_CAPABILITIES] = {}
         call = json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": params}).encode("utf-8")
         status, headers, body = raw_request(self.server.url, proper_headers("tools/call", demo.TOOL_MOVE_TO_HOME), call)
@@ -913,7 +1006,7 @@ class StandInFidelityTests(StandInCase):
     def test_a_confirmation_gated_tool_names_the_capability_in_the_error_data(self):
         steps = [confirmation_required(demo.TOOL_MOVE_TO_HOME), working(), posture_done()]
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: steps}))
-        params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={"duration_s": 1})
+        params = proper_params(name=demo.TOOL_MOVE_TO_HOME, arguments={demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1})
         params["_meta"][demo.META_CLIENT_CAPABILITIES] = {}
         call = json.dumps({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": params}).encode("utf-8")
         status, headers, body = raw_request(server.url, proper_headers("tools/call", demo.TOOL_MOVE_TO_HOME), call)
