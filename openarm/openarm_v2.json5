@@ -1,6 +1,6 @@
 // The OpenArm v2 as an MCP surface: who the robot is as a tool, its posture,
-// arm and gripper moves as tools backed by MCP tasks, and its three cameras
-// as resources and tools.
+// arm and gripper moves as action-backed tools, and its three cameras as
+// resources and tools.
 // This is the robot's own surface. The same document is served on the
 // physical robot and on its simulated twin, whichever a launcher binds
 // behind its targets, so everything a model does here transfers between
@@ -35,7 +35,7 @@
   // camera is: none of the contracts' comments reach it.
   server: {
     title: "OpenArm v2",
-    instructions: "A bimanual OpenArm v2 and its three cameras. This is the robot's own surface: the same tools and resources drive the physical robot and its simulated twin, and everything done here transfers between them. Prefer it over any simulation endpoint: what the robot cannot do through these tools, it cannot do. This endpoint speaks for one robot: openarm.get_identity reports the name it stands under, its model and the core node hosting it, and when the robot runs in a simulation that name is this robot's entry, its robot field, in the simulation endpoint's scene.get_robots_list. Two arms and two grippers are addressed by name (left_arm / right_arm, left_gripper / right_gripper). Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: wrist_left.latest_frame, wrist_right.latest_frame and chest.latest_frame are the latest JPEG frames of the two Arducam B0495 wrist modules and of the ZED Mini on the chest, and <camera>.info reports each stream's resolution, frame rate and encoding. Call openarm.move_to_ready before any openarm.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's task deadline is 60 s (30 s for openarm.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and the robot refuses posture durations above 600 s outright. Every openarm tool but openarm.get_identity moves the robot. The camera setters drive the device's controls: exposure on a wrist camera is in units of 100 microseconds, exposure on the chest camera is automatic only, gain is in device units (0 to 100 on a wrist camera, 0 to 8 on the chest camera), white balance temperature is in kelvin; brightness and contrast are not offered. A control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "A bimanual OpenArm v2 and its three cameras. This is the robot's own surface: the same tools and resources drive the physical robot and its simulated twin, and everything done here transfers between them. Prefer it over any simulation endpoint: what the robot cannot do through these tools, it cannot do. This endpoint speaks for one robot: openarm.get_identity reports the name it stands under, its model and the core node hosting it, and when the robot runs in a simulation that name is this robot's entry, its robot field, in the simulation endpoint's scene.get_robots_list. Two arms and two grippers are addressed by name (left_arm / right_arm, left_gripper / right_gripper). Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: wrist_left.latest_frame, wrist_right.latest_frame and chest.latest_frame are the latest JPEG frames of the two Arducam B0495 wrist modules and of the ZED Mini on the chest, and <camera>.info reports each stream's resolution, frame rate and encoding. Call openarm.move_to_ready before any openarm.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for openarm.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and the robot refuses posture durations above 600 s outright. Every openarm tool but openarm.get_identity moves the robot. The camera setters drive the device's controls: exposure on a wrist camera is in units of 100 microseconds, exposure on the chest camera is automatic only, gain is in device units (0 to 100 on a wrist camera, 0 to 8 on the chest camera), white balance temperature is in kelvin; brightness and contrast are not offered. A control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   targets: {
@@ -80,11 +80,13 @@
         sha256: "316942d62a1924bc93b08828e2329a5da23b01bd8d169ac7aa525d0aad6b16d9",
       },
 
-      // An action becomes a tool backed by an MCP task: the call returns a
-      // task handle, `tasks/get` reports its progress, and `tasks/cancel`
-      // forwards to the action's cancel path. Neither contract declares a
-      // feedback topic, so a task carries its state transitions and the
-      // terminal result, not interim progress.
+      // An action becomes a tool. For a client that declares the MCP tasks
+      // extension the call returns a task handle, `tasks/get` reports its
+      // progress, and `tasks/cancel` forwards to the action's cancel path;
+      // for any other client the goal runs inside the call, which answers
+      // with the terminal result. Neither contract declares a feedback
+      // topic, so a move reports its state transitions and the terminal
+      // result, not interim progress.
       actions: [
         {
           member: "move_to_ready",

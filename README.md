@@ -2,7 +2,7 @@
 
 A repository of Peppy **MCP exposures** (`peppy_schema: "mcp_exposure/v1"`).
 
-An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, services as tools, and actions as tools backed by MCP tasks. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
+An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
 
 The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each exposure target to a running implementer of its contract through `links`, and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `front_camera:v1` in `so101/fragments/mcp_commander.json5`, the `mcp_commander` option of a simulated SO-101, bound to the robot's rendered `front` camera. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
 
@@ -14,9 +14,9 @@ Exposures are grouped by what they publish:
 
 ```text
 cameras/      one camera as resources and tools
-recording/    a camera plus an episode recorder driven through MCP tasks
-openarm/      the OpenArm v2's own surface: its posture, arm, and gripper moves as tools backed by MCP tasks and its three cameras as resources and tools, with a Python client
-manipulation/ an AI brain's item perception and manipulation as tools backed by MCP tasks, for any embodiment
+recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
+openarm/      the OpenArm v2's own surface: its posture, arm, and gripper moves as action-backed tools and its three cameras as resources and tools, with a Python client
+manipulation/ an AI brain's item perception and manipulation as action-backed tools, for any embodiment
 simulation/   the simulated world's scene, lighting, and materials as one document; a simulation launch option only
 ```
 
