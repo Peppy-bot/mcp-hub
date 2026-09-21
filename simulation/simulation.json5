@@ -6,8 +6,8 @@
 // open by saying so, and every description says so, so a model reading
 // this endpoint never mistakes it for a real-robot surface. Waldo alone
 // implements object_controls, scene_lighting and scene_materials, so only
-// a Waldo stack serves this document; the robot's own surface is the
-// openarm_v2 document, served on hardware and in simulation alike. What is
+// a Waldo stack serves this document; the robots' own surface is the
+// robot_control document, served on hardware and in simulation alike. What is
 // spawned, and where it stands, is not read here: the engine's
 // object_state contract reports it and stays inside the peppy framework,
 // as the README's ground-truth rule says.
@@ -16,10 +16,10 @@
 // `source: { exposures: ["simulation:v1"] }`, binds its four targets to
 // the running simulation through `links`, and the server built into peppy
 // serves it at `/simulation/v1/mcp`. The launchers hub serves it through
-// the `mcp_scene_commander` option of the `simulation_mcp` axis of its
-// `openarm_simulation_mcp` launcher, on port 8902, a process of its own
-// beside the robot endpoint `/openarm_v2/v1/mcp` on port 8900. It binds
-// the simulation and nothing of any robot copy, so it outlives the copy.
+// the `world_control` axis of its `simulation_mcp` launcher, on port 8902, a
+// process of its own beside the robots' endpoint `/robot_control/v1/mcp`
+// on port 8900. It binds the simulation and nothing of any robot copy, so
+// it outlives the copy.
 {
   peppy_schema: "mcp_exposure/v1",
   manifest: { name: "simulation", tag: "v1" },
@@ -33,7 +33,7 @@
   // simulation/.
   server: {
     title: "Simulated world (simulation only)",
-    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation OpenArm v2 robots run in: scene.* for the scene (what the engine can place, the loaded scene, spawned objects, the robots standing and their placement), controls.* for what a spawned object lets you set (a standing desk's height, a conveyor's belt speed), lighting.* for its light sources and materials.* for the optical properties of its materials. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with the robot through the robot's own endpoint; scene.move_object teleports and proves nothing about the robot. Read, then set: call scene.get_assets_list, scene.get_robots_list, controls.get_object_controls, lighting.get_lighting and materials.get_materials first, since every asset_id, robot, control id, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object. Positions are world-frame [x, y, z] in metres, Z up; headings are a yaw in radians about the world's +Z, counterclockwise seen from above, 0 facing +X; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. The simulated world's frame is not the frame of the robot endpoint's poses: openarm.move_arm takes poses in the robot's own frame, whose origin is the robot's base point on the floor, the point scene.get_robots_list reports as position, with +X the way the robot faces. For a robot standing upright, as every robot that joined the simulation does, a point p in that robot's own frame stands in the simulated world at position + Rz(yaw) * p, where Rz(yaw) turns p about +Z by the robot's listed yaw: [p.x * cos(yaw) - p.y * sin(yaw), p.x * sin(yaw) + p.y * cos(yaw), p.z]. To find which listed robot an endpoint drives, call openarm.get_identity on the robot endpoint and match its robot against the robot field here. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. An object's controls are what its asset authors (only objects offering one are listed, an asset's description says when it does), each a scalar in the unit it reports within its min and max, standing at its default when spawned or at the value the loaded scene placed it at; a control in m or rad stands its part at the value within the call, like a teleport, whatever the object's physics, and anything resting on it is displaced, not carried, so set such a control before placing things on the part; a control in m/s runs its part's surface at that speed from the next physics step, a negative value the other way, and carries what rests on it. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own.",
+    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation the robots run in: scene.* for the scene (what the engine can place, the loaded scene, spawned objects, the robots standing and their placement), controls.* for what a spawned object lets you set (a standing desk's height, a conveyor's belt speed), lighting.* for its light sources and materials.* for the optical properties of its materials. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with a robot through the robots' endpoint; scene.move_object teleports and proves nothing about the robot. Read, then set: call scene.get_assets_list, scene.get_robots_list, controls.get_object_controls, lighting.get_lighting and materials.get_materials first, since every asset_id, robot, control id, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object. Positions are world-frame [x, y, z] in metres, Z up; headings are a yaw in radians about the world's +Z, counterclockwise seen from above, 0 facing +X; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. The simulated world's frame is not the frame of the robots' endpoint's poses: robot.move_arm takes poses in the robot's own frame, whose origin is the robot's base point on the floor, the point scene.get_robots_list reports as position, with +X the way the robot faces. For a robot standing upright, as every robot that joined the simulation does, a point p in that robot's own frame stands in the simulated world at position + Rz(yaw) * p, where Rz(yaw) turns p about +Z by the robot's listed yaw: [p.x * cos(yaw) - p.y * sin(yaw), p.x * sin(yaw) + p.y * cos(yaw), p.z]. A robot's name here is its name on the robots' endpoint: robot.list there names the same robots, and every tool there takes that name. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. An object's controls are what its asset authors (only objects offering one are listed, an asset's description says when it does), each a scalar in the unit it reports within its min and max, standing at its default when spawned or at the value the loaded scene placed it at; a control in m or rad stands its part at the value within the call, like a teleport, whatever the object's physics, and anything resting on it is displaced, not carried, so set such a control before placing things on the part; a control in m/s runs its part's surface at that speed from the next physics step, a negative value the other way, and carries what rests on it. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own.",
   },
 
   targets: {
@@ -53,7 +53,7 @@
         sha256: "dd5e40b73458f358b0f45993472c165b6b815dec0970953eb2e2fa70a828e211",
       },
 
-      // The catalogue becomes a tool that answers within one request.
+      // The catalog becomes a tool that answers within one request.
       services: [
         {
           member: "get_assets_list",
@@ -65,7 +65,7 @@
         {
           member: "get_robots_list",
           tool: "scene.get_robots_list",
-          description: "List the robots standing in the simulation, one entry each in robots: robot, the name scene.move_robot takes and the name the robot's own endpoint reports from openarm.get_identity; model, the robot catalogue id it stands as; position, its base's world-frame [x, y, z] in metres; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world stands itself. Takes no arguments and changes nothing.",
+          description: "List the robots standing in the simulation, one entry each in robots: robot, the name scene.move_robot takes and the name robot.list reports on the robots' endpoint, where every tool takes it; model, the robot catalog id it stands as; position, its base's world-frame [x, y, z] in meters; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world stands itself. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -103,14 +103,14 @@
         {
           member: "spawn_object",
           tool: "scene.spawn_object",
-          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails.",
+          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in meters; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails.",
           operation: "long_running",
           deadline_ms: 30000,
         },
         {
           member: "move_object",
           tool: "scene.move_object",
-          description: "Teleport a spawned object in the simulation to a world-frame position [x, y, z] in metres, keeping its orientation and zeroing its velocity. object_id is the id scene.spawn_object reported.",
+          description: "Teleport a spawned object in the simulation to a world-frame position [x, y, z] in meters, keeping its orientation and zeroing its velocity. object_id is the id scene.spawn_object reported.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -133,7 +133,7 @@
         {
           member: "move_robot",
           tool: "scene.move_robot",
-          description: "Relocate one simulated robot's base, named by robot as scene.get_robots_list reports it, to a world-frame position [x, y, z] in metres facing yaw, in radians about the world's +Z, keeping its joint configuration; every other robot stays where it stands. To move a robot without turning it, pass back the yaw scene.get_robots_list reports for it. The robot moves inside the simulation and nowhere else.",
+          description: "Relocate one simulated robot's base, named by robot as scene.get_robots_list reports it, to a world-frame position [x, y, z] in meters facing yaw, in radians about the world's +Z, keeping its joint configuration; every other robot stays where it stands. To move a robot without turning it, pass back the yaw scene.get_robots_list reports for it. The robot moves inside the simulation and nowhere else.",
           operation: "long_running",
           // Advertised to the client: this one moves the (simulated) robot.
           safety_sensitive: true,
@@ -211,14 +211,14 @@
         {
           member: "set_light_color",
           tool: "lighting.set_light_color",
-          description: "Set a simulated light's colour, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. Not supported by an environment light, whose colour is its map; a refused request leaves the light as it was. Answers with current_color, the effective colour after the call.",
+          description: "Set a simulated light's color, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. Not supported by an environment light, whose color is its map; a refused request leaves the light as it was. Answers with current_color, the effective color after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },
         {
           member: "set_light_position",
           tool: "lighting.set_light_position",
-          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in metres, Z up. light_id comes from lighting.get_lighting; a directional or environment light has no position and refuses, leaving the light as it was. Answers with current_position, the effective position after the call.",
+          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in meters, Z up. light_id comes from lighting.get_lighting; a directional or environment light has no position and refuses, leaving the light as it was. Answers with current_position, the effective position after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },
@@ -280,7 +280,7 @@
         {
           member: "set_material_color",
           tool: "materials.set_material_color",
-          description: "Set a simulated material's base colour on every surface that shares it, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials; a refused request leaves the material as it was. Answers with current_color, the effective colour after the call.",
+          description: "Set a simulated material's base color on every surface that shares it, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials; a refused request leaves the material as it was. Answers with current_color, the effective color after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },

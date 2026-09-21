@@ -1,0 +1,527 @@
+// Every robot of a stack as one MCP surface: who each robot is, its posture,
+// arm and gripper moves, its limbs' live state, its collision readout, its
+// cameras with their frames, controls and geometry, its brain and its
+// recorder, each addressed by the robot's name on one endpoint.
+//
+// The document is written against contracts, never against a model. A
+// contract a robot's instances implement is a capability of that robot, and
+// each target below is one contract a robot may bring: an OpenArm v2 fills
+// every one of them, an SO-101 the ones its backbone and its one camera
+// implement, and the listing tool says which. The same document is served
+// on the physical fleet and in every simulation, so everything a model does
+// here transfers between them.
+//
+// `robots` makes it a per-robot surface: every target is a set the stack's
+// robots fill, a join adding its robot's instances and a removal taking
+// them out while the server runs, and every tool takes `robot`, the name
+// robot.list reports. A target with an `argument` is filled any number of
+// times per robot, once per camera, and a call on it names the camera too.
+//
+// A launcher deploys it once per stack under
+// `source: { exposures: ["robot_control:v1"] }` with no `links`: the
+// fragments a robot's copy runs add its instances to the targets with
+// `add_links`, the launchers hub's `robot_control` option. The server built into
+// peppy serves it at /robot_control/v1/mcp.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "robot_control", tag: "v1" },
+
+  // Advertised to clients through `server/discover`. `instructions` is the
+  // prose a model reads before it decides what to call: what every robot
+  // shares. What differs between robots is what robot.list answers.
+  server: {
+    title: "Robots",
+    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: it lists the robots present, and for each its model, its arms and grippers, its cameras and which of them carry depth, whether it has a brain and a recorder, and the capabilities its tools answer for it. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives under members. A call naming a robot that is not there, a capability the robot does not fill, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do, so prefer it over any simulation endpoint, and when the robots run in a simulation their names here are their names in that endpoint's scene.get_robots_list. Arms and grippers are addressed by the names the listing reports under limbs: an OpenArm v2 has left_arm and right_arm with left_gripper and right_gripper, an SO-101 has arm and gripper. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: read a camera's latest frame, JPEG encoded, and a depth camera's latest depth, a 16-bit PNG in the unit its depth_info reports. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for robot.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and a robot refuses posture durations above 600 s outright. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+  },
+
+  robots: {
+    argument: "robot",
+    list: {
+      tool: "robot.list",
+      description: "List every robot of the stack. Each entry carries robot, its name, which every other tool takes; capabilities, the targets it fills, which say which tools and resources answer for it; members, the camera names its camera tools take, under camera for color cameras and depth_camera for cameras that carry depth; identity, its model and the machine hosting it; limbs, its arm and gripper names; and notes, anything that could not be read for it. Takes no arguments and changes nothing.",
+    },
+    describe: {
+      identity: { target: "identity", service: "get_identity" },
+      limbs: { target: "limb_state", topic: "limb_states", fields: ["arm_names", "gripper_names"] },
+    },
+  },
+
+  targets: {
+    // Who each robot is: its initializer answers, the node that works the
+    // name out and joins a simulation under it, so the name reported here
+    // is the one a simulation lists the robot under.
+    identity: {
+      contract: {
+        name: "robot_identity",
+        tag: "v1",
+        // An author pin: the sha256 of the exact contract document this file
+        // was written against (`sha256sum robot/robot_identity.json5` in
+        // the contracts hub). A launch that resolves other bytes refuses,
+        // naming the contract. Every pin below is the same kind.
+        sha256: "ebdd513c16af87a3ef326ba57f0e88cb5be2890a1634e23329621c159cbe9983",
+      },
+      services: [
+        {
+          member: "get_identity",
+          tool: "robot.get_identity",
+          description: "Report who the robot is: robot is the name it stands under everywhere, model its model id, for example openarm_v2 or so101, and core_node the machine hosting it. robot.list reports the same under identity. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
+    // Whole-robot moves: the backbone's. An action becomes a tool. For a
+    // client that declares the MCP tasks extension the call returns a task
+    // handle, `tasks/get` reports its progress and `tasks/cancel` forwards
+    // to the action's cancel path; for any other client the goal runs
+    // inside the call, which answers with the terminal result. Neither
+    // contract declares a feedback topic, so a move reports its state
+    // transitions and the terminal result, not interim progress.
+    postures: {
+      contract: {
+        name: "postures",
+        tag: "v1",
+        sha256: "316942d62a1924bc93b08828e2329a5da23b01bd8d169ac7aa525d0aad6b16d9",
+      },
+      actions: [
+        {
+          member: "move_to_ready",
+          tool: "robot.move_to_ready",
+          description: "Bring every arm of the robot to its working posture, raised out in front of it. duration_s is the requested move time in seconds; 0 means as fast as the joint limits allow.",
+          operation: "long_running",
+          // Advertised to the client: this one moves the robot.
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+        {
+          member: "move_to_home",
+          tool: "robot.move_to_home",
+          description: "Bring every arm of the robot to its rest posture, hanging at its sides. duration_s is the requested move time in seconds; 0 means as fast as the joint limits allow.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+      ],
+    },
+
+    // One limb at a time: the backbone's. The arm and gripper names are the
+    // robot's own, which robot.list reports under limbs.
+    limb_motion: {
+      contract: {
+        name: "limb_motion",
+        tag: "v1",
+        sha256: "a1a0c67b7866c66eaac6b76328f2d1312f00368a599d5569967274ff787d157f",
+      },
+      actions: [
+        {
+          member: "move_arm",
+          tool: "robot.move_arm",
+          description: "Move one arm's grasp point to a world-frame pose. arm_name is one of the robot's arms as robot.list reports them; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w]; duration_s 0 means as fast as the joint limits allow. plan_position_tolerance_m and plan_orientation_tolerance_rad bound how far the planned pose may sit from the requested one (0 takes the planner's defaults); a pose no plan reaches inside both is refused rather than approximated.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 60000,
+        },
+        {
+          member: "move_gripper",
+          tool: "robot.move_gripper",
+          description: "Drive one gripper to an opening. gripper_name is one of the robot's grippers as robot.list reports them; opening is a fraction of full jaw travel, 0 closed and 1 fully open; max_effort caps the effort toward the target, 0 meaning no preference.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 30000,
+        },
+      ],
+      // `move_arm_joints` is live on the backbone and absent here: raw
+      // joint vectors are not a surface for a model, and the contract
+      // leaves the joint count unpinned (each backbone's own refinement
+      // pins it), so a published schema for it could not say what a goal
+      // means. A member that is not selected is not reachable through the
+      // endpoint at all.
+    },
+
+    // Where each robot's limbs are: the backbone's live snapshot, a
+    // resource per robot. robot.list reads the arm and gripper names from
+    // it.
+    limb_state: {
+      contract: {
+        name: "limb_state",
+        tag: "v1",
+        sha256: "bf32e6c92556945a1f17d8317ac0ac99255b84a65569a007a448adacdfb2a2ef",
+      },
+      topics: [
+        {
+          member: "limb_states",
+          resource: "robot.limb_state",
+          description: "The robot's latest limb state: arm_names and gripper_names, joints_per_arm and joint_positions flattened arm by arm, each arm's grasp point as positions (3 per arm, meters) and orientations (4 per arm, a unit quaternion), and gripper_openings as fractions of full jaw travel, at timestamp.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 5 },
+          // The arrays are variable-length, so the runtime size policy is
+          // mandatory; a limb state is small, and one that is not is a
+          // fault to refuse.
+          max_result_bytes: 65536,
+          on_oversize: "reject",
+        },
+      ],
+    },
+
+    // The proximity readout of a backbone that watches for self-collision:
+    // a resource per robot that has one.
+    collision: {
+      contract: {
+        name: "collision_status",
+        tag: "v1",
+        sha256: "f5d94310b69f2039c51b188fa842da0d4a19eb0440b66d89d548173fea0633cd",
+      },
+      topics: [
+        {
+          member: "collision_status",
+          resource: "robot.collision_status",
+          description: "The robot's latest collision readout: distance in meters between the closest pair of links link_a and link_b, whether the governor is throttling motion (throttled) or has stopped it (stopped), at timestamp.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 5 },
+          // The link names are strings, so the runtime size policy is
+          // mandatory; a readout is small, and one that is not is a fault
+          // to refuse.
+          max_result_bytes: 4096,
+          on_oversize: "reject",
+        },
+      ],
+    },
+
+    // A color camera: one per camera of the robot, named by `camera` on
+    // every call, as the launcher wrote its instance (wrist_left, front).
+    // The topic becomes a resource per robot and camera, published as JPEG
+    // at no more than 2 Hz however fast the camera streams.
+    camera: {
+      contract: {
+        name: "rgb_camera",
+        tag: "v1",
+        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+      },
+      argument: "camera",
+      topics: [
+        {
+          member: "video_stream",
+          resource: "camera.latest_frame",
+          description: "The camera's latest frame, JPEG encoded, with its width and height.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          // The frame is a variable-length byte array, so the runtime size
+          // policy is mandatory.
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+      // Each service becomes a tool that answers within one request. One
+      // schema serves every device, so a value outside a device's range is
+      // refused by the device at call time, not by the schema;
+      // camera_profile.get is where a model reads the range first.
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "camera.info",
+          description: "Report the camera stream's resolution, frame rate and encoding. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_exposure",
+          tool: "camera.set_exposure",
+          description: "Set the camera's exposure. mode is auto or manual; value is the manual exposure in the device's unit and range, which camera_profile.get reports, and is ignored in auto mode. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_gain",
+          tool: "camera.set_gain",
+          description: "Set the camera's gain in the device's unit and range, which camera_profile.get reports. A refused request changes nothing. Answers with current_value, the effective gain after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_white_balance",
+          tool: "camera.set_white_balance",
+          description: "Set the camera's white balance. mode is auto or manual; temperature is the manual color temperature in kelvin, in the device's range, and is ignored in auto mode. A refused request changes nothing. Answers with current_temperature, the effective temperature after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+      ],
+      // `set_brightness` and `set_contrast` are live on the cameras and
+      // absent here: the devices have no measured response for either, so
+      // a simulated twin has no device model to answer them with.
+    },
+
+    // A camera that carries depth beside its color: one per such camera of
+    // the robot (an OpenArm v2's chest), named by `camera` on every call.
+    // Its color frame is a resource as a color camera's is, and its depth
+    // frame a second resource, lossless, in the unit depth_info reports.
+    depth_camera: {
+      contract: {
+        name: "rgbd_camera",
+        tag: "v1",
+        sha256: "61a2cc33ad04a82dd57e2afaf66b18c76ebfa1ca9b23f466825103e4513cef06",
+      },
+      argument: "camera",
+      topics: [
+        {
+          member: "video_stream",
+          resource: "depth_camera.latest_frame",
+          description: "The camera's latest color frame, JPEG encoded, with its width and height.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+        {
+          member: "depth_stream",
+          resource: "depth_camera.latest_depth",
+          description: "The camera's latest depth frame, a 16-bit PNG with one sample per pixel in the unit depth_camera.depth_info reports as depth_unit (meters per sample step), 0 where the camera measured nothing, with its width and height, aligned to the color frame as header.align_mode says.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          // Lossless: a depth map is data, and downscaling keeps every
+          // second sample as measured.
+          representation: {
+            image: "png16",
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          max_result_bytes: 1048576,
+          on_oversize: "downscale",
+        },
+      ],
+      services: [
+        {
+          member: "video_stream_info",
+          tool: "depth_camera.info",
+          description: "Report the camera's color stream's resolution, frame rate and encoding. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "depth_stream_info",
+          tool: "depth_camera.depth_info",
+          description: "Report the camera's depth stream's resolution, frame rate and encoding, and depth_unit, the meters one sample step of depth_camera.latest_depth stands for. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_color_exposure",
+          tool: "depth_camera.set_exposure",
+          description: "Set the camera's color exposure. mode is auto or manual; value is the manual exposure in the device's unit and range, which camera_profile.get reports, and is ignored in auto mode. A device that runs automatic exposure only refuses mode manual with success false. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_color_gain",
+          tool: "depth_camera.set_gain",
+          description: "Set the camera's color gain in the device's unit and range, which camera_profile.get reports. A refused request changes nothing. Answers with current_value, the effective gain after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+        {
+          member: "set_color_white_balance",
+          tool: "depth_camera.set_white_balance",
+          description: "Set the camera's color white balance. mode is auto or manual; temperature is the manual color temperature in kelvin, in the device's range, and is ignored in auto mode. A refused request changes nothing. Answers with current_temperature, the effective temperature after the call.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+      ],
+      // `set_color_brightness` and `set_color_contrast` absent, as on a
+      // color camera.
+    },
+
+    // What a camera's controls are and support, where the camera
+    // implements the contract: the simulations' rendered cameras do.
+    camera_profile: {
+      contract: {
+        name: "camera_profile",
+        tag: "v1",
+        sha256: "ebe24d01a9d916a91a229ca6b14c59d635902bbf9220f40898af8ee505dd2382",
+      },
+      argument: "camera",
+      services: [
+        {
+          member: "get_camera_profile",
+          tool: "camera_profile.get",
+          description: "Report the camera's profile as JSON text in profile_json: the controls it supports, each with its unit, range and default. Read it before setting a control. success false with a message means the camera has no profile to report. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "reset_camera",
+          tool: "camera_profile.reset",
+          description: "Return every control of the camera to its default. success false with a message means the camera refused. Changes the camera's controls and nothing else.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
+    // Where a camera's pixels point, where the camera implements the
+    // contract: the intrinsics of its color and depth streams and the
+    // transform between them.
+    camera_geometry: {
+      contract: {
+        name: "camera_geometry",
+        tag: "v1",
+        sha256: "764d0ec0f33a4216e544547bc3b7f292fc48feee871a2e2134e61a6de0842f02",
+      },
+      argument: "camera",
+      services: [
+        {
+          member: "get_color_intrinsics",
+          tool: "camera_geometry.color_intrinsics",
+          description: "Report the color stream's pinhole intrinsics: width and height in pixels, fx, fy, cx and cy in pixels, and the distortion_model with its distortion coefficients. success false with a message means the camera has none to report. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "get_depth_intrinsics",
+          tool: "camera_geometry.depth_intrinsics",
+          description: "Report the depth stream's pinhole intrinsics as camera_geometry.color_intrinsics does, with depth_model, min_depth_m and max_depth_m in meters, and align_mode, how the depth frame aligns to the color frame. success false with a message means the camera has no depth stream. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "get_depth_to_color_extrinsics",
+          tool: "camera_geometry.depth_to_color",
+          description: "Report the transform from the depth stream's frame to the color stream's: depth_to_color_position in meters and depth_to_color_orientation as a unit quaternion [x, y, z, w], with align_mode. success false with a message means the camera has no depth stream. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
+    // A robot's brain, where it has one: the item scan and search, and the
+    // manipulation sequences, on that robot's own arms. Each robot has its
+    // own brain, so a brain tool names its robot like every other call.
+    item_perception: {
+      contract: {
+        name: "item_perception",
+        tag: "v1",
+        sha256: "94ea53062bc160c72802a3213a0bfd89de03ac80fa05fb85581e63ac3b64e7a2",
+      },
+      actions: [
+        {
+          member: "scan_items",
+          tool: "brain.scan_items",
+          description: "Look at the scene through the robot's brain and report every item it can act on, minting an item_id for each. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 world-frame coordinates in meters per item, and confidences from 0 to 1. An empty scene is a success with empty arrays. Scanning again keeps the id of an item the robot recognizes. Starts no motion.",
+          operation: "long_running",
+          deadline_ms: 30000,
+        },
+        {
+          member: "identify_item",
+          tool: "brain.identify_item",
+          description: "Find one item through the robot's brain and mint an item_id for it. description is what to look for, in your own words, or empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a world-frame position in meters, an orientation only when the robot resolved one, and confidence from 0 to 1. Finding nothing is a failure whose message says so. Starts no motion.",
+          operation: "long_running",
+          deadline_ms: 30000,
+        },
+      ],
+    },
+
+    item_manipulation: {
+      contract: {
+        name: "item_manipulation",
+        tag: "v1",
+        sha256: "ea7c74526d902445231e3933f9943396399f5d2f9b54694664140e3f1a25bae0",
+      },
+      actions: [
+        {
+          member: "grab_item",
+          tool: "brain.grab_item",
+          description: "Close one of the robot's grippers on an item. gripper_name is one of the names brain.get_state reports for the robot, or empty to let it pick a free gripper suited to the item. Give item_id from brain.identify_item, or leave it empty and give position in meters and, optionally, orientation. max_effort caps the grip in the gripper's effort unit, 0 for the default. Refused when the gripper is unknown or already holds an item, when no gripper is free, or when item_id is one the robot no longer recognizes. Returns the gripper_name and item_id now held; the robot reports it is holding the item from then on.",
+          operation: "long_running",
+          safety_sensitive: true,
+          // A reach, a close, and a check: several lower level moves in
+          // sequence, so the deadline covers the whole sequence.
+          deadline_ms: 120000,
+        },
+        {
+          member: "drop_item",
+          tool: "brain.drop_item",
+          description: "Open one of the robot's grippers where it is and release what it holds. gripper_name is one of the names brain.get_state reports, or empty when exactly one gripper is holding an item. Refused when that gripper holds nothing, or when the name is empty while no gripper or more than one holds. Returns the gripper_name and the item_id released; the robot no longer reports holding it. To carry the item somewhere first, use brain.place_item.",
+          operation: "long_running",
+          safety_sensitive: true,
+          deadline_ms: 30000,
+        },
+        {
+          member: "place_item",
+          tool: "brain.place_item",
+          description: "Carry the item one of the robot's grippers holds to a world-frame pose and release it there. gripper_name as for brain.drop_item. position is where the gripper's grasp point sits when the jaws open, in meters; it is the release point, not a waypoint. orientation is optional; leave it out to let the robot choose. Refused when the gripper holds nothing or the target is unreachable, which the robot refuses rather than approximates. Returns the gripper_name, the item_id placed, and the measured final_position.",
+          operation: "long_running",
+          safety_sensitive: true,
+          // A carry and a release: the same several-move budget as grab_item.
+          deadline_ms: 120000,
+        },
+        {
+          member: "abort",
+          tool: "brain.abort",
+          description: "Stop whatever sequence the robot's brain is running and leave the robot where it stopped, still holding whatever it held. reason is recorded by the robot; empty is accepted. Succeeds even when nothing was running, reporting an empty aborted_action. This is distinct from cancelling the running call or task: any caller may abort, not only the one that started the sequence.",
+          operation: "long_running",
+          deadline_ms: 5000,
+        },
+      ],
+      services: [
+        {
+          member: "get_state",
+          tool: "brain.get_state",
+          description: "Report what the robot's brain is doing right now. current_action is the running sequence's name, empty when idle; current_action_elapsed_s is how long it has run. gripper_names lists the robot's grippers in a fixed order, the names the other brain tools accept, and holding and held_item_ids are index-aligned with it: true and the item_id where that gripper holds an item, false and empty otherwise.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
+    // A robot's recorder, where it has one: it films the robot's cameras
+    // and limbs into a dataset, an episode at a time.
+    recorder: {
+      contract: {
+        name: "episode_recording",
+        tag: "v1",
+        sha256: "d646ad5c6e9d18d2db516d7a801b086c37819be14006512ef0081a3b7012f66b",
+      },
+      actions: [
+        {
+          member: "record_episode",
+          tool: "recorder.record_episode",
+          description: "Record one episode of the robot into its open dataset session, under task as the episode's task description; feedback reports frames_recorded and disk_free_bytes as it runs, and cancelling the task ends the episode and saves it. Returns episode_index, frames_recorded and whether the episode was discarded.",
+          operation: "long_running",
+          // Advertised to the client: recording accompanies motion.
+          safety_sensitive: true,
+          // The task parks in `input_required` until the client confirms
+          // through `tasks/update`. No goal is sent before that, and only a
+          // client with the tasks extension can call the tool.
+          confirmation_required: true,
+          deadline_ms: 900000,
+        },
+      ],
+      // `finish_session` and `resume_session` are live on the recorder and
+      // absent here: the operator opens and closes a dataset session, a
+      // model records episodes into it.
+    },
+  },
+}
