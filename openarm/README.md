@@ -24,7 +24,8 @@ It publishes four moves of the OpenArm v2 backbone as tools backed by MCP tasks:
 | `openarm.move_gripper`  | `limb_motion:v1` `move_gripper` | 30 s      |
 
 and the robot's three cameras, `wrist_left` and `wrist_right` (`rgb_camera:v1`, the Arducam B0495
-wrist modules) and `chest` (`rgbd_camera:v1`, the ZED Mini), each as one resource and four tools:
+wrist modules) and `chest` (`rgbd_camera:v1`, the ZED Mini), each as one resource and four tools,
+and `chest` its depth stream as a resource and its description as a tool besides:
 
 | Name                         | Kind     | Contract member                                 | Policy |
 | ---------------------------- | -------- | ----------------------------------------------- | ------ |
@@ -33,11 +34,13 @@ wrist modules) and `chest` (`rgbd_camera:v1`, the ZED Mini), each as one resourc
 | `<camera>.set_exposure`      | tool     | `set_exposure` (`set_color_exposure` on `chest`) | wrists 1 to 5000, in units of 100 microseconds; `chest` automatic only |
 | `<camera>.set_gain`          | tool     | `set_gain` (`set_color_gain`)                   | wrists 0 to 100, `chest` 0 to 8 |
 | `<camera>.set_white_balance` | tool     | `set_white_balance` (`set_color_white_balance`) | 2800 to 6500 K |
+| `chest.latest_depth`         | resource | `depth_stream`                                  | greyscale JPEG, white at 0.1 m, black at 10 m or with no reading; 2 Hz at most, 2 s fresh, downscaled above 512 KiB |
+| `chest.depth_info`           | tool     | `depth_stream_info`                             | read only, 2 s |
 
-Seventeen tools and three resources over six targets. Every `openarm` tool but
+Eighteen tools and four resources over six targets. Every `openarm` tool but
 `openarm.get_identity` is `safety_sensitive` and moves the robot; none asks for confirmation. Every contract is pinned by sha256 to the
-document this exposure was written against. The backbone's joint-space move (`move_arm_joints`),
-the chest's depth stream, and the cameras' brightness and contrast stay private. So does
+document this exposure was written against. The backbone's joint-space move (`move_arm_joints`)
+and the cameras' brightness and contrast stay private. So does
 `camera_profile:v1`: no physical camera node implements it, so publishing it would split the
 surface between hardware and simulation; the setters carry their bounds through `restrict` and
 their modes and units in their descriptions, and its tools return here when the `uvc_camera` and
