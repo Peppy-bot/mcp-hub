@@ -53,7 +53,7 @@
         sha256: "dd5e40b73458f358b0f45993472c165b6b815dec0970953eb2e2fa70a828e211",
       },
 
-      // The catalog becomes a tool that answers within one request.
+      // The catalogue becomes a tool that answers within one request.
       services: [
         {
           member: "get_assets_list",
@@ -65,7 +65,7 @@
         {
           member: "get_robots_list",
           tool: "scene.get_robots_list",
-          description: "List the robots standing in the simulation, one entry each in robots: robot, the name scene.move_robot takes and the name robot.list reports on the robots' endpoint, where every tool takes it; model, the robot catalog id it stands as; position, its base's world-frame [x, y, z] in meters; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world stands itself. Takes no arguments and changes nothing.",
+          description: "List the robots standing in the simulation, one entry each in robots: robot, the name scene.move_robot takes and the name robot.list reports on the robots' endpoint, where every tool takes it; model, the robot catalogue id it stands as; position, its base's world-frame [x, y, z] in metres; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world stands itself. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -103,14 +103,14 @@
         {
           member: "spawn_object",
           tool: "scene.spawn_object",
-          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in meters; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails.",
+          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails.",
           operation: "long_running",
           deadline_ms: 30000,
         },
         {
           member: "move_object",
           tool: "scene.move_object",
-          description: "Teleport a spawned object in the simulation to a world-frame position [x, y, z] in meters, keeping its orientation and zeroing its velocity. object_id is the id scene.spawn_object reported.",
+          description: "Teleport a spawned object in the simulation to a world-frame position [x, y, z] in metres, keeping its orientation and zeroing its velocity. object_id is the id scene.spawn_object reported.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -133,7 +133,7 @@
         {
           member: "move_robot",
           tool: "scene.move_robot",
-          description: "Relocate one simulated robot's base, named by robot as scene.get_robots_list reports it, to a world-frame position [x, y, z] in meters facing yaw, in radians about the world's +Z, keeping its joint configuration; every other robot stays where it stands. To move a robot without turning it, pass back the yaw scene.get_robots_list reports for it. The robot moves inside the simulation and nowhere else.",
+          description: "Relocate one simulated robot's base, named by robot as scene.get_robots_list reports it, to a world-frame position [x, y, z] in metres facing yaw, in radians about the world's +Z, keeping its joint configuration; every other robot stays where it stands. To move a robot without turning it, pass back the yaw scene.get_robots_list reports for it. The robot moves inside the simulation and nowhere else.",
           operation: "long_running",
           // Advertised to the client: this one moves the (simulated) robot.
           safety_sensitive: true,
@@ -211,14 +211,14 @@
         {
           member: "set_light_color",
           tool: "lighting.set_light_color",
-          description: "Set a simulated light's color, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. Not supported by an environment light, whose color is its map; a refused request leaves the light as it was. Answers with current_color, the effective color after the call.",
+          description: "Set a simulated light's colour, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. Not supported by an environment light, whose colour is its map; a refused request leaves the light as it was. Answers with current_color, the effective colour after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },
         {
           member: "set_light_position",
           tool: "lighting.set_light_position",
-          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in meters, Z up. light_id comes from lighting.get_lighting; a directional or environment light has no position and refuses, leaving the light as it was. Answers with current_position, the effective position after the call.",
+          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in metres, Z up. light_id comes from lighting.get_lighting; a directional or environment light has no position and refuses, leaving the light as it was. Answers with current_position, the effective position after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },
@@ -280,7 +280,7 @@
         {
           member: "set_material_color",
           tool: "materials.set_material_color",
-          description: "Set a simulated material's base color on every surface that shares it, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials; a refused request leaves the material as it was. Answers with current_color, the effective color after the call.",
+          description: "Set a simulated material's base colour on every surface that shares it, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials; a refused request leaves the material as it was. Answers with current_color, the effective colour after the call.",
           operation: "mutating",
           deadline_ms: 5000,
         },
