@@ -81,10 +81,10 @@ it out:
 ```sh
 peppy stack launch simulation_mcp                                                   # Waldo, alpha over MCP, beside the simulated world's endpoint
 peppy stack launch simulation_mcp --join so101_sim:charlie                          # alpha and an SO-101 on the one URL
-peppy stack join openarm_v2_sim -i bravo                                            # listed when the join returns
+peppy stack join openarm_v2_sim:bravo                                               # listed when the join returns
 peppy stack launch simulation_mcp --with mujoco,world_control=none                      # MuJoCo, this endpoint alone
 peppy stack launch physical --with robot_control
-peppy stack join openarm_v2 -i alpha --with mcp_commander,cameras                   # the real robot
+peppy stack join openarm_v2:alpha --with mcp_commander,cameras                      # the real robot
 ```
 
 The endpoint, the tools, the resources, and every command below are identical under all of them.
