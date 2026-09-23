@@ -41,18 +41,22 @@ The cameras take `camera` too, one of the names the listing gives under `members
 | `camera.latest_frame`               | `rgb_camera:v1`          | resource, JPEG, 2 Hz at most, downscaled above 512 KiB |
 | `camera.info`, `camera.set_exposure`, `camera.set_gain`, `camera.set_white_balance` | `rgb_camera:v1` | tools, the setters `safety_sensitive` |
 | `depth_camera.latest_frame`         | `rgbd_camera:v1`         | resource, the color image as a JPEG                |
-| `depth_camera.latest_depth`         | `rgbd_camera:v1`         | resource, a 16-bit PNG in the unit `depth_info` reports |
+| `depth_camera.latest_depth_picture` | `rgbd_camera:v1`         | resource, the depth as a grayscale JPEG, white near and black far |
+| `depth_camera.latest_depth_samples` | `rgbd_camera:v1`         | resource, a 16-bit PNG in the unit `depth_info` reports |
 | `depth_camera.info`, `depth_camera.depth_info`, and the three color setters | `rgbd_camera:v1` | tools |
 | `camera_profile.get`, `camera_profile.reset` | `camera_profile:v1` | the device's controls, their units and ranges |
 | `camera_geometry.color_intrinsics`, `camera_geometry.depth_intrinsics`, `camera_geometry.depth_to_color` | `camera_geometry:v1` | read only |
+
+The one `depth_stream` member of a depth camera is published twice: the picture for a model to see
+how far things are, and the samples for a program to compute with.
 
 A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.grab_item`,
 `brain.place_item`, `brain.drop_item` and `brain.abort` as tasks and `brain.get_state` as a tool
 (`item_perception:v1`, `item_manipulation:v1`), and one with a recorder
 `recorder.record_episode` (`episode_recording:v1`), confirmation gated. Resources are published per
 robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
-`alpha/chest/depth_camera.latest_depth`, and the server sends `resources/list_changed` when a join
-or a removal changes the list.
+`alpha/chest/depth_camera.latest_depth_samples`, and the server sends `resources/list_changed` when
+a join or a removal changes the list.
 
 Every contract is pinned by sha256 to the document this exposure was written against. The
 backbone's joint-space move (`move_arm_joints`) and the cameras' brightness and contrast stay

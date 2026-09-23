@@ -30,7 +30,7 @@
   // shares. What differs between robots is what robot.list answers.
   server: {
     title: "Robots",
-    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: it lists the robots present, and for each its model, its arms and grippers, its cameras and which of them carry depth, whether it has a brain and a recorder, and the capabilities its tools answer for it. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives under members. A call naming a robot that is not there, a capability the robot does not fill, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do, so prefer it over any simulation endpoint, and when the robots run in a simulation their names here are their names in that endpoint's scene.get_robots_list. The listing reports each robot's arm and gripper names under limbs, and every limb tool takes those names. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: read a camera's latest frame, JPEG encoded, and a depth camera's latest depth, a 16-bit PNG in the unit its depth_info reports. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for robot.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and a robot refuses posture durations above 600 s outright. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: it lists the robots present, and for each its model, its arms and grippers, its cameras and which of them carry depth, whether it has a brain and a recorder, and the capabilities its tools answer for it. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives under members. A call naming a robot that is not there, a capability the robot does not fill, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do, so prefer it over any simulation endpoint, and when the robots run in a simulation their names here are their names in that endpoint's scene.get_robots_list. The listing reports each robot's arm and gripper names under limbs, and every limb tool takes those names. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: read a camera's latest frame, JPEG encoded, and from a depth camera depth_camera.latest_depth_picture, a grayscale JPEG where white is near and black is far, to see how far things are, and depth_camera.latest_depth_samples, a 16-bit PNG in the unit its depth_info reports, to compute with the measurements. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for robot.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and a robot refuses posture durations above 600 s outright. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   robots: {
@@ -262,7 +262,8 @@
     // A camera that carries depth beside its color: one per such camera of
     // the robot, named by `camera` on every call.
     // Its color frame is a resource as a color camera's is, and its depth
-    // frame a second resource, lossless, in the unit depth_info reports.
+    // frame two more from the one contract member: a grayscale picture to
+    // look at and the lossless samples to compute with.
     depth_camera: {
       contract: {
         name: "rgbd_camera",
@@ -292,8 +293,29 @@
         },
         {
           member: "depth_stream",
-          resource: "depth_camera.latest_depth",
-          description: "The camera's latest depth frame, a 16-bit PNG with one sample per pixel in the unit depth_camera.depth_info reports as depth_unit (meters per sample step), 0 where the camera measured nothing, with its width and height, aligned to the color frame as header.align_mode says.",
+          resource: "depth_camera.latest_depth_picture",
+          description: "The camera's latest depth frame drawn as a grayscale JPEG, from the same viewpoint as depth_camera.latest_frame: white is near, black is far, the shades between are linear in distance, and black also marks a pixel the camera measured nothing at. The shading runs from 100 to 10000 sample steps of the depth_unit depth_camera.depth_info reports, so on a camera measuring in millimeters white is 0.1 m or nearer and black 10 m or farther. Read this one to see how far things are; read depth_camera.latest_depth_samples for the measurements themselves.",
+          freshness: { max_age_ms: 2000 },
+          update: { max_hz: 2 },
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+            // The ends of the shading, in the frame's own sample counts.
+            depth_range: { near: 100, far: 10000 },
+          },
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+        {
+          member: "depth_stream",
+          resource: "depth_camera.latest_depth_samples",
+          description: "The camera's latest depth frame, a 16-bit PNG with one sample per pixel in the unit depth_camera.depth_info reports as depth_unit (meters per sample step), 0 where the camera measured nothing, with its width and height, aligned to the color frame as header.align_mode says. Read this one to compute with the measurements; read depth_camera.latest_depth_picture to see how far things are.",
           freshness: { max_age_ms: 2000 },
           update: { max_hz: 2 },
           // Lossless: a depth map is data, and downscaling keeps every
@@ -322,7 +344,7 @@
         {
           member: "depth_stream_info",
           tool: "depth_camera.depth_info",
-          description: "Report the camera's depth stream's resolution, frame rate and encoding, and depth_unit, the meters one sample step of depth_camera.latest_depth stands for. Changes nothing.",
+          description: "Report the camera's depth stream's resolution, frame rate and encoding, and depth_unit, the meters one sample step of depth_camera.latest_depth_samples stands for. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
