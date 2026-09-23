@@ -47,7 +47,8 @@ ROBOTS = [
             "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
             "depth_camera.depth_info", "depth_camera.info", "depth_camera.set_exposure",
             "depth_camera.set_gain", "depth_camera.set_white_balance",
-            "robot.get_identity", "robot.move_arm", "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
+            "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
+            "robot.move_to_home", "robot.move_to_ready",
         ],
         "resources": [
             "alpha/chest/depth_camera.latest_depth_picture", "alpha/chest/depth_camera.latest_depth_samples",
@@ -57,19 +58,24 @@ ROBOTS = [
         "members": {"camera": ["wrist_left", "wrist_right"], "depth_camera": ["chest"]},
         "notes": [],
         "identity": {"robot": "alpha", "model": "openarm_v2", "core_node": "cn-lab"},
-        "limbs": {"arm_names": ["left_arm", "right_arm"], "gripper_names": ["left_gripper", "right_gripper"]},
+        "limbs": {
+            "arm_names": ["left_arm", "right_arm"],
+            "joints_per_arm": [7, 7],
+            "gripper_names": ["left_gripper", "right_gripper"],
+        },
     },
     {
         "robot": "charlie",
         "tools": [
             "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
-            "robot.get_identity", "robot.move_arm", "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
+            "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
+            "robot.move_to_home", "robot.move_to_ready",
         ],
         "resources": ["charlie/front/camera.latest_frame", "charlie/robot.limb_state"],
         "members": {"camera": ["front"]},
         "notes": ["identity: deadline exceeded: the provider did not answer within 2000 ms"],
         "identity": None,
-        "limbs": {"arm_names": ["arm"], "gripper_names": ["gripper"]},
+        "limbs": {"arm_names": ["arm"], "joints_per_arm": [5], "gripper_names": ["gripper"]},
     },
 ]
 # The goal fields of each tool and their JSON types, as the derived catalog

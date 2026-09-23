@@ -16,16 +16,18 @@ It lists every robot present. Each entry carries `robot`, the name every other t
 `tools`, the tools that robot answers, including its brain's and its recorder's where it has them;
 `resources`, the resources it publishes, each read at `peppy://resource/<name>`; `members`, its
 camera names under `camera` (color) and `depth_camera` (carrying depth); `identity`, its model and
-the machine hosting it; `limbs`, its arm and gripper names; and `notes`, anything that could not be
-read for it. A call naming a robot that is not there, a tool it does not answer, or a camera it
-does not have is refused, and the refusal names what is there. When the robots run in a simulation
-their names here are their names in the simulated world's `scene.get_robots_list`.
+the machine hosting it; `limbs`, its arm and gripper names with the joints behind each arm; and
+`notes`, anything that could not be read for it. A call naming a robot that is not there, a tool
+it does not answer, or a camera it does not have is refused, and the refusal names what is there.
+When the robots run in a simulation their names here are their names in the simulated world's
+`scene.get_robots_list`.
 
 Every other tool takes `robot`. The robot's identity, moves and state:
 
 | Tool or resource            | Contract member                     | Policy                          |
 | --------------------------- | ----------------------------------- | ------------------------------- |
 | `robot.get_identity`        | `robot_identity:v1` `get_identity`  | read only, 2 s                  |
+| `robot.get_limb_names`      | `limb_state:v1` `get_limb_names`    | read only, 2 s                  |
 | `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 60 s                      |
 | `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 60 s                      |
 | `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 60 s                      |
