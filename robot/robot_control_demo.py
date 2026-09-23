@@ -311,9 +311,15 @@ def list_robots(client):
     return result.get("structuredContent", {}).get("robots", [])
 
 
+def joined(names):
+    """`names` on one line, `-` when there are none."""
+    return ", ".join(names) or "-"
+
+
 def command_list(client, args, out, sleep):
     """Print every robot the endpoint lists: its name, its model, its arms,
-    grippers and cameras, and what could not be read."""
+    grippers and cameras, the tools it answers, the resources it publishes,
+    and what could not be read."""
     robots = list_robots(client)
     if not robots:
         print("no robot is on the stack", file=out)
@@ -322,10 +328,11 @@ def command_list(client, args, out, sleep):
         identity = robot.get("identity") or {}
         limbs = robot.get("limbs") or {}
         print(f"{robot['robot']}: model {identity.get('model', '?')} on {identity.get('core_node', '?')}", file=out)
-        print(f"  arms {', '.join(limbs.get('arm_names', [])) or '-'}; grippers {', '.join(limbs.get('gripper_names', [])) or '-'}", file=out)
+        print(f"  arms {joined(limbs.get('arm_names', []))}; grippers {joined(limbs.get('gripper_names', []))}", file=out)
         for target, members in (robot.get("members") or {}).items():
-            print(f"  {target}: {', '.join(members)}", file=out)
-        print(f"  capabilities {', '.join(robot.get('capabilities', []))}", file=out)
+            print(f"  {target}: {joined(members)}", file=out)
+        print(f"  tools {joined(robot.get('tools') or [])}", file=out)
+        print(f"  resources {joined(robot.get('resources') or [])}", file=out)
         for note in robot.get("notes", []):
             print(f"  note: {note}", file=out)
     return EXIT_OK

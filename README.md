@@ -122,8 +122,9 @@ nodes implement, at the viewpoints of the physical rig, and reading a wrist fram
 does on hardware. They are targets of the robots' document, so a model never depends on the
 simulated world's endpoint to see. `camera_profile:v1` and `camera_geometry:v1`, which the
 rendered relays implement and the physical camera nodes do not yet, are targets of that document
-too: a robot fills them where its cameras implement them, the listing's capabilities say so, and
-a call for a camera that does not is refused.
+too: a robot fills them where its cameras implement them, the listing names their tools in that
+robot's `tools` and the cameras that fill them under `members`, and a call for a camera that does
+not is refused.
 
 A model reading one of these endpoints must never mistake it for a real-robot surface, so every
 document under `simulation/` says what it is, and the same test enforces the wording:

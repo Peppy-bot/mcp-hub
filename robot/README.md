@@ -13,13 +13,13 @@ A model starts with the listing:
 | `robot.list` | read only, 2 s |
 
 It lists every robot present. Each entry carries `robot`, the name every other tool takes;
-`capabilities`, the targets the robot fills, which say which tools and resources answer for it;
-`members`, its camera names under `camera` (color) and `depth_camera` (carrying depth);
-`identity`, its model and the machine hosting it; `limbs`, its arm and gripper names; and `notes`,
-anything that could not be read for it. A call naming a robot that is not there, a capability it
-does not fill, or a camera it does not have is refused, and the refusal names what is there. When
-the robots run in a simulation their names here are their names in the simulated world's
-`scene.get_robots_list`.
+`tools`, the tools that robot answers, including its brain's and its recorder's where it has them;
+`resources`, the resources it publishes, each read at `peppy://resource/<name>`; `members`, its
+camera names under `camera` (color) and `depth_camera` (carrying depth); `identity`, its model and
+the machine hosting it; `limbs`, its arm and gripper names; and `notes`, anything that could not be
+read for it. A call naming a robot that is not there, a tool it does not answer, or a camera it
+does not have is refused, and the refusal names what is there. When the robots run in a simulation
+their names here are their names in the simulated world's `scene.get_robots_list`.
 
 Every other tool takes `robot`. The robot's identity, moves and state:
 
@@ -89,8 +89,8 @@ The endpoint, the tools, the resources, and every command below are identical un
 Only Waldo models the cameras' response, so under MuJoCo and Isaac Sim the frames, `camera.info`
 and the geometry tools work and the setters refuse with a message, as the `instructions` tell a
 model to expect. On hardware the `uvc_camera_linux` and `zed_camera` nodes describe no profile or
-geometry, so those tools refuse for their cameras and the listing's capabilities say so. The
-`simulation_mcp` launch also serves the simulated world's own endpoint,
+geometry, so the listing leaves those tools out of such a robot's `tools` and a call on them is
+refused. The `simulation_mcp` launch also serves the simulated world's own endpoint,
 [`simulation:v1`](../simulation/simulation.json5), on port 8902; it has no counterpart on the real
 robots, and a client moving there drops that one entry.
 
@@ -118,12 +118,12 @@ uv run robot_control_demo.py demo --robot alpha
 
 `tools` asks the endpoint what it advertises (`server/discover`, then `tools/list`) and prints the
 title, the instructions, and every tool with its description, the camera tools included. `list`
-calls `robot.list` and prints every robot with its limbs, cameras and capabilities. Each move has
-a subcommand naming its robot; the script drives the moves alone and reads no camera. `demo`
-brings the robot's arms to ready, closes and opens every gripper the listing gives it, and returns
-home, stopping at the first move that does not complete. `--endpoint <url>` points the script at
-another endpoint. Ctrl-C cancels the move in flight through `tasks/cancel` and waits for the robot
-to settle.
+calls `robot.list` and prints every robot with its limbs, its cameras, the tools it answers and
+the resources it publishes. Each move has a subcommand naming its robot; the script drives the
+moves alone and reads no camera. `demo` brings the robot's arms to ready, closes and opens every
+gripper the listing gives it, and returns home, stopping at the first move that does not complete.
+`--endpoint <url>` points the script at another endpoint. Ctrl-C cancels the move in flight
+through `tasks/cancel` and waits for the robot to settle.
 
 Exit codes: 0 the move completed and the robot reported success; 1 the robot did not do it (a
 refused goal, a robot that is not listed, a failed move, or a completed move reporting no

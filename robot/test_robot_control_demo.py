@@ -36,12 +36,24 @@ TITLE = "Robots"
 INSTRUCTIONS = "Every robot of the stack, addressed by name."
 TIMESTAMP = "2026-08-27T12:00:00Z"
 # The robot every move addresses in these tests, and the fleet the stand-in
-# lists: alpha, a bimanual robot, and charlie, a one-armed one.
+# lists: alpha, a bimanual robot with two cameras and a depth camera, and
+# charlie, a one-armed one, each entry naming the tools it answers and the
+# resources it publishes, both sorted, as the server reports them.
 ROBOT = "alpha"
 ROBOTS = [
     {
         "robot": "alpha",
-        "capabilities": ["identity", "postures", "limb_motion", "limb_state", "camera", "depth_camera"],
+        "tools": [
+            "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
+            "depth_camera.depth_info", "depth_camera.info", "depth_camera.set_exposure",
+            "depth_camera.set_gain", "depth_camera.set_white_balance",
+            "robot.get_identity", "robot.move_arm", "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
+        ],
+        "resources": [
+            "alpha/chest/depth_camera.latest_depth_picture", "alpha/chest/depth_camera.latest_depth_samples",
+            "alpha/chest/depth_camera.latest_frame", "alpha/robot.limb_state",
+            "alpha/wrist_left/camera.latest_frame", "alpha/wrist_right/camera.latest_frame",
+        ],
         "members": {"camera": ["wrist_left", "wrist_right"], "depth_camera": ["chest"]},
         "notes": [],
         "identity": {"robot": "alpha", "model": "openarm_v2", "core_node": "cn-lab"},
@@ -49,7 +61,11 @@ ROBOTS = [
     },
     {
         "robot": "charlie",
-        "capabilities": ["identity", "postures", "limb_motion", "limb_state", "camera"],
+        "tools": [
+            "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
+            "robot.get_identity", "robot.move_arm", "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
+        ],
+        "resources": ["charlie/front/camera.latest_frame", "charlie/robot.limb_state"],
         "members": {"camera": ["front"]},
         "notes": ["identity: deadline exceeded: the provider did not answer within 2000 ms"],
         "identity": None,
@@ -755,7 +771,10 @@ class ScriptTests(StandInCase):
         self.assertIn("arms left_arm, right_arm; grippers left_gripper, right_gripper", out)
         self.assertIn("camera: wrist_left, wrist_right", out)
         self.assertIn("depth_camera: chest", out)
+        self.assertIn("  tools " + ", ".join(ROBOTS[0]["tools"]), out)
+        self.assertIn("  resources " + ", ".join(ROBOTS[0]["resources"]), out)
         self.assertIn("charlie: model ? on ?", out)
+        self.assertIn("  resources charlie/front/camera.latest_frame, charlie/robot.limb_state", out)
         self.assertIn("note: identity: deadline exceeded", out)
         (call,) = server.calls("tools/call")
         self.assertEqual((call.params["name"], call.params["arguments"]), (demo.TOOL_LIST, {}))
