@@ -71,7 +71,7 @@ document against the contracts it references and read what an endpoint for it ad
 ```sh
 peppy repo refresh                                      # caches the contracts hub
 peppy repo index . --check --validate-mcp-exposures     # the index, then every exposure against its contracts
-peppy robot_control catalog <exposure_name>:<tag>                 # the derived catalog: resources, tools, tasks, schemas
+peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: resources, tools, tasks, schemas
 ```
 
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
