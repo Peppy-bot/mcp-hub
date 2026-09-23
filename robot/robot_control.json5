@@ -34,7 +34,6 @@
   },
 
   robots: {
-    argument: "robot",
     list: {
       tool: "robot.list",
       description: "List every robot of the stack. Each entry carries robot, its name, which every other tool takes; capabilities, the targets it fills, which say which tools and resources answer for it; members, the camera names its camera tools take, under camera for color cameras and depth_camera for cameras that carry depth; identity, its model and the machine hosting it; limbs, its arm and gripper names; and notes, anything that could not be read for it. Takes no arguments and changes nothing.",

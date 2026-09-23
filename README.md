@@ -31,11 +31,11 @@ model reads two preambles: the robots' says it is the robots' own surface and is
 the simulated world's says it sets the world up and is never a way to complete a task. On the
 physical robots the second endpoint is absent.
 
-The robots' document declares itself a per-robot surface (`robots: { argument, list, describe }`):
-every target is a set the stack's robots fill, every tool but the listing one takes `robot`, and
-resources are published per robot. A join adds its robot to the running server and a removal
-takes it out. The exposure, its client script, and its tests have their own guide:
-[`robot/README.md`](robot/README.md).
+The robots' document declares itself a per-robot surface (`robots: { list, describe }`): every
+target is a set the stack's robots fill, the routing argument is `robot`, which every tool but the
+listing one takes, and resources are published per robot. A join adds its robot to the running
+server and a removal takes it out. The exposure, its client script, and its tests have their own
+guide: [`robot/README.md`](robot/README.md).
 
 ## Adding an exposure
 
