@@ -33,8 +33,7 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 
-`robot.move_arm` and `robot.move_gripper` name a limb as the listing reports it: `left_arm`,
-`right_arm`, `left_gripper` and `right_gripper` on an OpenArm v2, `arm` and `gripper` on an SO-101.
+`robot.move_arm` and `robot.move_gripper` name a limb as the listing reports it under `limbs`.
 The cameras take `camera` too, one of the names the listing gives under `members`:
 
 | Tool or resource                    | Contract                 | Policy                                              |
