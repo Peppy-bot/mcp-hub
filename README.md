@@ -4,7 +4,7 @@ A repository of Peppy **MCP exposures** (`peppy_schema: "mcp_exposure/v1"`).
 
 An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
 
-The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each exposure target to a running implementer of its contract through `links`, and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `front_camera:v1` in `so101/fragments/mcp_commander.json5`, the `mcp_commander` option of a simulated SO-101, bound to the robot's rendered `front` camera. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
+The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each exposure target to a running implementer of its contract through `links`, and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on, its `mcp_commander` option adding the moves. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
 
 `peppy` configures this repository by default, so a launcher on any machine can list what it publishes.
 
@@ -13,28 +13,29 @@ The document is the whole artifact. A launcher lists exposures under `source: { 
 Exposures are grouped by what they publish:
 
 ```text
-cameras/      one camera as resources and tools
+robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
-openarm/      the OpenArm v2's own surface: its posture, arm, and gripper moves as action-backed tools and its three cameras as resources and tools, with a Python client
-manipulation/ an AI brain's item perception and manipulation as action-backed tools, for any embodiment
 simulation/   the simulated world's scene, its objects' controls, lighting, and materials as one document; a simulation launch option only
 ```
 
-An OpenArm v2 stack publishes two endpoints, one per family, and the boundary between them is
-whether what a model does transfers to the physical robot:
+A stack publishes two endpoints, one per family, and the boundary between them is whether what a
+model does transfers to the physical robots:
 
-| Family | Document | What it publishes | On the physical robot |
+| Family | Document | What it publishes | On the physical robots |
 | --- | --- | --- | --- |
-| Robot | [`openarm/openarm_v2.json5`](openarm/openarm_v2.json5) (`openarm_v2:v1`) | who the robot is, the arm and gripper moves, the three cameras and their controls | yes |
+| Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves, its limb state, its cameras and their controls, its brain and its recorder | yes |
 | Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene, the controls of its spawned objects, its light sources, its materials | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
-model reads two preambles: the robot's says it is the robot's own surface and is to be preferred,
+model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
 the simulated world's says it sets the world up and is never a way to complete a task. On the
-physical robot the second endpoint is absent.
+physical robots the second endpoint is absent.
 
-The OpenArm v2 exposure, its client script, and its tests have their own guide:
-[`openarm/README.md`](openarm/README.md).
+The robots' document declares itself a per-robot surface (`robots: { list, describe }`): every
+target is a set the stack's robots fill, the routing argument is `robot`, which every tool but the
+listing one takes, and resources are published per robot. A join adds its robot to the running
+server and a removal takes it out. The exposure, its client script, and its tests have their own
+guide: [`robot/README.md`](robot/README.md).
 
 ## Adding an exposure
 
@@ -106,23 +107,24 @@ another.
 and `scene_materials` edit the simulated world and have no physical counterpart either, but a
 model legitimately drives them to set the world up. Exposures on them live under `simulation/`:
 today one document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the
-four contracts as its `scene`, `controls`, `lighting` and `materials` targets. Only a simulation launch
-option serves it: the `mcp_scene_commander` option of the `simulation_mcp` axis of the
-[launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `openarm_simulation_mcp` launcher,
-at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the robot endpoint
-`http://127.0.0.1:8900/openarm_v2/v1/mcp`. It binds the simulation alone, so it needs nothing
-from a robot copy and outlives it. Waldo is the one simulation implementing the controls,
+four contracts as its `scene`, `controls`, `lighting` and `materials` targets. Only a simulation
+launch option serves it: the `world_control` axis of the
+[launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher, deployed
+by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the robots'
+endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it needs
+nothing from a robot copy and outlives it. Waldo is the one simulation implementing the controls,
 lighting and materials contracts, so the launcher requires it beside that option. No real-robot
 fragment lists the document.
 
 The cameras are not simulation configuration. The rig the simulation renders publishes
-`rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera` and `zed_camera`
+`rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera_linux` and `zed_camera`
 nodes implement, at the viewpoints of the physical rig, and reading a wrist frame is what a model
-does on hardware. They are targets of the robot document, so a model never depends on the
-simulated world's endpoint to see. The one camera contract with no physical implementer,
-`camera_profile:v1`, is not published: the setters carry their bounds through `restrict` and
-their modes and units in their descriptions, and its tools return to the robot document when the
-physical camera nodes implement it.
+does on hardware. They are targets of the robots' document, so a model never depends on the
+simulated world's endpoint to see. `camera_profile:v1` and `camera_geometry:v1`, which the
+rendered relays implement and the physical camera nodes do not yet, are targets of that document
+too: a robot fills them where its cameras implement them, the listing names their tools in that
+robot's `tools` and the cameras that fill them under `members`, and a call for a camera that does
+not is refused.
 
 A model reading one of these endpoints must never mistake it for a real-robot surface, so every
 document under `simulation/` says what it is, and the same test enforces the wording:

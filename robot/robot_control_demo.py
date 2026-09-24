@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
-"""Drive an OpenArm v2 through the MCP server built into peppy.
+"""Drive the robots of a stack through the MCP server built into peppy.
 
-The server serves the `openarm_v2:v1` exposure beside this file at
-http://127.0.0.1:8900/openarm_v2/v1/mcp whenever the `openarm_v2` launcher
-runs with its `mcp_commander` option:
+The server serves the `robot_control:v1` exposure beside this file at
+http://127.0.0.1:8900/robot_control/v1/mcp whenever a launcher deploys its
+`robot_control` option, every robot listed on it and driven under its `mcp_commander`
+option:
 
-    peppy stack launch openarm_v2 --with=mujoco,mcp_commander
+    peppy stack launch simulation_mcp
 
 This file talks MCP (revision 2026-07-28) over Streamable HTTP with nothing
 but the standard library, in the stateless shape that server speaks: every
 request is one POST carrying its own protocol version and client
 capabilities, every answer is one JSON-RPC message, and a move is an MCP task
-polled through `tasks/get` until it settles.
+polled through `tasks/get` until it settles. Every move names its robot, one
+of the names `robot_control_demo.py list` reports.
 
-    openarm_v2_demo.py tools
-    openarm_v2_demo.py move-to-ready --duration-s 4
-    openarm_v2_demo.py move-gripper --gripper left_gripper --opening 0
-    openarm_v2_demo.py move-arm --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
-    openarm_v2_demo.py move-to-home --duration-s 4
-    openarm_v2_demo.py demo
+    robot_control_demo.py tools
+    robot_control_demo.py list
+    robot_control_demo.py move-to-ready --robot alpha --duration-s 4
+    robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening 0
+    robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
+    robot_control_demo.py move-to-home --robot alpha --duration-s 4
+    robot_control_demo.py demo --robot alpha
 
 Exit codes: 0 the move completed and the robot reported success; 1 the robot
 did not do it (a refused goal, a failed move, or a completed move reporting
@@ -35,7 +38,7 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_ENDPOINT = "http://127.0.0.1:8900/openarm_v2/v1/mcp"
+DEFAULT_ENDPOINT = "http://127.0.0.1:8900/robot_control/v1/mcp"
 
 # --- The protocol the server speaks -----------------------------------------
 
@@ -69,12 +72,13 @@ REQUEST_TIMEOUT_S = 30.0
 
 # --- The surface the exposure publishes --------------------------------------
 
-TOOL_MOVE_TO_READY = "openarm.move_to_ready"
-TOOL_MOVE_TO_HOME = "openarm.move_to_home"
-TOOL_MOVE_ARM = "openarm.move_arm"
-TOOL_MOVE_GRIPPER = "openarm.move_gripper"
-ARM_NAMES = ("left_arm", "right_arm")
-GRIPPER_NAMES = ("left_gripper", "right_gripper")
+TOOL_LIST = "robot.list"
+TOOL_MOVE_TO_READY = "robot.move_to_ready"
+TOOL_MOVE_TO_HOME = "robot.move_to_home"
+TOOL_MOVE_ARM = "robot.move_arm"
+TOOL_MOVE_GRIPPER = "robot.move_gripper"
+# The routing argument every move takes: the robot it addresses.
+ROBOT_ARGUMENT = "robot"
 # Openings as fractions of full jaw travel, the contract's unit.
 GRIPPER_CLOSED = 0.0
 GRIPPER_OPEN = 1.0
@@ -299,12 +303,52 @@ def command_tools(client, args, out, sleep):
     return EXIT_OK
 
 
+def list_robots(client):
+    """The robots the endpoint lists, as `robot.list` answers them."""
+    result = client.request("tools/call", {"name": TOOL_LIST, "arguments": {}})
+    if result.get("isError"):
+        raise EndpointError(TOOL_LIST + ": " + " ".join(block.get("text", "") for block in result.get("content", [])))
+    return result.get("structuredContent", {}).get("robots", [])
+
+
+def joined(names):
+    """`names` on one line, `-` when there are none."""
+    return ", ".join(names) or "-"
+
+
+def command_list(client, args, out, sleep):
+    """Print every robot the endpoint lists: its name, its model, its arms,
+    grippers and cameras, the tools it answers, the resources it publishes,
+    and what could not be read."""
+    robots = list_robots(client)
+    if not robots:
+        print("no robot is on the stack", file=out)
+        return EXIT_OK
+    for robot in robots:
+        identity = robot.get("identity") or {}
+        limbs = robot.get("limbs") or {}
+        print(f"{robot['robot']}: model {identity.get('model', '?')} on {identity.get('core_node', '?')}", file=out)
+        print(f"  arms {joined(limbs.get('arm_names', []))}; grippers {joined(limbs.get('gripper_names', []))}", file=out)
+        for target, members in (robot.get("members") or {}).items():
+            print(f"  {target}: {joined(members)}", file=out)
+        print(f"  tools {joined(robot.get('tools') or [])}", file=out)
+        print(f"  resources {joined(robot.get('resources') or [])}", file=out)
+        for note in robot.get("notes", []):
+            print(f"  note: {note}", file=out)
+    return EXIT_OK
+
+
+def addressed(robot, goal):
+    """`goal` with the routing argument naming `robot`."""
+    return {ROBOT_ARGUMENT: robot, **goal}
+
+
 def command_move_to_ready(client, args, out, sleep):
-    return run_move(client, TOOL_MOVE_TO_READY, {"duration_s": args.duration_s}, out, sleep)
+    return run_move(client, TOOL_MOVE_TO_READY, addressed(args.robot, {"duration_s": args.duration_s}), out, sleep)
 
 
 def command_move_to_home(client, args, out, sleep):
-    return run_move(client, TOOL_MOVE_TO_HOME, {"duration_s": args.duration_s}, out, sleep)
+    return run_move(client, TOOL_MOVE_TO_HOME, addressed(args.robot, {"duration_s": args.duration_s}), out, sleep)
 
 
 def command_move_arm(client, args, out, sleep):
@@ -316,7 +360,7 @@ def command_move_arm(client, args, out, sleep):
         "plan_position_tolerance_m": args.plan_position_tolerance_m,
         "plan_orientation_tolerance_rad": args.plan_orientation_tolerance_rad,
     }
-    return run_move(client, TOOL_MOVE_ARM, goal, out, sleep)
+    return run_move(client, TOOL_MOVE_ARM, addressed(args.robot, goal), out, sleep)
 
 
 def gripper_goal(gripper_name, opening, max_effort=0.0):
@@ -325,23 +369,25 @@ def gripper_goal(gripper_name, opening, max_effort=0.0):
 
 def command_move_gripper(client, args, out, sleep):
     goal = gripper_goal(args.gripper, args.opening, args.max_effort)
-    return run_move(client, TOOL_MOVE_GRIPPER, goal, out, sleep)
+    return run_move(client, TOOL_MOVE_GRIPPER, addressed(args.robot, goal), out, sleep)
 
 
 def command_demo(client, args, out, sleep):
-    """Ready, both grippers closed then opened, home; stops at the first move
-    the robot did not complete."""
-    steps = [
-        (TOOL_MOVE_TO_READY, {"duration_s": args.duration_s}),
-        (TOOL_MOVE_GRIPPER, gripper_goal("left_gripper", GRIPPER_CLOSED)),
-        (TOOL_MOVE_GRIPPER, gripper_goal("right_gripper", GRIPPER_CLOSED)),
-        (TOOL_MOVE_GRIPPER, gripper_goal("left_gripper", GRIPPER_OPEN)),
-        (TOOL_MOVE_GRIPPER, gripper_goal("right_gripper", GRIPPER_OPEN)),
-        (TOOL_MOVE_TO_HOME, {"duration_s": args.duration_s}),
-    ]
+    """Ready, every gripper of the robot closed then opened, home; stops at
+    the first move the robot did not complete. The grippers are the ones the
+    listing reports for the robot."""
+    listed = {robot["robot"]: robot for robot in list_robots(client)}
+    if args.robot not in listed:
+        print(f"`{args.robot}` is not a robot of this stack; the robots are {', '.join(listed) or 'none'}", file=out)
+        return EXIT_NOT_DONE
+    grippers = (listed[args.robot].get("limbs") or {}).get("gripper_names", [])
+    steps = [(TOOL_MOVE_TO_READY, {"duration_s": args.duration_s})]
+    steps += [(TOOL_MOVE_GRIPPER, gripper_goal(gripper, GRIPPER_CLOSED)) for gripper in grippers]
+    steps += [(TOOL_MOVE_GRIPPER, gripper_goal(gripper, GRIPPER_OPEN)) for gripper in grippers]
+    steps.append((TOOL_MOVE_TO_HOME, {"duration_s": args.duration_s}))
     for number, (tool, goal) in enumerate(steps, start=1):
         print(f"demo step {number}/{len(steps)}", file=out)
-        code = run_move(client, tool, goal, out, sleep)
+        code = run_move(client, tool, addressed(args.robot, goal), out, sleep)
         if code != EXIT_OK:
             print(f"demo stopped at step {number}", file=out)
             return code
@@ -351,7 +397,7 @@ def command_demo(client, args, out, sleep):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Drive an OpenArm v2 through the MCP server built into peppy.",
+        description="Drive the robots of a stack through the MCP server built into peppy.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="the exposure's MCP endpoint")
@@ -360,17 +406,24 @@ def build_parser():
     tools = commands.add_parser("tools", help="print what the endpoint advertises")
     tools.set_defaults(run=command_tools)
 
+    listing = commands.add_parser("list", help="print every robot of the stack")
+    listing.set_defaults(run=command_list)
+
+    robot_help = "the robot the move addresses, one of the names `list` reports"
     duration_help = "requested move time in seconds; 0 is as fast as the joint limits allow"
-    ready = commands.add_parser("move-to-ready", help="bring both arms to the working posture")
+    ready = commands.add_parser("move-to-ready", help="bring the robot's arms to the working posture")
+    ready.add_argument("--robot", required=True, help=robot_help)
     ready.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
     ready.set_defaults(run=command_move_to_ready)
 
-    home = commands.add_parser("move-to-home", help="bring both arms to the rest posture")
+    home = commands.add_parser("move-to-home", help="bring the robot's arms to the rest posture")
+    home.add_argument("--robot", required=True, help=robot_help)
     home.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
     home.set_defaults(run=command_move_to_home)
 
     arm = commands.add_parser("move-arm", help="move one arm's grasp point to a world-frame pose")
-    arm.add_argument("--arm", choices=ARM_NAMES, required=True)
+    arm.add_argument("--robot", required=True, help=robot_help)
+    arm.add_argument("--arm", required=True, help="one of the robot's arms, as `list` reports them")
     arm.add_argument("--position", type=float, nargs=3, metavar=("X", "Y", "Z"), required=True, help="meters")
     arm.add_argument(
         "--orientation", type=float, nargs=4, metavar=("X", "Y", "Z", "W"), required=True, help="unit quaternion"
@@ -391,14 +444,16 @@ def build_parser():
     arm.set_defaults(run=command_move_arm)
 
     gripper = commands.add_parser("move-gripper", help="drive one gripper to an opening")
-    gripper.add_argument("--gripper", choices=GRIPPER_NAMES, required=True)
+    gripper.add_argument("--robot", required=True, help=robot_help)
+    gripper.add_argument("--gripper", required=True, help="one of the robot's grippers, as `list` reports them")
     gripper.add_argument("--opening", type=float, required=True, help="fraction of jaw travel: 0 closed, 1 fully open")
     gripper.add_argument(
         "--max-effort", type=float, default=0.0, help="effort cap toward the target; 0 is no preference"
     )
     gripper.set_defaults(run=command_move_gripper)
 
-    demo = commands.add_parser("demo", help="ready, grippers closed and opened, home")
+    demo = commands.add_parser("demo", help="ready, every gripper closed and opened, home")
+    demo.add_argument("--robot", required=True, help=robot_help)
     demo.add_argument("--duration-s", type=float, default=DEMO_POSTURE_DURATION_S, help=duration_help)
     demo.set_defaults(run=command_demo)
     return parser
