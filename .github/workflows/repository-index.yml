@@ -25,13 +25,12 @@ concurrency:
 
 jobs:
   check-index:
-    # Every job runs on the self-hosted runner; no job uses a GitHub-hosted
-    # one. A pull request from a fork lands here too, so what keeps fork code
-    # off the box is the repository's fork-PR approval gate, not the runner it
-    # is scheduled on.
-    runs-on: self-hosted
-    # The runners are shared, so a step that hangs holds one hostage. Nothing
-    # here legitimately takes minutes.
+    # A light RunsOn runner: the check boots a daemon and clones the contract
+    # repositories. A pull request from a fork runs on the same runners, so
+    # what holds fork code is the repository's fork-PR approval gate.
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=4/ram=8+16/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    # Nothing here legitimately takes minutes; a hung step should fail fast
+    # rather than hold a runner for the default six hours.
     timeout-minutes: 15
     permissions:
       contents: read
@@ -45,8 +44,8 @@ jobs:
           persist-credentials: false
 
       # Installed under RUNNER_TEMP rather than through scripts/install.sh:
-      # the self-hosted runners are reused, so this run must not touch a
-      # shared ~/.peppy. The whole release archive is extracted, because
+      # the job lives in the checkout and its own temp dir, and wants no
+      # ~/.peppy. The whole release archive is extracted, because
       # resolving the contracts the exposures reference takes a daemon
       # (`peppy repo refresh` runs in one), and the daemon needs its bundled
       # router beside the binary. Set the PEPPY_VERSION repository variable
@@ -91,14 +90,12 @@ jobs:
       # The daemon runs a pre-flight check on the apptainer beside it and
       # refuses to start where unprivileged user namespaces are unavailable,
       # which on Ubuntu 24.04 means an AppArmor profile for the `starter`
-      # binary of this install. The Blacksmith image mounted no AppArmor
-      # securityfs, so the check passed with nothing to do and this workflow
-      # needed no such step; the self-hosted runner does restrict userns, so
+      # binary of this install. The runner image keeps that restriction, so
       # the profile has to be installed. `peppy container setup` writes it
       # through sudo (stdin is not a terminal, so it applies rather than
       # prompts) and rechecks before exiting 0, and it is keyed to the
       # install's path under RUNNER_TEMP, so it grants nothing beyond this
-      # run's binary. Needs passwordless sudo on the box.
+      # run's binary. Needs the passwordless sudo the runner image grants.
       - name: Ready the bundled apptainer for unprivileged use
         run: peppy container setup
 
@@ -160,8 +157,8 @@ jobs:
           fi
 
   python-tests:
-    # The self-hosted runner, as check-index above.
-    runs-on: self-hosted
+    # The smallest RunsOn runner: the tests bring their own stand-ins.
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
     timeout-minutes: 10
     permissions:
       contents: read
