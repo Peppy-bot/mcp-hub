@@ -13,6 +13,14 @@ name: Repository index
 # It runs on every pull request rather than behind a path filter: a removal
 # or a rename drifts the index just as an addition does.
 #
+# peppy and the sibling hubs come from the shared hub-ci-peppy action of the
+# peppy repository, the one the CI of every hub installs peppy with. It pins
+# each sibling hub, the contracts hub among them, at the commit of its branch
+# named like the pull request's head branch where it has one, and at its main
+# otherwise, so an exposure is checked against the contracts of a contracts
+# hub change made on a branch of the same name. The job summary names the hub
+# commits that ran.
+#
 # The second job runs the repository's Python tests. pytest collects every
 # test file under the checkout on its own, so a test added anywhere in the
 # repository runs there without this file naming it.
@@ -43,49 +51,15 @@ jobs:
           # credential sitting in .git/config for every later step to inherit.
           persist-credentials: false
 
-      # Installed under RUNNER_TEMP rather than through scripts/install.sh:
-      # the job lives in the checkout and its own temp dir, and wants no
-      # ~/.peppy. The whole release archive is extracted, because
-      # resolving the contracts the exposures reference takes a daemon
-      # (`peppy repo refresh` runs in one), and the daemon needs its bundled
-      # router beside the binary. Set the PEPPY_VERSION repository variable
-      # to pin a release; it defaults to the latest.
-      #
-      # PEPPY_VERSION reaches the script through the environment rather than a
-      # `${{ }}` expansion, so its value is data the shell reads instead of
-      # source the shell parses, and the shape check turns a typo into a named
-      # failure rather than a 404 from a URL built out of it.
-      - name: Install peppy
-        env:
-          PEPPY_VERSION: ${{ vars.PEPPY_VERSION }}
-        run: |
-          set -euo pipefail
-          version="${PEPPY_VERSION:-latest}"
-          if [[ "$version" == "latest" ]]; then
-            channel="latest"
-          elif [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            channel="v${version#v}"
-          else
-            echo "PEPPY_VERSION must be 'latest' or a release such as 0.20.0, got: $version" >&2
-            exit 1
-          fi
-
-          case "$(uname -m)" in
-            x86_64 | amd64) arch="x86_64" ;;
-            aarch64 | arm64) arch="aarch64" ;;
-            *) echo "unsupported runner architecture: $(uname -m)" >&2; exit 1 ;;
-          esac
-
-          dest="$RUNNER_TEMP/peppy-install"
-          mkdir -p "$dest"
-          curl -fsSL --connect-timeout 10 --max-time 300 \
-            "https://peppy.bot/$channel/peppy-$arch-unknown-linux-gnu.tgz" \
-            | tar -xzf - -C "$dest"
-          chmod +x "$dest/bin/peppy"
-          echo "$dest/bin" >> "$GITHUB_PATH"
-
-          installed="Installed $("$dest/bin/peppy" --version) (channel: $channel)"
-          printf '\n%s\n' "$installed" | tee -a "$GITHUB_STEP_SUMMARY"
+      # The action unpacks the whole peppy release archive under RUNNER_TEMP
+      # and puts its bin on PATH: resolving the contracts the exposures
+      # reference takes a daemon (`peppy repo refresh` runs in one), and the
+      # daemon needs its bundled router beside the binary. It also exports a
+      # PEPPY_HOME under RUNNER_TEMP and writes there the repository registry
+      # the daemon below reads: every sibling hub pinned by commit, and this
+      # checkout as the mcp-hub entry.
+      - name: Install peppy and register the hub repositories
+        uses: Peppy-bot/peppy/.github/actions/hub-ci-peppy@dev
 
       # The daemon runs a pre-flight check on the apptainer beside it and
       # refuses to start where unprivileged user namespaces are unavailable,
@@ -99,22 +73,18 @@ jobs:
       - name: Ready the bundled apptainer for unprivileged use
         run: peppy container setup
 
-      # The daemon gets its own data root and port under RUNNER_TEMP: the CLI
-      # finds it through PEPPY_HOME/daemon_state.json5, so pointing PEPPY_HOME
-      # at the run's directory is discovery and isolation from any other
-      # daemon in one. The name carries the run id because core-node names
-      # must be unique among daemons that can reach each other.
+      # The daemon's data root is the PEPPY_HOME the action exported, where
+      # the registry it wrote lives. The CLI finds the daemon through
+      # PEPPY_HOME/daemon_state.json5, so the run's own directory is discovery
+      # and isolation from any other daemon in one, and the daemon gets a port
+      # of its own. The name carries the run id because core-node names must
+      # be unique among daemons that can reach each other.
       - name: Start an isolated peppy daemon
         run: |
           set -euo pipefail
-          PEPPY_HOME="$RUNNER_TEMP/peppy-home"
-          mkdir -p "$PEPPY_HOME"
           PEPPY_MESSAGING_PORT=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
-          {
-            echo "PEPPY_HOME=$PEPPY_HOME"
-            echo "PEPPY_MESSAGING_PORT=$PEPPY_MESSAGING_PORT"
-          } >> "$GITHUB_ENV"
-          export PEPPY_HOME PEPPY_MESSAGING_PORT
+          echo "PEPPY_MESSAGING_PORT=$PEPPY_MESSAGING_PORT" >> "$GITHUB_ENV"
+          export PEPPY_MESSAGING_PORT
 
           nohup peppy service serve --core-node-name "ci-index-$GITHUB_RUN_ID" \
             > "$RUNNER_TEMP/peppy-serve.log" 2>&1 &
@@ -126,15 +96,16 @@ jobs:
           cat "$RUNNER_TEMP/peppy-serve.log" >&2
           exit 1
 
-      # The bundled defaults register the hub repositories, the contracts hub
-      # among them; refreshing caches every contract an exposure here can
-      # reference. The exposures themselves are read from the checkout by the
-      # check, not from a registered copy, so the pull request's own bytes
-      # are what gets validated.
+      # The registry names every sibling hub, the contracts hub among them;
+      # refreshing caches every contract an exposure here can reference.
+      # With --strict, a hub that CI cannot read fails this step instead of
+      # leaving its contracts out of the check. The exposures themselves are
+      # read from the checkout by the check, not from a registered copy, so
+      # the pull request's own bytes are what gets validated.
       - name: Cache the contract repositories
         run: |
           set -euo pipefail
-          peppy repo refresh
+          peppy repo refresh --strict
 
       - name: Check peppy_repository.json5 and every exposure it lists
         run: |
