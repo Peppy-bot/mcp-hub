@@ -464,7 +464,7 @@
         {
           member: "identify_item",
           tool: "brain.identify_item",
-          description: "Find one item through the robot's brain and mint an item_id for it. description is what to look for, in your own words, or empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a world-frame position in meters, an orientation only when the robot resolved one, and confidence from 0 to 1. Finding nothing is a failure whose message says so. Starts no motion.",
+          description: "Find one item through the robot's brain and mint an item_id for it. description is the item's plain name, two or three words at most, such as \"red mug\" or \"banana\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a world-frame position in meters, an orientation only when the robot resolved one, and confidence from 0 to 1. Finding nothing is a failure whose message says so. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
