@@ -457,14 +457,14 @@
         {
           member: "scan_items",
           tool: "brain.scan_items",
-          description: "Look at the scene through the robot's brain and report every item it can act on, minting an item_id for each. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 world-frame coordinates in meters per item, and confidences from 0 to 1. An empty scene is a success with empty arrays. Scanning again keeps the id of an item the robot recognizes. Starts no motion.",
+          description: "Look at the scene through the robot's brain and report every item it can act on, minting an item_id for each. This is the robot's own answer to \"what do you see\": what it reports here is what it can identify and grab, so ask it rather than reading a camera frame, which is a picture for a person. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 world-frame coordinates in meters per item, and confidences from 0 to 1. An empty scene is a success with empty arrays. Scanning again keeps the id of an item the robot recognizes. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
         {
           member: "identify_item",
           tool: "brain.identify_item",
-          description: "Find one item through the robot's brain and mint an item_id for it. description is what to look for, in your own words, or empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a world-frame position in meters, an orientation only when the robot resolved one, and confidence from 0 to 1. Finding nothing is a failure whose message says so. Starts no motion.",
+          description: "Find one item through the robot's brain and mint an item_id for it. This is the robot's own answer to \"is there a banana\" or \"where is the mug\": ask it rather than judging from a camera frame, since only an item it identifies here can be grabbed. description is the item's plain name, two or three words at most, such as \"red mug\" or \"banana\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a world-frame position in meters, an orientation only when the robot resolved one, and confidence from 0 to 1. Finding nothing is a failure whose message says so. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
