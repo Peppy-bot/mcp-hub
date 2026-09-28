@@ -51,7 +51,7 @@ Create a `.json5` file under the relevant category:
       contract: { name: "<contract_name>", tag: "<tag>" }, // sha256 optional: pins the contract bytes
       topics:   [ /* member, resource, description, freshness, update, ... */ ],
       services: [ /* member, tool, description, operation, deadline_ms, ... */ ],
-      actions:  [ /* member, tool, description, operation, deadline_ms, ... */ ],
+      actions:  [ /* member, tool, description, operation, deadline_ms or progress_timeout_ms, ... */ ],
     },
   },
 }

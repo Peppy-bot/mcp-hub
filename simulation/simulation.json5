@@ -50,7 +50,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "dd5e40b73458f358b0f45993472c165b6b815dec0970953eb2e2fa70a828e211",
+        sha256: "2e3f7f1eb2c9f94f83f70065202fe6964b80c9fb422ae34356b73cdefe573870",
       },
 
       // The catalogue becomes a tool that answers within one request.
@@ -75,9 +75,10 @@
       // tasks extension the call returns a task handle, `tasks/get` reports
       // its state, and `tasks/cancel` forwards to the action's cancel path;
       // for any other client the goal runs inside the call, which answers
-      // with the terminal result. The contract declares no feedback topic,
-      // so a goal reports its state transitions and the terminal result,
-      // not interim progress.
+      // with the terminal result. load_scene and spawn_object report their
+      // progress (bytes fetched, files ready, building) as they go; the
+      // other actions report their state transitions and the terminal
+      // result.
       //
       // The bounds on scale, mass and duration_s live in the prose: an
       // action's goal fields take no `restrict` (the exposure format
@@ -87,11 +88,13 @@
         {
           member: "load_scene",
           tool: "scene.load_scene",
-          description: "Replace the simulated scene with the asset named by asset_id, which must be of kind scene (a scene/<id> from scene.get_assets_list); every spawned object is removed first and the scene's authored lighting and materials are restored. scale is a uniform scale applied to the scene, 1 = as authored; keep it between 0.01 and 100. success is false, with message saying why, when the scene is refused or fails to load.",
+          description: "Replace the simulated scene with the asset named by asset_id, which must be of kind scene (a scene/<id> from scene.get_assets_list); every spawned object is removed first and the scene's authored lighting and materials are restored. scale is a uniform scale applied to the scene, 1 = as authored; keep it between 0.01 and 100. success is false, with message saying why, when the scene is refused or fails to load. A scene the simulation has not cached is downloaded first, which can take minutes on a slow link, and the call reports its progress while it runs. A newer scene.load_scene replaces a load the simulation has not started to build (one still downloading its files, or waiting for an earlier load to be built), which then ends as cancelled with a message naming the newer load; a load the simulation already builds is finished first, and the newer one follows it.",
           operation: "long_running",
-          // A scene load is the one goal that rebuilds the world, so it
-          // gets the longer budget.
-          deadline_ms: 60000,
+          // A load fetches the scene's files first, for as long as the link
+          // needs, so it is bounded by its progress rather than by its
+          // length: it fails only when a whole minute passes with no
+          // progress message.
+          progress_timeout_ms: 60000,
         },
         {
           member: "clear_scene",
@@ -103,9 +106,11 @@
         {
           member: "spawn_object",
           tool: "scene.spawn_object",
-          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails.",
+          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails. An object the simulation has not cached is downloaded first, and the call reports its progress while it runs.",
           operation: "long_running",
-          deadline_ms: 30000,
+          // A spawn fetches the object's files first, so, like load_scene,
+          // it is bounded by its progress rather than by its length.
+          progress_timeout_ms: 60000,
         },
         {
           member: "move_object",
