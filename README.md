@@ -143,15 +143,15 @@ in one of its descriptions fails, naming the part that is missing.
 
 ## Continuous integration
 
-The [index workflow](.github/workflows/repository-index.yml) runs on every pull request with the
-peppy and the sibling hub commits that the shared `hub-ci-peppy` action of the peppy repository
-resolves: a sibling hub is pinned at its branch named like the pull request's head branch where it
-has one, and at its `main` otherwise. It starts an isolated daemon, caches the contract
-repositories, and runs `peppy repo index . --check --validate-mcp-exposures`, so an exposure
-selecting a member its contract does not declare, breaking a policy rule, or pinning bytes the
-contracts hub no longer serves fails the pull request that causes it. It also refuses artifacts derived from an exposure (a `*_mcp/`
-directory or a `*.bundle.json` file): the server is built into peppy and the catalog is derived on
-demand, so only the documents belong here.
+The `check-index` job of the [Tests workflow](.github/workflows/tests.yml) runs on every pull
+request with the peppy and the sibling hub commits that the shared `hub-ci-peppy` action of the
+peppy repository resolves: a sibling hub is pinned at its branch named like the pull request's head
+branch where it has one, and at its `main` otherwise. It starts an isolated daemon, caches the
+contract repositories, and runs `peppy repo index . --check --validate-mcp-exposures`, so an
+exposure selecting a member its contract does not declare, breaking a policy rule, or pinning bytes
+the contracts hub no longer serves fails the pull request that causes it. It also refuses artifacts
+derived from an exposure (a `*_mcp/` directory or a `*.bundle.json` file): the server is built into
+peppy and the catalog is derived on demand, so only the documents belong here.
 
 The same workflow's `python-tests` job runs `pytest` from the repository root with no path and no
 pattern: it collects every `test_*.py` and `*_test.py` under the checkout (`pytest.ini` lets it into

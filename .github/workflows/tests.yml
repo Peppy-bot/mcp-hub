@@ -1,4 +1,4 @@
-name: Repository index
+name: Tests
 
 # `peppy_repository.json5` states what this repository publishes: the
 # `mcp_exposure/v1` documents a launcher can list. It is generated, so a pull
@@ -24,11 +24,17 @@ name: Repository index
 # The second job runs the repository's Python tests. pytest collects every
 # test file under the checkout on its own, so a test added anywhere in the
 # repository runs there without this file naming it.
+#
+# The last job, `test`, is the one status check the org ruleset requires on
+# main. It is green only when every other job of this workflow succeeded or
+# was skipped, so every check a pull request must pass is a job of this
+# workflow. merge-set-events.yml names this workflow by its name, Tests, to
+# hand the end of each run to the merge-set bot of peppy.
 on:
   pull_request:
 
 concurrency:
-  group: repository-index-${{ github.event.pull_request.number }}
+  group: tests-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -156,3 +162,26 @@ jobs:
           set -euo pipefail
           python -m pip install --quiet pytest==9.1.1
           python -m pytest --verbose
+
+  # The one status check the org ruleset requires on main. It is green only
+  # when every job above succeeded or was skipped, so a red job blocks the
+  # merge whichever job it ran in.
+  test:
+    needs: [check-index, python-tests]
+    # Runs whatever happened above: on the default condition a failed or
+    # cancelled job would leave this check unreported instead of red.
+    if: always()
+    # The smallest RunsOn runner: the job reads the results of the others.
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Report every job's result
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: echo "$RESULTS"
+
+      - name: Fail when any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
