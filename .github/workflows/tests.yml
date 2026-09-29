@@ -21,9 +21,9 @@ name: Tests
 # hub change made on a branch of the same name. The job summary names the hub
 # commits that ran.
 #
-# The second job runs the repository's Python tests. pytest collects every
-# test file under the checkout on its own, so a test added anywhere in the
-# repository runs there without this file naming it.
+# The job `python-tests` runs the repository's Python tests. pytest collects
+# every test file under the checkout on its own, so a test added anywhere in
+# the repository runs there without this file naming it.
 #
 # The last job, `test`, is the one status check the org ruleset requires on
 # main. It is green only when every other job of this workflow succeeded or
@@ -38,7 +38,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The peppy dev build that the jobs below install. When peppy and this hub
+  # are pushed at the same time, peppy's CI uploads that build several
+  # minutes after this run starts. This job waits for it (see `wait-only` in
+  # the hub-ci-peppy action), and each job that installs peppy needs this
+  # job, so that only this small runner waits. A job whose peppy is a
+  # release build waits for nothing.
+  wait-for-peppy:
+    name: Wait for the peppy dev build
+    # The smallest RunsOn runner, 1 vCPU: the job only looks for the build.
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=1/ram=2+4/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    # The action stops its wait after 20 minutes.
+    timeout-minutes: 25
+    permissions:
+      contents: read
+
+    steps:
+      - name: Wait for the peppy dev build of the set
+        uses: Peppy-bot/peppy/.github/actions/hub-ci-peppy@dev
+        with:
+          wait-only: true
+
   check-index:
+    needs: wait-for-peppy
     # A light RunsOn runner: the check boots a daemon and clones the contract
     # repositories. A pull request from a fork runs on the same runners, so
     # what holds fork code is the repository's fork-PR approval gate.
@@ -167,7 +189,7 @@ jobs:
   # when every job above succeeded or was skipped, so a red job blocks the
   # merge whichever job it ran in.
   test:
-    needs: [check-index, python-tests]
+    needs: [wait-for-peppy, check-index, python-tests]
     # Runs whatever happened above: on the default condition a failed or
     # cancelled job would leave this check unreported instead of red.
     if: always()
