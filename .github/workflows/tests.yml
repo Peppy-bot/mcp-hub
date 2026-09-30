@@ -25,6 +25,14 @@ name: Tests
 # every test file under the checkout on its own, so a test added anywhere in
 # the repository runs there without this file naming it.
 #
+# Each job runs on a RunsOn spot instance in attempts 1 and 2 of its run, and
+# on an on-demand instance from attempt 3. When AWS interrupts a spot
+# instance, RunsOn runs the failed jobs again in the next attempt, but only
+# after attempt 1 or 2. A re-run is also an attempt, and the merge-set bot of
+# peppy re-runs this workflow to test a new commit of another branch of its
+# set. So each runs-on label adds spot=false from attempt 3, and AWS cannot
+# interrupt a job that RunsOn does not run again.
+#
 # The last job, `test`, is the one status check the org ruleset requires on
 # main. It is green only when every other job of this workflow succeeded or
 # was skipped, so every check a pull request must pass is a job of this
@@ -47,7 +55,7 @@ jobs:
   wait-for-peppy:
     name: Wait for the peppy dev build
     # The smallest RunsOn runner, 1 vCPU: the job only looks for the build.
-    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=1/ram=2+4/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=1/ram=2+4/family=c8a+c7a+m8a+m7a${{ fromJSON(github.run_attempt) >= 3 && '/spot=false' || '' }}  # custom Peppy AMI
     # The action stops its wait after 20 minutes.
     timeout-minutes: 25
     permissions:
@@ -64,7 +72,7 @@ jobs:
     # A light RunsOn runner: the check boots a daemon and clones the contract
     # repositories. A pull request from a fork runs on the same runners, so
     # what holds fork code is the repository's fork-PR approval gate.
-    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=4/ram=8+16/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=4/ram=8+16/family=c8a+c7a+m8a+m7a${{ fromJSON(github.run_attempt) >= 3 && '/spot=false' || '' }}  # custom Peppy AMI
     # Nothing here legitimately takes minutes; a hung step should fail fast
     # rather than hold a runner for the default six hours.
     timeout-minutes: 15
@@ -157,7 +165,7 @@ jobs:
 
   python-tests:
     # The smallest RunsOn runner: the tests bring their own stand-ins.
-    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a${{ fromJSON(github.run_attempt) >= 3 && '/spot=false' || '' }}  # custom Peppy AMI
     timeout-minutes: 10
     permissions:
       contents: read
@@ -194,7 +202,7 @@ jobs:
     # cancelled job would leave this check unreported instead of red.
     if: always()
     # The smallest RunsOn runner: the job reads the results of the others.
-    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a  # custom Peppy AMI
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a${{ fromJSON(github.run_attempt) >= 3 && '/spot=false' || '' }}  # custom Peppy AMI
     timeout-minutes: 5
     permissions: {}
 
