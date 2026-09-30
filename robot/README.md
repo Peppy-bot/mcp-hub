@@ -36,6 +36,8 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 
 `robot.move_arm` and `robot.move_gripper` name a limb as the listing reports it under `limbs`.
+`robot.move_gripper` answers when the gripper stands still, and its `final_opening` is the opening
+measured then: the target, or the opening where an object or the effort cap holds the jaws.
 The cameras take `camera` too, one of the names the listing gives under `members`:
 
 | Tool or resource                    | Contract                 | Policy                                              |

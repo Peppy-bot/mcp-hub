@@ -108,7 +108,7 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "a1a0c67b7866c66eaac6b76328f2d1312f00368a599d5569967274ff787d157f",
+        sha256: "0290730ae39b5de3e980813e4fad9f0f4c42ec0f66bb50561b4c57a94f08b113",
       },
       actions: [
         {
@@ -122,7 +122,7 @@
         {
           member: "move_gripper",
           tool: "robot.move_gripper",
-          description: "Drive one gripper to an opening. gripper_name is one of the robot's grippers as robot.list reports them; opening is a fraction of full jaw travel, 0 closed and 1 fully open; max_effort caps the effort toward the target, 0 meaning no preference.",
+          description: "Drive one gripper to an opening. gripper_name is one of the robot's grippers as robot.list reports them; opening is a fraction of full jaw travel, 0 closed and 1 fully open; max_effort caps the effort toward the target, 0 meaning no preference. The tool answers when the gripper stands still, and final_opening is the opening measured then. It differs from opening when an object or the effort cap holds the jaws: the move still reports success true, with a message that names both openings, so read final_opening to judge a grasp.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 30000,
