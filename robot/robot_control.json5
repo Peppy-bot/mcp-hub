@@ -29,7 +29,7 @@
   // shares. What differs between robots is what robot.list answers.
   server: {
     title: "Robots",
-    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under members. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do, so prefer it over any simulation endpoint, and when the robots run in a simulation their names here are their names in that endpoint's scene.get_robots_list. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: read a camera's latest frame, JPEG encoded, and from a depth camera depth_camera.latest_depth_picture, a grayscale JPEG where white is near and black is far, to see how far things are, and depth_camera.latest_depth_samples, a 16-bit PNG in the unit its depth_info reports, to compute with the measurements. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for robot.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and a robot refuses posture durations above 600 s outright. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under members. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do, so prefer it over any simulation endpoint, and when the robots run in a simulation their names here are their names in that endpoint's scene.get_robots_list. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point, midway between the finger pads, in the robot's world frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. Look before moving: call camera.look for the picture a color camera sees and depth_camera.look for the color picture of a camera that carries depth, and call depth_camera.look_depth to see how far things are, a grayscale picture where white is near and black is far. To compute with the measurements, read the resource depth_camera.latest_depth_samples, a 16-bit PNG in the unit its depth_info reports. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. Keep requested durations short: each move's deadline is 60 s (30 s for robot.move_gripper), a duration_s of 0 means as fast as the joint limits allow, and a robot refuses posture durations above 600 s outright. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   robots: {
@@ -197,7 +197,8 @@
     // A color camera: one per camera of the robot, named by `camera` on
     // every call, as the launcher wrote its instance (wrist_left, front).
     // The topic becomes a resource per robot and camera, published as JPEG
-    // at no more than 2 Hz however fast the camera streams.
+    // at no more than 2 Hz however fast the camera streams, and the picture
+    // tool a model looks through the camera with.
     camera: {
       contract: {
         name: "rgb_camera",
@@ -209,7 +210,7 @@
         {
           member: "video_stream",
           resource: "camera.latest_frame",
-          description: "The camera's latest frame, JPEG encoded, with its width and height.",
+          description: "The camera's latest frame. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call camera.look, which answers with the same frame as a picture.",
           freshness: { max_age_ms: 2000 },
           update: { max_hz: 2 },
           representation: {
@@ -226,6 +227,12 @@
           // policy is mandatory.
           max_result_bytes: 524288,
           on_oversize: "downscale",
+          // The same snapshot through a tool, whose result carries the frame
+          // as an image.
+          picture: {
+            tool: "camera.look",
+            description: "Look through one of the robot's color cameras: its latest frame as a JPEG picture, with the capture timestamp, width and height. robot is one of the names robot.list reports, and camera one of the names the listing gives that robot under members.camera. Changes nothing.",
+          },
         },
       ],
       // Each service becomes a tool that answers within one request. One
@@ -271,7 +278,8 @@
     // the robot, named by `camera` on every call.
     // Its color frame is a resource as a color camera's is, and its depth
     // frame two more from the one contract member: a grayscale picture to
-    // look at and the lossless samples to compute with.
+    // look at and the lossless samples to compute with. The two pictures are
+    // picture tools too; the samples are data and stay a resource.
     depth_camera: {
       contract: {
         name: "rgbd_camera",
@@ -283,7 +291,7 @@
         {
           member: "video_stream",
           resource: "depth_camera.latest_frame",
-          description: "The camera's latest color frame, JPEG encoded, with its width and height.",
+          description: "The camera's latest color frame. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call depth_camera.look, which answers with the same frame as a picture.",
           freshness: { max_age_ms: 2000 },
           update: { max_hz: 2 },
           representation: {
@@ -298,11 +306,15 @@
           },
           max_result_bytes: 524288,
           on_oversize: "downscale",
+          picture: {
+            tool: "depth_camera.look",
+            description: "Look through one of the robot's cameras that carry depth: its latest color frame as a JPEG picture, with the capture timestamp, width and height. robot is one of the names robot.list reports, and camera one of the names the listing gives that robot under members.depth_camera. Changes nothing.",
+          },
         },
         {
           member: "depth_stream",
           resource: "depth_camera.latest_depth_picture",
-          description: "The camera's latest depth frame drawn as a grayscale JPEG, from the same viewpoint as depth_camera.latest_frame: white is near, black is far, the shades between are linear in distance, and black also marks a pixel the camera measured nothing at. The shading runs from 100 to 10000 sample steps of the depth_unit depth_camera.depth_info reports, so on a camera measuring in millimeters white is 0.1 m or nearer and black 10 m or farther. Read this one to see how far things are; read depth_camera.latest_depth_samples for the measurements themselves.",
+          description: "The camera's latest depth frame drawn in grayscale, from the same viewpoint as depth_camera.latest_frame: white is near, black is far, the shades between are linear in distance, and black also marks a pixel the camera measured nothing at. The shading runs from 100 to 10000 sample steps of the depth_unit depth_camera.depth_info reports, so on a camera measuring in millimeters white is 0.1 m or nearer and black 10 m or farther. A read gives the message without its frame, as JSON: header with the capture timestamp, frame_id and align_mode, encoding, width and height; and the picture as a JPEG blob. To see how far things are, call depth_camera.look_depth, which answers with the same picture; read depth_camera.latest_depth_samples for the measurements themselves.",
           freshness: { max_age_ms: 2000 },
           update: { max_hz: 2 },
           representation: {
@@ -319,15 +331,20 @@
           },
           max_result_bytes: 524288,
           on_oversize: "downscale",
+          picture: {
+            tool: "depth_camera.look_depth",
+            description: "See how far things are from one of the robot's cameras that carry depth: its latest depth frame as a grayscale JPEG picture, from the same viewpoint as depth_camera.look. White is near, black is far, the shades between are linear in distance, and black also marks a pixel the camera measured nothing at. The shading runs from 100 to 10000 sample steps of the depth_unit depth_camera.depth_info reports, so on a camera measuring in millimeters white is 0.1 m or nearer and black 10 m or farther. robot is one of the names robot.list reports, and camera one of the names the listing gives that robot under members.depth_camera. Changes nothing.",
+          },
         },
         {
           member: "depth_stream",
           resource: "depth_camera.latest_depth_samples",
-          description: "The camera's latest depth frame, a 16-bit PNG with one sample per pixel in the unit depth_camera.depth_info reports as depth_unit (meters per sample step), 0 where the camera measured nothing, with its width and height, aligned to the color frame as header.align_mode says. Read this one to compute with the measurements; read depth_camera.latest_depth_picture to see how far things are.",
+          description: "The camera's latest depth frame as measured: one 16-bit sample per pixel in the unit depth_camera.depth_info reports as depth_unit (meters per sample step), 0 where the camera measured nothing, aligned to the color frame as header.align_mode says. A read gives the message without its frame, as JSON: header with the capture timestamp, frame_id and align_mode, encoding, width and height; and the samples as a 16-bit PNG blob. Read this one to compute with the measurements; call depth_camera.look_depth to see how far things are.",
           freshness: { max_age_ms: 2000 },
           update: { max_hz: 2 },
           // Lossless: a depth map is data, and downscaling keeps every
-          // second sample as measured.
+          // second sample as measured. Data is no picture for a model, so
+          // this entry declares no picture tool.
           representation: {
             image: "png16",
             fields: {

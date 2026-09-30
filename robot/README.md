@@ -42,17 +42,23 @@ The cameras take `camera` too, one of the names the listing gives under `members
 
 | Tool or resource                    | Contract                 | Policy                                              |
 | ----------------------------------- | ------------------------ | --------------------------------------------------- |
-| `camera.latest_frame`               | `rgb_camera:v1`          | resource, JPEG, 2 Hz at most, downscaled above 512 KiB |
+| `camera.latest_frame`               | `rgb_camera:v1`          | resource, the frame as a JPEG blob, 2 Hz at most, downscaled above 512 KiB |
+| `camera.look`                       | `rgb_camera:v1`          | picture tool, the same frame as an image           |
 | `camera.info`, `camera.set_exposure`, `camera.set_gain`, `camera.set_white_balance` | `rgb_camera:v1` | tools, the setters `safety_sensitive` |
-| `depth_camera.latest_frame`         | `rgbd_camera:v1`         | resource, the color image as a JPEG                |
-| `depth_camera.latest_depth_picture` | `rgbd_camera:v1`         | resource, the depth as a grayscale JPEG, white near and black far |
-| `depth_camera.latest_depth_samples` | `rgbd_camera:v1`         | resource, a 16-bit PNG in the unit `depth_info` reports |
+| `depth_camera.latest_frame`         | `rgbd_camera:v1`         | resource, the color image as a JPEG blob           |
+| `depth_camera.look`                 | `rgbd_camera:v1`         | picture tool, the color image                      |
+| `depth_camera.latest_depth_picture` | `rgbd_camera:v1`         | resource, the depth as a grayscale JPEG blob, white near and black far |
+| `depth_camera.look_depth`           | `rgbd_camera:v1`         | picture tool, the depth picture                    |
+| `depth_camera.latest_depth_samples` | `rgbd_camera:v1`         | resource, a 16-bit PNG blob in the unit `depth_info` reports |
 | `depth_camera.info`, `depth_camera.depth_info`, and the three color setters | `rgbd_camera:v1` | tools |
 | `camera_profile.get`, `camera_profile.reset` | `camera_profile:v1` | the device's controls, their units and ranges |
 | `camera_geometry.color_intrinsics`, `camera_geometry.depth_intrinsics`, `camera_geometry.depth_to_color` | `camera_geometry:v1` | read only |
 
 The one `depth_stream` member of a depth camera is published twice: the picture for a model to see
-how far things are, and the samples for a program to compute with.
+how far things are, and the samples for a program to compute with. A read of an image resource
+gives the message without its frame as JSON, and the frame as a blob. A picture tool answers with
+the frame as an image, which is what a model sees, so the two pictures are tools too and the
+samples stay a resource.
 
 A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.grab_item`,
 `brain.place_item`, `brain.drop_item` and `brain.abort` as tasks and `brain.get_state` as a tool
