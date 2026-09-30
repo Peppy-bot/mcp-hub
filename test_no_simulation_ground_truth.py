@@ -19,11 +19,12 @@ rendered camera's relay forwards the controls it receives to the engine, is
 refused the same way: a relay drives it, never a model, and the relay's own
 ``rgb_camera`` / ``rgbd_camera`` surface is what an exposure publishes.
 
-Simulation configuration reaches an endpoint under a wording rule.
+What only a simulation gives reaches an endpoint under a wording rule.
 ``scene_manipulation``, ``object_controls``, ``scene_lighting`` and
-``scene_materials`` edit the simulated world and have no physical counterpart
-either, but a model legitimately drives them, as it does the cameras the
-simulation renders. An exposure targeting one of the four lives under
+``scene_materials`` edit the simulated world, ``scene_view`` pictures it from
+any viewpoint and ``simulation_clock`` holds its time; none has a physical
+counterpart, but a model legitimately drives them, as it does the cameras the
+simulation renders. An exposure targeting one of the six lives under
 ``simulation/``, and every
 document there says what it is: the server title ends with
 ``SIMULATION_TITLE_SUFFIX``, the instructions open with the sentence
@@ -58,10 +59,18 @@ INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
 # Everything an exposure may not target.
 FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
-# Contracts that configure the simulated world. A model drives them, so an
-# exposure may target them, from under `simulation/` only.
-SIMULATION_CONFIGURATION_CONTRACTS = frozenset(
-    {"scene_manipulation", "object_controls", "scene_lighting", "scene_materials"}
+# Contracts only a simulation gives: those that configure the simulated
+# world, the picture of it from a free viewpoint and its clock. A model
+# drives them, so an exposure may target them, from under `simulation/` only.
+SIMULATION_ONLY_CONTRACTS = frozenset(
+    {
+        "scene_manipulation",
+        "object_controls",
+        "scene_lighting",
+        "scene_materials",
+        "scene_view",
+        "simulation_clock",
+    }
 )
 
 # The directory of every exposure that exists only in simulation, and the
@@ -165,13 +174,13 @@ def forbidden_targets(path: Path) -> list[str]:
     return [name for name in targeted if name in FORBIDDEN_CONTRACTS]
 
 
-def misplaced_configuration_targets(path: Path, root: Path) -> list[str]:
-    """The simulation-configuration contracts `path` targets from outside
+def misplaced_simulation_only_targets(path: Path, root: Path) -> list[str]:
+    """The simulation-only contracts `path` targets from outside
     `simulation/`; an empty list is the rule holding."""
     if in_simulation_dir(path, root):
         return []
     targeted = targeted_contracts(path.read_text(encoding="utf-8"))
-    return [name for name in targeted if name in SIMULATION_CONFIGURATION_CONTRACTS]
+    return [name for name in targeted if name in SIMULATION_ONLY_CONTRACTS]
 
 
 def wording_violations(path: Path) -> list[str]:
@@ -219,11 +228,11 @@ def test_no_exposure_targets_a_forbidden_contract(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", exposure_documents(ROOT), ids=_relative)
-def test_simulation_configuration_lives_under_simulation(path: Path) -> None:
-    misplaced = misplaced_configuration_targets(path, ROOT)
+def test_what_only_a_simulation_gives_lives_under_simulation(path: Path) -> None:
+    misplaced = misplaced_simulation_only_targets(path, ROOT)
     assert not misplaced, (
-        f"{_relative(path)} targets {', '.join(misplaced)}: an exposure that configures the "
-        f"simulated world lives under {SIMULATION_DIR}/"
+        f"{_relative(path)} targets {', '.join(misplaced)}: an exposure on what only a "
+        f"simulation gives lives under {SIMULATION_DIR}/"
     )
 
 
@@ -364,7 +373,7 @@ def test_other_contracts_comments_and_prose_pass() -> None:
     assert not [name for name in targeted_contracts(document) if name in FORBIDDEN_CONTRACTS]
 
 
-_COMPLIANT = """// A simulation-configuration exposure that follows every rule.
+_COMPLIANT = """// A simulation-only exposure that follows every rule.
 {
   peppy_schema: "mcp_exposure/v1",
   manifest: { name: "sim_lights", tag: "v1" },
@@ -390,21 +399,21 @@ _COMPLIANT = """// A simulation-configuration exposure that follows every rule.
 """
 
 
-@pytest.mark.parametrize("contract", sorted(SIMULATION_CONFIGURATION_CONTRACTS))
-def test_a_configuration_exposure_outside_simulation_is_caught(tmp_path: Path, contract: str) -> None:
+@pytest.mark.parametrize("contract", sorted(SIMULATION_ONLY_CONTRACTS))
+def test_a_simulation_only_exposure_outside_simulation_is_caught(tmp_path: Path, contract: str) -> None:
     (tmp_path / "cameras").mkdir()
     path = tmp_path / "cameras" / "sim_lights.json5"
     path.write_text(_COMPLIANT.replace('name: "scene_lighting"', f'name: "{contract}"'), encoding="utf-8")
     assert exposure_documents(tmp_path) == [path]
-    assert misplaced_configuration_targets(path, tmp_path) == [contract]
+    assert misplaced_simulation_only_targets(path, tmp_path) == [contract]
 
 
-def test_a_configuration_exposure_under_simulation_passes(tmp_path: Path) -> None:
+def test_a_simulation_only_exposure_under_simulation_passes(tmp_path: Path) -> None:
     (tmp_path / SIMULATION_DIR).mkdir()
     path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
     path.write_text(_COMPLIANT, encoding="utf-8")
     assert simulation_documents(tmp_path) == [path]
-    assert misplaced_configuration_targets(path, tmp_path) == []
+    assert misplaced_simulation_only_targets(path, tmp_path) == []
     assert forbidden_targets(path) == []
     assert wording_violations(path) == []
 
@@ -413,7 +422,7 @@ def test_a_camera_exposure_outside_simulation_is_not_misplaced(tmp_path: Path) -
     (tmp_path / "cameras").mkdir()
     path = tmp_path / "cameras" / "front.json5"
     path.write_text(_COMPLIANT.replace('name: "scene_lighting"', 'name: "rgb_camera"'), encoding="utf-8")
-    assert misplaced_configuration_targets(path, tmp_path) == []
+    assert misplaced_simulation_only_targets(path, tmp_path) == []
 
 
 @pytest.mark.parametrize(

@@ -1,19 +1,22 @@
 // The simulated world OpenArm v2 robots run in, as one MCP surface: the
-// scene (assets, spawned objects, the robots and their placement), the
-// controls its spawned objects offer (a desk's height), its light sources
-// and the optical properties of its materials. Nothing here has a
-// counterpart on the physical robot; the title says so, the instructions
-// open by saying so, and every description says so, so a model reading
-// this endpoint never mistakes it for a real-robot surface. Waldo alone
-// implements object_controls, scene_lighting and scene_materials, so only
+// scene (assets, the objects standing in it and their poses, the loaded
+// scene, the robots and their placement), the controls its spawned objects
+// offer (a desk's height), its light sources, the optical properties of its
+// materials, a picture of it from any viewpoint, and its clock (the time
+// now, a pause, a step). Nothing here has a counterpart on the physical
+// robot; the title says so, the instructions open by saying so, and every
+// description says so, so a model reading this endpoint never mistakes it
+// for a real-robot surface. Waldo alone implements object_controls,
+// scene_lighting, scene_materials, scene_view and simulation_clock, so only
 // a Waldo stack serves this document; the robots' own surface is the
-// robot_control document, served on hardware and in simulation alike. What is
-// spawned, and where it stands, is not read here: the engine's
-// object_state contract reports it and stays inside the peppy framework,
-// as the README's ground-truth rule says.
+// robot_control document, served on hardware and in simulation alike. The
+// inventory scene.get_objects_list reports is the world's setup, for a
+// caller that checks it; the velocities of the same objects, streamed for
+// evaluation, are the engine's object_state contract, which stays inside
+// the peppy framework, as the README's ground-truth rule says.
 //
 // This document is the whole artifact. A launcher lists it under
-// `source: { exposures: ["simulation:v1"] }`, binds its four targets to
+// `source: { exposures: ["simulation:v1"] }`, binds its six targets to
 // the running simulation through `links`, and the server built into peppy
 // serves it at `/simulation/v1/mcp`. The launchers hub serves it through
 // the `world_control` axis of its `simulation_mcp` launcher, on port 8902, a
@@ -33,14 +36,22 @@
   // simulation/.
   server: {
     title: "Simulated world (simulation only)",
-    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation the robots run in: scene.* for the scene (what the engine can place, the loaded scene, spawned objects, the robots standing and their placement), controls.* for what a spawned object lets you set (a standing desk's height, a conveyor's belt speed), lighting.* for its light sources and materials.* for the optical properties of its materials. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with a robot through the robots' endpoint; scene.move_object teleports and proves nothing about the robot. Read, then set: call scene.get_assets_list, scene.get_robots_list, controls.get_object_controls, lighting.get_lighting and materials.get_materials first, since every asset_id, robot, control id, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object. Positions are world-frame [x, y, z] in metres, Z up; headings are a yaw in radians about the world's +Z, counterclockwise seen from above, 0 facing +X; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. The simulated world's frame is not the frame of the robots' endpoint's poses: robot.move_arm takes poses in the robot's own frame, whose origin is the robot's base point on the floor, the point scene.get_robots_list reports as position, with +X the way the robot faces. For a robot standing upright, as every robot that joined the simulation does, a point p in that robot's own frame stands in the simulated world at position + Rz(yaw) * p, where Rz(yaw) turns p about +Z by the robot's listed yaw: [p.x * cos(yaw) - p.y * sin(yaw), p.x * sin(yaw) + p.y * cos(yaw), p.z]. A robot's name here is its name on the robots' endpoint: robot.list there names the same robots, and every tool there takes that name. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. An object's controls are what its asset authors (only objects offering one are listed, an asset's description says when it does), each a scalar in the unit it reports within its min and max, standing at its default when spawned or at the value the loaded scene placed it at; a control in m or rad stands its part at the value within the call, like a teleport, whatever the object's physics, and anything resting on it is displaced, not carried, so set such a control before placing things on the part; a control in m/s runs its part's surface at that speed from the next physics step, a negative value the other way, and carries what rests on it. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own.",
+    instructions: "This endpoint configures a simulated world. It has no effect on and no counterpart in the physical robot. The tools edit the simulation the robots run in: scene.* for the scene (what the engine can place, the loaded scene, the objects standing in it and their poses, the robots standing and their placement), controls.* for what a spawned object lets you set (a standing desk's height, a conveyor's belt speed), lighting.* for its light sources, materials.* for the optical properties of its materials, scene.look for a picture of the world from any viewpoint, and clock.* for the simulation's clock. Use it to set the world up and to check the setup, never to complete a task: to move an object, grasp it with a robot through the robots' endpoint; scene.move_object teleports and proves nothing about the robot, and scene.get_objects_list checks a setup and completes no task. Read, then set: call scene.get_asset_categories then scene.get_assets_list, scene.get_robots_list, controls.get_object_controls, lighting.get_lighting and materials.get_materials first, since every asset_id, robot, control id, light_id and material_id the other tools take comes from them, and every object_id is minted by scene.spawn_object or listed by scene.get_objects_list. To arrange objects without the physics moving them, call clock.set_paused with paused true, place them, call clock.step to let them settle, and resume with paused false before a robot moves: a robot cannot move while the simulation is paused, and the deadlines of every tool are wall time and keep running. Positions are world-frame [x, y, z] in metres, Z up; headings are a yaw in radians about the world's +Z, counterclockwise seen from above, 0 facing +X; forces are world-frame newtons; masses are kilograms; durations are seconds; scale is uniform and 1 means as authored; directions are world-frame unit vectors pointing the way the light travels; colours are linear RGB in the unit interval; cone angles are half angles in radians; orientations are unit quaternions [x, y, z, w]. The simulated world's frame is not the frame of the robots' endpoint's poses: robot.move_arm takes poses in the robot's own frame, whose origin is the robot's base point on the floor, the point scene.get_robots_list reports as position, with +X the way the robot faces. For a robot standing upright, as every robot that joined the simulation does, a point p in that robot's own frame stands in the simulated world at position + Rz(yaw) * p, where Rz(yaw) turns p about +Z by the robot's listed yaw: [p.x * cos(yaw) - p.y * sin(yaw), p.x * sin(yaw) + p.y * cos(yaw), p.z]. A robot's name here is its name on the robots' endpoint: robot.list there names the same robots, and every tool there takes that name. Keep scale between 0.01 and 100, mass between 0 and 1000 kg and a push's duration_s between 0.01 and 30 s. A setter validates its whole request before it changes anything, a refused request changes nothing in the simulation and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took. An object's controls are what its asset authors (only objects offering one are listed, an asset's description says when it does), each a scalar in the unit it reports within its min and max, standing at its default when spawned or at the value the loaded scene placed it at; a control in m or rad stands its part at the value within the call, like a teleport, whatever the object's physics, and anything resting on it is displaced, not carried, so set such a control before placing things on the part; a control in m/s runs its part's surface at that speed from the next physics step, a negative value the other way, and carries what rests on it. A lighting or materials change shows in every view the engine renders, the robot's cameras included, and touches no physics. Loading or clearing a scene removes every spawned object and restores that scene's authored lighting and materials, as lighting.reset_lighting and materials.reset_materials do on their own. When you find the world in a state you did not command, call scene.recent_calls: it lists the last state-changing calls of this simulation endpoint with the client that made each.",
+  },
+
+  // The record of the state-changing calls this endpoint takes: every call
+  // of a tool that is not read-only, tasks included, the last 200 of them.
+  call_record: {
+    tool: "scene.recent_calls",
+    description: "List the last calls of this simulation endpoint that could change the simulated world, newest first, up to 200: every mutating tool and every action, with started_at, the client that made the call (its declared name and version, or null), the tool, its arguments as sent (null when larger than 1 kB, with arguments_bytes), outcome (running, completed, failed, cancelled or refused), success, message and duration_ms. Read outcome and success together: a completed call with success false ran to its end and reports a failure. The record holds the calls of MCP clients on this endpoint only; what a robot did through the robots' endpoint, or another node did, is not in it. Takes no arguments and changes nothing.",
+    keep: 200,
   },
 
   targets: {
     // LOGICAL targets, not instances: each becomes a contract slot of the
-    // server, and the launcher binds all four to the running simulation
-    // engine. One target holds one contract, so the four contracts the
-    // engine serves are four targets.
+    // server, and the launcher binds all six to the running simulation
+    // engine. One target holds one contract, so the six contracts the
+    // engine serves are six targets.
     scene: {
       contract: {
         name: "scene_manipulation",
@@ -50,15 +61,41 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "2e3f7f1eb2c9f94f83f70065202fe6964b80c9fb422ae34356b73cdefe573870",
+        sha256: "7fd0984581216b188399bb3304be1b164087d7e32d2a9fbab7c048187a31a791",
       },
 
-      // The catalogue becomes a tool that answers within one request.
+      // The catalogue and the inventory become tools that answer within one
+      // request. A whole catalogue or a whole warehouse is more than a
+      // result may carry, so both listings take filters and refuse a result
+      // above their size cap.
       services: [
+        {
+          member: "get_asset_categories",
+          tool: "scene.get_asset_categories",
+          description: "Count the assets the simulation can place per category, in categories: kind (scene or object), category and count. Call it first, then scene.get_assets_list with a kind and a category to list the entries of one category. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
         {
           member: "get_assets_list",
           tool: "scene.get_assets_list",
-          description: "List the assets the simulation can place, as a JSON array in assets_json. Every entry carries at least asset_id, display_name, kind (scene or object) and category, and the engine may add fields of its own. The asset_id values, scene/<id> and object/<id>, are what scene.load_scene and scene.spawn_object take. Takes no arguments and changes nothing.",
+          description: "List the assets the simulation can place, as a JSON array in assets_json, narrowed by the request: kind (scene or object), category (one scene.get_asset_categories reports) and query (text the entry's asset_id, display_name or description contains, whatever the case); a field left out does not filter. Every entry carries at least asset_id, display_name, kind, category and description, and the engine may add fields of its own. The asset_id values, scene/<id> and object/<id>, are what scene.load_scene and scene.spawn_object take. A result above 64 kB is refused, and the whole catalogue is larger than that: call scene.get_asset_categories first and list one category at a time. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+          max_result_bytes: 65536,
+        },
+        {
+          member: "get_objects_list",
+          tool: "scene.get_objects_list",
+          description: "List the objects standing in the simulation and where they stand, in objects: object_id (what scene.move_object and scene.remove_object take), asset_id, category, source (spawned for an object a caller spawned, scene for one the loaded scene placed), physics (dynamic, static or none), mass, scale, position (world-frame [x, y, z] in metres) and orientation (a unit quaternion [x, y, z, w], in the form scene.spawn_object and scene.move_object take, so a listed orientation can be passed back). The poses are as of timestamp; a dynamic object can still be moving. source and category narrow the list; a field left out does not filter. source scene with a furniture category gives the work surfaces of the scene: an object's position and scale here, and the size and top height its asset's description in scene.get_assets_list gives. A result above 64 kB is refused, and a large scene holds more objects than that, so narrow it by source and category. This tool checks a setup and completes no task. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+          max_result_bytes: 65536,
+        },
+        {
+          member: "get_scene",
+          tool: "scene.get_scene",
+          description: "Report the scene the simulation has loaded: asset_id, the scene/<id> scene.load_scene took (or the simulation's default scene after scene.clear_scene), and scale, the uniform scale it stands at. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -106,7 +143,7 @@
         {
           member: "spawn_object",
           tool: "scene.spawn_object",
-          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails. An object the simulation has not cached is downloaded first, and the call reports its progress while it runs.",
+          description: "Place one instance of an object asset in the simulation and report the object_id the engine minted for it. asset_id is an object/<id> from scene.get_assets_list; position is world-frame [x, y, z] in metres; yaw turns the object about the world's +Z in radians, 0 = as authored; orientation, when given, is the object's whole orientation in the world frame as a unit quaternion [x, y, z, w], in the form scene.get_objects_list reports, and yaw is then ignored (leave it out to stand the object as authored, turned by yaw); scale is uniform, 1 = as authored, between 0.01 and 100; physics is dynamic (simulated, falls and collides), static (collides, never moves) or none (visual only); mass is the kilograms of a dynamic object, between 0 and 1000, and is ignored otherwise. A quaternion whose length is off by more than 0.001 is refused. object_id is empty on failure, when the asset is unknown, an argument is invalid or the spawn fails. An object the simulation has not cached is downloaded first, and the call reports its progress while it runs.",
           operation: "long_running",
           // A spawn fetches the object's files first, so, like load_scene,
           // it is bounded by its progress rather than by its length.
@@ -115,14 +152,14 @@
         {
           member: "move_object",
           tool: "scene.move_object",
-          description: "Teleport a spawned object in the simulation to a world-frame position [x, y, z] in metres, keeping its orientation and zeroing its velocity. object_id is the id scene.spawn_object reported.",
+          description: "Teleport an object in the simulation to a world-frame position [x, y, z] in metres and zero its velocity. object_id is an id scene.spawn_object reported or scene.get_objects_list lists. orientation, when given, is the object's new orientation in the world frame as a unit quaternion [x, y, z, w], in the form scene.get_objects_list reports, and turns the object about its own origin; left out, the object keeps its orientation. A quaternion whose length is off by more than 0.001 is refused, and so is an orientation on a soft object or on an object joined to another one.",
           operation: "long_running",
           deadline_ms: 30000,
         },
         {
           member: "remove_object",
           tool: "scene.remove_object",
-          description: "Delete a spawned object from the simulation. object_id is the id scene.spawn_object reported.",
+          description: "Delete an object from the simulation. object_id is an id scene.spawn_object reported or scene.get_objects_list lists.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -308,6 +345,81 @@
           description: "Put every material of the loaded simulated scene back to its authored values, on every surface that shares each one. Takes no arguments.",
           operation: "mutating",
           deadline_ms: 5000,
+        },
+      ],
+    },
+
+    view: {
+      contract: {
+        name: "scene_view",
+        tag: "v1",
+        // Pinned like `scene` above (`sha256sum simulation/scene_view.json5`).
+        sha256: "fa1608dbbe6fafb384143642b84b5d99e8aa0e17bef77200778229392fba5ed9",
+      },
+
+      // The service answers with a picture: its frame is the image block
+      // of the result, the rest of the response the document, as a camera's
+      // picture tool answers, under the same representation and size
+      // policies. A refusal carries no frame and reaches the client as the
+      // document alone.
+      services: [
+        {
+          member: "render_view",
+          tool: "scene.look",
+          description: "Look at the simulated world from a free viewpoint: a JPEG picture of the world as it stands now, seen from position, a world-frame point [x, y, z] in metres, looking at target, another, with the world's +Z up, and timestamp, the simulated instant it shows. The picture is for checking a setup: no robot sees it, and the pictures the robots' own cameras see are the robots' endpoint's camera.look and depth_camera.look. A position equal to the target, or a line of sight straight along the vertical, is refused; success false with a message is also the answer of a simulation that runs without rendering. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 10000,
+          representation: {
+            image: "jpeg",
+            quality: 80,
+            fields: {
+              data: "frame",
+              encoding: "encoding",
+              width: "width",
+              height: "height",
+            },
+          },
+          // The frame is a variable-length byte array, so the runtime size
+          // policy is mandatory.
+          max_result_bytes: 524288,
+          on_oversize: "downscale",
+        },
+      ],
+    },
+
+    clock: {
+      contract: {
+        name: "simulation_clock",
+        tag: "v1",
+        // Pinned like `scene` above (`sha256sum simulation/simulation_clock.json5`).
+        sha256: "a791c83a079bbd1b0fe9ac638e926b23a3248fab696027f5934e1083502209b1",
+      },
+
+      // Two services and one action: the step waits for its physics steps
+      // to run, up to 30 simulated seconds at the normal pace.
+      services: [
+        {
+          member: "get_clock",
+          tool: "clock.get_clock",
+          description: "Report the simulation's clock: now, the simulated time, on the same clock as the timestamp of every message of this simulation (a stamp compared with it says how old the stamp is), and paused, whether the simulation stands still. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "set_paused",
+          tool: "clock.set_paused",
+          description: "Pause the simulation (paused true) or resume it (paused false). Paused, the simulation steps no physics and simulated time stands still: nothing falls or moves, every scene, controls, lighting and materials tool still answers, an edit shows at once in scene.get_objects_list, in scene.look and in the robots' cameras, and scene.apply_force waits for the resume, its duration being simulated time. A robot cannot move while the simulation is paused: its backbone runs on wall time and sees its limbs go silent, so a robot move in flight fails and one sent while paused fails too; resume before a robot moves. The deadlines of every tool are wall time and keep running. Setting the state the simulation is already in succeeds and changes nothing. Answers with now and paused, the state after the call.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+      ],
+      actions: [
+        {
+          member: "step",
+          tool: "clock.step",
+          description: "Advance a paused simulation by duration_s seconds of simulated time, rounded up to whole physics steps, at the simulation's normal pace (so a step of 10 s takes about 10 s), and leave it paused; use it to let objects settle after placing them. Refused while the simulation runs (pause it first with clock.set_paused), while a step is running, and for a duration that is not above 0 or is above 30. Answers with now, the simulated time the step reached.",
+          operation: "long_running",
+          deadline_ms: 60000,
         },
       ],
     },

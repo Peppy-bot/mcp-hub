@@ -23,8 +23,8 @@ model does transfers to the physical robots:
 
 | Family | Document | What it publishes | On the physical robots |
 | --- | --- | --- | --- |
-| Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves, its limb state, its cameras and their controls, its brain and its recorder | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene, the controls of its spawned objects, its light sources, its materials | no |
+| Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, its brain and its recorder, and the record of the calls that changed a robot's state | yes |
+| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its spawned objects, its light sources, its materials, a picture of it from any viewpoint, its clock, and the record of the calls that changed it | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
 model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
@@ -100,23 +100,25 @@ relay's own `rgb_camera` / `rgbd_camera` surface is what an exposure publishes.
 contract; extend its `GROUND_TRUTH_CONTRACTS` or `INTERNAL_CONTRACTS` when the contracts hub gains
 another.
 
-### Simulation configuration, published under a wording rule
+### What only a simulation gives, published under a wording rule
 
-`scene_manipulation` (assets, scene loading, spawned objects, the robots and their bases),
-`object_controls` (what a spawned object lets a caller set, a desk's height), `scene_lighting`
-and `scene_materials` edit the simulated world and have no physical counterpart either, but a
-model legitimately drives them to set the world up. Exposures on them live under `simulation/`:
-today one document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the
-four contracts as its `scene`, `controls`, `lighting` and `materials` targets. Only a simulation
+`scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses,
+the robots and their bases), `object_controls` (what a spawned object lets a caller set, a desk's
+height), `scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it
+from any viewpoint and `simulation_clock` holds its time (the time now, a pause, a step); none
+has a physical counterpart, but a model legitimately drives them to set the world up and check
+it. Exposures on them live under `simulation/`: today one document,
+[`simulation/simulation.json5`](simulation/simulation.json5), holding the six contracts as its
+`scene`, `controls`, `lighting`, `materials`, `view` and `clock` targets. Only a simulation
 launch option serves it: the `world_control` axis of the
 [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher, deployed
 by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the robots'
 endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it needs
 nothing from a robot copy and outlives it. Waldo is the one simulation implementing the controls,
-lighting and materials contracts, so the launcher requires it beside that option. No real-robot
-fragment lists the document.
+lighting, materials, view and clock contracts, so the launcher requires it beside that option. No
+real-robot fragment lists the document.
 
-The cameras are not simulation configuration. The rig the simulation renders publishes
+The cameras are not simulation-only. The rig the simulation renders publishes
 `rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera_linux` and `zed_camera`
 nodes implement, at the viewpoints of the physical rig, and reading a wrist frame is what a model
 does on hardware. They are targets of the robots' document, so a model never depends on the
@@ -136,8 +138,8 @@ document under `simulation/` says what it is, and the same test enforces the wor
   `simulated` (a whole word, any case).
 
 The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
-`scene_lighting` or `scene_materials` from any other directory (its
-`SIMULATION_CONFIGURATION_CONTRACTS`). A pull
+`scene_lighting`, `scene_materials`, `scene_view` or `simulation_clock` from any other directory
+(its `SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
 
