@@ -44,8 +44,10 @@ ROBOTS = [
     {
         "robot": "alpha",
         "tools": [
-            "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
-            "depth_camera.depth_info", "depth_camera.info", "depth_camera.set_exposure",
+            "camera.info", "camera.look", "camera.set_exposure", "camera.set_gain",
+            "camera.set_white_balance",
+            "depth_camera.depth_info", "depth_camera.info", "depth_camera.look",
+            "depth_camera.look_depth", "depth_camera.set_exposure",
             "depth_camera.set_gain", "depth_camera.set_white_balance",
             "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
             "robot.move_to_home", "robot.move_to_ready",
@@ -67,7 +69,8 @@ ROBOTS = [
     {
         "robot": "charlie",
         "tools": [
-            "camera.info", "camera.set_exposure", "camera.set_gain", "camera.set_white_balance",
+            "camera.info", "camera.look", "camera.set_exposure", "camera.set_gain",
+            "camera.set_white_balance",
             "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
             "robot.move_to_home", "robot.move_to_ready",
         ],

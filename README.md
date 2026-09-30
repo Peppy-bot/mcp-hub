@@ -2,7 +2,7 @@
 
 A repository of Peppy **MCP exposures** (`peppy_schema: "mcp_exposure/v1"`).
 
-An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
+An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, a camera topic also as a picture tool that answers with its latest frame as an image, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
 
 The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each exposure target to a running implementer of its contract through `links`, and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on, its `mcp_commander` option adding the moves. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
 
@@ -71,7 +71,7 @@ document against the contracts it references and read what an endpoint for it ad
 ```sh
 peppy repo refresh                                      # caches the contracts hub
 peppy repo index . --check --validate-mcp-exposures     # the index, then every exposure against its contracts
-peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: resources, tools, tasks, schemas
+peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: resources, tools, tasks, picture tools, schemas
 ```
 
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
