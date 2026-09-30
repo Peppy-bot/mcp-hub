@@ -17,14 +17,14 @@
   // prose a model reads before it decides what to call.
   server: {
     title: "Camera and recording",
-    instructions: "Observe the front camera and record teleoperation episodes.",
+    instructions: "Observe the camera and record teleoperation episodes.",
   },
 
   targets: {
-    // A LOGICAL target, not an instance. `front_camera` becomes a contract
+    // A LOGICAL target, not an instance. `camera` becomes a contract
     // slot of the server, so the launcher decides which running instance
     // fills it. The same exposure serves a simulated camera and a real one.
-    front_camera: {
+    camera: {
       contract: {
         name: "rgb_camera",
         tag: "v1",
@@ -42,8 +42,8 @@
       topics: [
         {
           member: "video_stream",
-          resource: "front_camera.latest_frame",
-          description: "Latest frame from the camera bound to this endpoint. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call front_camera.look, which answers with the same frame as a picture.",
+          resource: "camera.latest_frame",
+          description: "Latest frame from the camera bound to this endpoint. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call camera.look, which answers with the same frame as a picture.",
           // A snapshot older than this reads as stale rather than serving
           // yesterday's frame as if it were current.
           freshness: { max_age_ms: 2000 },
@@ -70,7 +70,7 @@
           // The same snapshot through a tool: a model that calls it gets the
           // frame as an image. It takes no argument and reaches no node.
           picture: {
-            tool: "front_camera.look",
+            tool: "camera.look",
             description: "Look through the camera bound to this endpoint: its latest frame as a JPEG picture, with the capture timestamp, width and height. Changes nothing.",
           },
         },
@@ -80,14 +80,14 @@
       services: [
         {
           member: "video_stream_info",
-          tool: "front_camera.info",
+          tool: "camera.info",
           description: "Report the camera's resolution, frame rate, and encoding.",
           operation: "read_only",
           deadline_ms: 2000,
         },
         {
           member: "set_brightness",
-          tool: "front_camera.set_brightness",
+          tool: "camera.set_brightness",
           description: "Set the camera brightness in device units.",
           operation: "mutating",
           deadline_ms: 2000,
