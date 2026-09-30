@@ -43,7 +43,7 @@
         {
           member: "video_stream",
           resource: "front_camera.latest_frame",
-          description: "Latest frame from the front-facing camera. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call front_camera.look, which answers with the same frame as a picture.",
+          description: "Latest frame from the camera bound to this endpoint. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call front_camera.look, which answers with the same frame as a picture.",
           // A snapshot older than this reads as stale rather than serving
           // yesterday's frame as if it were current.
           freshness: { max_age_ms: 2000 },
@@ -71,7 +71,7 @@
           // frame as an image. It takes no argument and reaches no node.
           picture: {
             tool: "front_camera.look",
-            description: "Look through the front-facing camera: its latest frame as a JPEG picture, with the capture timestamp, width and height. Changes nothing.",
+            description: "Look through the camera bound to this endpoint: its latest frame as a JPEG picture, with the capture timestamp, width and height. Changes nothing.",
           },
         },
       ],
