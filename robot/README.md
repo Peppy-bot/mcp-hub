@@ -31,14 +31,24 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 | `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 60 s                      |
 | `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 60 s                      |
 | `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 60 s                      |
+| `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 60 s                      |
 | `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 30 s                      |
+| `robot.stop`                | `limb_motion:v1` `stop`             | mutating, 2 s                   |
+| `robot.check_arm_move`      | `limb_motion:v1` `check_arm_move`   | read only, 5 s                  |
+| `robot.get_camera_poses`    | `camera_mounts:v1` `get_camera_poses` | read only, 2 s                |
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 
-`robot.move_arm` and `robot.move_gripper` name a limb as the listing reports it under `limbs`.
+`robot.move_arm`, `robot.move_arm_joints` and `robot.move_gripper` name a limb as the listing
+reports it under `limbs`. A pose is in the robot frame: fixed to the robot's base, its origin the
+point the base stands on, +X the way the robot faces, +Y to its left, +Z up. `robot.check_arm_move`
+says whether a `robot.move_arm` goal has a plan, and moves nothing; `robot.stop` ends every planned
+move in flight on the robot, whoever started it, and the robot holds where it is.
 `robot.move_gripper` answers when the gripper stands still, and its `final_opening` is the opening
 measured then: the target, or the opening where an object or the effort cap holds the jaws.
-The cameras take `camera` too, one of the names the listing gives under `members`:
+`robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
+frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
+takes. The cameras take `camera` too, one of the names the listing gives under `members`:
 
 | Tool or resource                    | Contract                 | Policy                                              |
 | ----------------------------------- | ------------------------ | --------------------------------------------------- |
@@ -63,16 +73,23 @@ samples stay a resource.
 A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.grab_item`,
 `brain.place_item`, `brain.drop_item` and `brain.abort` as tasks and `brain.get_state` as a tool
 (`item_perception:v1`, `item_manipulation:v1`), and one with a recorder
-`recorder.record_episode` (`episode_recording:v1`), confirmation gated. Resources are published per
+`recorder.record_episode` (`episode_recording:v1`), confirmation gated. A scan and an identify
+report each item's region in the picture `depth_camera.look` gives for the camera they name, with
+the frame's size and capture time. Resources are published per
 robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
 `alpha/chest/depth_camera.latest_depth_samples`, and the server sends `resources/list_changed` when
 a join or a removal changes the list.
 
+`robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
+only, tasks included, newest first, with the client that made each, its arguments and how it ended,
+so a client that finds a robot in a state it did not command can tell whether another client of
+the endpoint did it. A motion a teleoperation or another node commanded is not in it.
+
 Every contract is pinned by sha256 to the document this exposure was written against. The
-backbone's joint-space move (`move_arm_joints`) and the cameras' brightness and contrast stay
-private. The server's `instructions` tell a model to list first, that this is the surface to
-prefer over any simulation endpoint, how to address the limbs, which units and frames apply, to
-look before moving, and to call `robot.move_to_ready` before any `robot.move_arm`.
+cameras' brightness and contrast stay private. The server's `instructions` tell a model to list
+first, that this is the surface to prefer over any simulation endpoint, how to address the limbs,
+which units and the robot frame apply, to look before moving, to call `robot.move_to_ready` before
+any `robot.move_arm`, and to check a pose with `robot.check_arm_move` first.
 
 ## Launching it
 
