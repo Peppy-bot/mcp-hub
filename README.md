@@ -105,7 +105,8 @@ another.
 `scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses,
 the robots and their bases), `object_controls` (what a spawned object lets a caller set, a desk's
 height), `scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it
-from any viewpoint and `simulation_clock` holds its time (the time now, a pause, a step); none
+from any viewpoint and shows the catalogue's preview of an asset, and `simulation_clock` holds its
+time (the time now, a pause, a step); none
 has a physical counterpart, but a model legitimately drives them to set the world up and check
 it. Exposures on them live under `simulation/`: today one document,
 [`simulation/simulation.json5`](simulation/simulation.json5), holding the six contracts as its
