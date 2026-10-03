@@ -222,7 +222,7 @@
     },
 
     // A color camera: one per camera of the robot, named by `camera` on
-    // every call, as the launcher wrote its instance (wrist_left, front).
+    // every call, as the launcher wrote its instance (wrist_left, wrist).
     // The topic becomes a resource per robot and camera, published as JPEG
     // at no more than 2 Hz however fast the camera streams, and the picture
     // tool a model looks through the camera with.

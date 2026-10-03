@@ -74,8 +74,8 @@ ROBOTS = [
             "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
             "robot.move_to_home", "robot.move_to_ready",
         ],
-        "resources": ["charlie/front/camera.latest_frame", "charlie/robot.limb_state"],
-        "members": {"camera": ["front"]},
+        "resources": ["charlie/wrist/camera.latest_frame", "charlie/robot.limb_state"],
+        "members": {"camera": ["wrist"]},
         "notes": ["identity: deadline exceeded: the provider did not answer within 2000 ms"],
         "identity": None,
         "limbs": {"arm_names": ["arm"], "joints_per_arm": [5], "gripper_names": ["gripper"]},
@@ -783,7 +783,7 @@ class ScriptTests(StandInCase):
         self.assertIn("  tools " + ", ".join(ROBOTS[0]["tools"]), out)
         self.assertIn("  resources " + ", ".join(ROBOTS[0]["resources"]), out)
         self.assertIn("charlie: model ? on ?", out)
-        self.assertIn("  resources charlie/front/camera.latest_frame, charlie/robot.limb_state", out)
+        self.assertIn("  resources charlie/wrist/camera.latest_frame, charlie/robot.limb_state", out)
         self.assertIn("note: identity: deadline exceeded", out)
         (call,) = server.calls("tools/call")
         self.assertEqual((call.params["name"], call.params["arguments"]), (demo.TOOL_LIST, {}))
