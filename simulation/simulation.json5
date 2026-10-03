@@ -61,7 +61,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "460dd0348e871e8649f955a167959a1357a62c48b3adf187e1ff44c6d9538084",
+        sha256: "796a0555d610582e749145e1bf9b3a34a21972eb1947603125ea14d956737dff",
       },
 
       // The catalogue and the inventory become tools that answer within one
@@ -113,9 +113,9 @@
       // its state, and `tasks/cancel` forwards to the action's cancel path;
       // for any other client the goal runs inside the call, which answers
       // with the terminal result. load_scene and spawn_object report their
-      // progress (bytes fetched, files ready, building) as they go; the
-      // other actions report their state transitions and the terminal
-      // result.
+      // progress (bytes fetched, files ready, bytes ready of bytes in all,
+      // receive rate, building) as they go; the other actions report their
+      // state transitions and the terminal result.
       //
       // The bounds on scale, mass and duration_s live in the prose: an
       // action's goal fields take no `restrict` (the exposure format
