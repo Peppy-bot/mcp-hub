@@ -102,7 +102,9 @@ which units and the robot frame apply, to look before moving, to call `robot.mov
 any `robot.move_arm`, to check a pose with `robot.check_arm_move` first, that no robot move checks
 the floor, a table, an object or a held item, that a move with success true does not prove that the
 arm arrived, to call `robot.describe_workspace` to learn where to put items for a task, and to call
-`robot.check_positions` before the robot grabs an item `brain.scan_items` found.
+`robot.check_positions` before the robot grabs an item `brain.scan_items` found. The description of
+each move and of `robot.stop` says what holds after the call, in a sentence that begins with
+`After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.
 
 ## Launching it
 

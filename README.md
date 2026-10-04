@@ -77,6 +77,39 @@ peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: r
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
 publishes. Rename yours: within one repository, a `name:tag` is claimed by exactly one file.
 
+### Writing tool texts
+
+A model reads the server `instructions` and the `description` of each tool, and nothing else of the
+document: the comments of a contract do not reach it. Each fact lives in one text. A rule that
+several tools of one endpoint share (the units, the frames, the placement rule of the simulated
+world) lives in the endpoint's `instructions`; what one tool does, and what follows its call, lives
+in that tool's `description`. Another text names the tool or the rule, and does not say it again.
+
+A setter is a tool of a target's `services` or `actions` whose `operation` is not `read_only`: it
+changes the world or moves a robot. Its description says four things, in this order:
+
+1. what the call changes;
+2. what holds after the call, in a sentence that begins with `After the call,`;
+3. what the call refuses, with the name of the shared rule of the `instructions` that refuses it
+   rather than the rule again;
+4. what the call does not check, where a model can think that it does.
+
+A text states a physical fact only when a test of the code behind the tool pins it.
+
+[`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the
+description of a covered setter has no sentence that begins with `After the call,`. The capital
+letter and the comma are part of the rule, and the words must begin a sentence: "the effective
+value after the call" inside a sentence does not count. The test covers every target of
+`simulation/simulation.json5` and the `postures` and `limb_motion` targets of
+`robot/robot_control.json5`, the list in its `COVERED_TARGETS`, and it compares the setters it
+finds there with the list in its `COVERED_SETTERS`, so a target or a setter joins the rule only
+when its author adds it to a list. It checks that the sentence is there, not that it is true.
+
+The tests read the documents with [`exposure_json5.py`](exposure_json5.py), a json5 reader that
+uses the Python standard library alone, since the workflow installs pytest and nothing else. It
+reads the forms of json5 that the documents use and refuses every other form, so a document it
+cannot read fails its test.
+
 ## Simulation contracts
 
 An exposure is the one surface a model drives on the real robot and in simulation alike: the same
