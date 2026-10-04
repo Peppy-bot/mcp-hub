@@ -22,11 +22,11 @@ refused the same way: a relay drives it, never a model, and the relay's own
 What only a simulation gives reaches an endpoint under a wording rule.
 ``scene_manipulation``, ``object_controls``, ``scene_lighting`` and
 ``scene_materials`` edit the simulated world, ``scene_view`` pictures it from
-any viewpoint and shows the catalogue's preview of an asset, and
-``simulation_clock`` holds its time; none has a physical
-counterpart, but a model legitimately drives them, as it does the cameras the
-simulation renders. An exposure targeting one of the six lives under
-``simulation/``, and every
+any viewpoint and shows the catalogue's preview of an asset,
+``simulation_clock`` holds its time, and ``scene_workspace`` measures where a
+robot can work in it; none has a physical counterpart, but a model
+legitimately drives them, as it does the cameras the simulation renders. An
+exposure targeting one of the seven lives under ``simulation/``, and every
 document there says what it is: the server title ends with
 ``SIMULATION_TITLE_SUFFIX``, the instructions open with the sentence
 ``SIMULATION_INSTRUCTIONS_OPENING``, and every ``description`` of every topic,
@@ -61,8 +61,8 @@ INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
 FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
 # Contracts only a simulation gives: those that configure the simulated
-# world, its pictures (a view from a free viewpoint, an asset's preview)
-# and its clock. A model
+# world, its pictures (a view from a free viewpoint, an asset's preview),
+# its clock, and its measure of where a robot can work in it. A model
 # drives them, so an exposure may target them, from under `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
@@ -72,6 +72,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "scene_materials",
         "scene_view",
         "simulation_clock",
+        "scene_workspace",
     }
 )
 
