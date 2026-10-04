@@ -44,6 +44,8 @@ from pathlib import Path
 
 import pytest
 
+from exposure_json5 import strip_comments, unescape
+
 ROOT = Path(__file__).resolve().parent
 
 # Contracts whose members are simulation ground truth: an engine's report of
@@ -96,44 +98,11 @@ _SCHEMA = re.compile(r"""peppy_schema\s*:\s*["']([^"']*)["']""")
 _CONTRACT = re.compile(r"contract\s*:\s*\{([^{}]*)\}")
 _NAME = re.compile(r"""\bname\s*:\s*["']([^"']*)["']""")
 # A double-quoted string with its escapes, the form every prose field of the
-# documents here takes. Group 1 is the raw body; `_unescape` reads it.
+# documents here takes. Group 1 is the raw body; `unescape` reads it.
 _STRING = r'"((?:[^"\\]|\\.)*)"'
 _TITLE = re.compile(r"\btitle\s*:\s*" + _STRING)
 _INSTRUCTIONS = re.compile(r"\binstructions\s*:\s*" + _STRING)
 _DESCRIPTION = re.compile(r"\bdescription\s*:\s*" + _STRING)
-_ESCAPE = re.compile(r"\\(.)")
-_ESCAPES = {"n": "\n", "t": "\t", "r": "\r"}
-
-
-def strip_comments(text: str) -> str:
-    """The document without its `//` and `/* */` comments. String contents
-    are kept as they are, comment markers inside them included."""
-    out: list[str] = []
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c in "\"'":
-            j = i + 1
-            while j < n and text[j] != c:
-                j += 2 if text[j] == "\\" else 1
-            out.append(text[i : j + 1])
-            i = j + 1
-        elif text.startswith("//", i):
-            j = text.find("\n", i)
-            i = n if j < 0 else j
-        elif text.startswith("/*", i):
-            j = text.find("*/", i + 2)
-            i = n if j < 0 else j + 2
-        else:
-            out.append(c)
-            i += 1
-    return "".join(out)
-
-
-def _unescape(body: str) -> str:
-    """The text of a string literal's body: `\\"` reads as `"`, `\\\\` as
-    `\\`, and the whitespace escapes as the whitespace they name."""
-    return _ESCAPE.sub(lambda m: _ESCAPES.get(m.group(1), m.group(1)), body)
 
 
 def exposure_documents(root: Path) -> list[Path]:
@@ -193,15 +162,15 @@ def wording_violations(path: Path) -> list[str]:
     text = strip_comments(path.read_text(encoding="utf-8"))
     violations = []
     title = _TITLE.search(text)
-    if not title or not _unescape(title.group(1)).endswith(SIMULATION_TITLE_SUFFIX):
+    if not title or not unescape(title.group(1)).endswith(SIMULATION_TITLE_SUFFIX):
         violations.append(f"title must end with `{SIMULATION_TITLE_SUFFIX}`")
     instructions = _INSTRUCTIONS.search(text)
-    if not instructions or not _unescape(instructions.group(1)).startswith(
+    if not instructions or not unescape(instructions.group(1)).startswith(
         SIMULATION_INSTRUCTIONS_OPENING
     ):
         violations.append(f"instructions must open with `{SIMULATION_INSTRUCTIONS_OPENING}`")
     for match in _DESCRIPTION.finditer(text):
-        description = _unescape(match.group(1))
+        description = unescape(match.group(1))
         if not _SIMULATION_WORD.search(description):
             violations.append(
                 f'description "{description}" must contain "simulation" or "simulated"'
@@ -479,13 +448,8 @@ def test_documents_of_other_schemas_are_not_exposures(tmp_path: Path) -> None:
     assert exposure_documents(tmp_path) == []
 
 
-def test_strings_keep_their_comment_markers() -> None:
-    assert strip_comments('{ a: "http://x", b: 1 /* c */ } // d') == '{ a: "http://x", b: 1  } '
-    assert strip_comments("{ a: 'it\\'s // not a comment' }") == "{ a: 'it\\'s // not a comment' }"
-
-
 def test_prose_with_escaped_quotes_is_read_whole() -> None:
     text = 'description: "mode is \\"auto\\" or \\"manual\\", in the simulation."'
     match = _DESCRIPTION.search(text)
     assert match
-    assert _unescape(match.group(1)) == 'mode is "auto" or "manual", in the simulation.'
+    assert unescape(match.group(1)) == 'mode is "auto" or "manual", in the simulation.'
