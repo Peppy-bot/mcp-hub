@@ -55,7 +55,9 @@ work, with the largest rectangle in the robot frame to put items in, and `robot.
 whether it can work given points: which arm reaches each, and for a point no arm reaches, how far
 short the closest arm stops. Both answer from the robot's design and the field of view of its
 perception camera, the depth camera no arm carries, and know nothing of the room: no surface, no
-obstacle. The cameras take `camera` too, one of the names the listing gives under `members`:
+obstacle. A robot without a perception camera, an SO-101 for example, whose one camera is on its
+arm, is judged on reach alone. The cameras take `camera` too, one of the names the listing gives
+under `members`:
 
 | Tool or resource                    | Contract                 | Policy                                              |
 | ----------------------------------- | ------------------------ | --------------------------------------------------- |
@@ -104,9 +106,10 @@ any `robot.move_arm`, to check a pose with `robot.check_arm_move` first, to call
 
 The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the exposure as the
 `robot_control` axis of every launcher with robots, deployed by `simulation_mcp` and selected with
-`--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`. Every robot beside it is listed with its identity and limb state, on
-an OpenArm its collision readout, its camera mounts and where its design lets it work, and with
-its brain and recorder whenever they run; its `mcp_commander` option adds the backbone's
+`--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`.
+Every robot beside it is listed with its identity, its limb state and where its design lets it
+work, on an OpenArm with its collision readout and its camera mounts too, and with its brain and
+recorder whenever they run; its `mcp_commander` option adds the backbone's
 moves, and its camera rig adds the cameras under that option, `cameras` on hardware and
 `cameras_sim` in simulation, so a robot without a rig is listed with no camera. The server reads
 one clock, the simulation's beside a simulation and wall time on the physical robots, so a stack
