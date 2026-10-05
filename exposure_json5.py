@@ -10,24 +10,38 @@ nest braces (`restrict`, `representation`).
 
 `parse_json5` reads the part of json5 that the documents use: objects with
 bare or quoted keys, arrays, trailing commas, strings in single or double
-quotes, decimal numbers, true, false and null. Anything else (a hexadecimal
-number, Infinity, NaN, a `\\u` or `\\x` escape, a string continued on the next
-line) raises Json5Error, which says where the reader stopped. So a document
-that the reader cannot read fails its test, and no test passes a document it
-did not read.
+quotes, decimal numbers, true, false and null. It reads white space and
+comments as serde_json5 does, and refuses what serde_json5 refuses: a number
+with a leading zero, a `/*` comment that does not close, a character that
+json5 does not count as white space. It also refuses forms that the
+documents do not use: a hexadecimal number, Infinity, NaN, a `\\u` or `\\x`
+escape, a string continued on the next line. Each refusal raises Json5Error,
+which says where the reader stopped. So a document that the reader cannot
+read fails its test, and no test passes a document that peppy refuses to
+read.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 
+# The characters that end a line in json5: they end a `//` comment, and a
+# string does not hold one.
+_LINE_TERMINATORS = "\n\r\u2028\u2029"
+_LINE_TERMINATOR = re.compile(f"[{_LINE_TERMINATORS}]")
+# The white space of json5 besides the line terminators and the space
+# separators (Unicode category Zs): tab, vertical tab, form feed and the
+# byte order mark.
+_SPACE = "\t\v\f\ufeff"
 _ESCAPE = re.compile(r"\\(.)")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r"}
 # The escapes `unescape` does not read as json5 does: each would give a wrong
 # text, so `parse_json5` refuses a string that holds one.
-_UNREAD_ESCAPES = frozenset("bfv0123456789xu\n\r")
+_UNREAD_ESCAPES = frozenset("bfv0123456789xu" + _LINE_TERMINATORS)
 _IDENTIFIER = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
-_NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
+# A decimal number of json5: its integer part is 0 or has no leading zero.
+_NUMBER = re.compile(r"[+-]?(?:(?:0|[1-9]\d*)(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 _LITERALS = {"true": True, "false": False, "null": None}
 
 
@@ -36,8 +50,11 @@ class Json5Error(ValueError):
 
 
 def strip_comments(text: str) -> str:
-    """The document without its `//` and `/* */` comments. String contents
-    are kept as they are, comment markers inside them included."""
+    """The document with each `/* */` comment read as one space and each
+    `//` comment as nothing up to the end of its line, so a comment
+    separates what stands on its two sides, as serde_json5 reads it. String
+    contents are kept as they are, comment markers inside them included.
+    Raises Json5Error for a `/*` comment that does not close."""
     out: list[str] = []
     i, n = 0, len(text)
     while i < n:
@@ -49,11 +66,14 @@ def strip_comments(text: str) -> str:
             out.append(text[i : j + 1])
             i = j + 1
         elif text.startswith("//", i):
-            j = text.find("\n", i)
-            i = n if j < 0 else j
+            end = _LINE_TERMINATOR.search(text, i)
+            i = n if end is None else end.start()
         elif text.startswith("/*", i):
             j = text.find("*/", i + 2)
-            i = n if j < 0 else j + 2
+            if j < 0:
+                raise Json5Error(f"expected `*/` to close the comment at offset {i}")
+            out.append(" ")
+            i = j + 2
         else:
             out.append(c)
             i += 1
@@ -70,7 +90,7 @@ def parse_json5(text: str) -> object:
     """The value the json5 document `text` holds: an object as a dict whose
     keys keep their document order, an array as a list, a number as an int
     or a float. Raises Json5Error for a form this module does not read, and
-    for an object that holds one key twice, which serde_json5 refuses too."""
+    for an object that holds one key twice, which peppy refuses too."""
     reader = _Reader(strip_comments(text))
     value = reader.read_value()
     reader.read_end()
@@ -146,7 +166,7 @@ class _Reader:
         quote = self.text[self.pos]
         end = self.pos + 1
         while end < len(self.text) and self.text[end] != quote:
-            if self.text[end] in "\n\r":
+            if self.text[end] in _LINE_TERMINATORS:
                 raise self._error(f"a closing {quote} on the line the string opens")
             if self.text[end] == "\\":
                 if self.text[end + 1 : end + 2] in _UNREAD_ESCAPES:
@@ -173,7 +193,7 @@ class _Reader:
             raise self._error(f"`{char}`")
 
     def _skip_space(self) -> None:
-        """Move past white space, a byte order mark included."""
+        """Move past the white space of json5, a byte order mark included."""
         while self.pos < len(self.text) and _is_space(self.text[self.pos]):
             self.pos += 1
 
@@ -183,7 +203,8 @@ class _Reader:
 
 
 def _is_space(char: str) -> bool:
-    return char.isspace() or char == "﻿"
+    """Whether `char` is white space in json5."""
+    return char in _SPACE or char in _LINE_TERMINATORS or unicodedata.category(char) == "Zs"
 
 
 def _number(literal: str) -> int | float:
