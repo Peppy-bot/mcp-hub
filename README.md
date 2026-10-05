@@ -24,7 +24,7 @@ model does transfers to the physical robots:
 | Family | Document | What it publishes | On the physical robots |
 | --- | --- | --- | --- |
 | Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its spawned objects, its light sources, its materials, a picture of it from any viewpoint, its clock, where a robot can work in it, and the record of the calls that changed it | no |
+| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint, its clock, where a robot can work in it, and the record of the calls that changed it | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
 model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
@@ -136,7 +136,7 @@ another.
 ### What only a simulation gives, published under a wording rule
 
 `scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses,
-the robots and their bases), `object_controls` (what a spawned object lets a caller set, a desk's
+the robots and their bases), `object_controls` (what an object lets a caller set, a desk's
 height), `scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it
 from any viewpoint and shows the catalogue's preview of an asset, `simulation_clock` holds its
 time (the time now, a pause, a step), and `scene_workspace` measures where a robot can work in it
