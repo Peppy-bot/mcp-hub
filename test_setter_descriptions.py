@@ -1,8 +1,8 @@
 """The description of every covered setter says what holds after the call.
 
 A model learns from a tool's description what a call changes and what
-follows from it: where an object comes to rest, what a robot does next, and
-what nothing checks. So the description of every covered setter has a
+follows from it. For example: where an object comes to rest, what a robot
+does next, and what nothing checks. So the description of every covered setter has a
 sentence that begins with "After the call,". That sentence is the second of
 the four parts that the README's "Writing tool texts" names. This test checks
 that the sentence is there, not that it is true. A text states a fact only
@@ -26,7 +26,7 @@ target of the simulated world's document, and the posture and limb moves of
 the robots' document. UNCOVERED_TARGETS holds every other target, with the
 reason. A target in no list fails here, and so does a target in both lists.
 A target left out because it has no setter fails here when it gets one. The
-setters of the covered targets are an explicit list too, so a new setter, or
+setters of the covered targets are an explicit list too. So a new setter, or
 a tool whose operation changes, fails here until the list names it.
 
 The documents are read with `exposure_json5`, since the pull request

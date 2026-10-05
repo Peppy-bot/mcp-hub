@@ -4,22 +4,34 @@ peppy reads an exposure with serde_json5. The tests of this repository run
 where the pull request workflow installs pytest and nothing else, so every
 test reads the documents with this module. `exposure_documents` finds the
 exposures of a checkout, `read_json5` reads one file, and `parse_json5` reads
-a text. A test reads the structure of a document, never its text: a regular
+a text. A test reads the structure of a document, never its text. A regular
 expression cannot cut one tool entry out of a document, because the entries
-nest braces (`restrict`, `representation`), and it misses the forms of json5
-it does not expect, such as a quoted key or a string in single quotes.
+nest braces (`restrict`, `representation`). It also misses the forms of
+json5 that it does not expect, such as a quoted key or a string in single
+quotes.
 
-`parse_json5` reads the part of json5 that the documents use: objects with
-bare or quoted keys, arrays, trailing commas, strings in single or double
-quotes, decimal numbers, true, false and null. It reads white space and
-comments as serde_json5 does, and refuses what serde_json5 refuses: a number
-with a leading zero, a `/*` comment that does not close, a character that
-json5 does not count as white space. It also refuses forms that the
-documents do not use: a hexadecimal number, Infinity, NaN, a `\\u` or `\\x`
-escape, a string continued on the next line. Each refusal raises Json5Error,
-which says where the reader stopped. So a document that the reader cannot
-read fails its test, and no test passes a document that peppy refuses to
-read.
+`parse_json5` reads the part of json5 that the documents use:
+
+- objects with bare or quoted keys, and arrays, both with trailing commas;
+- strings in single or double quotes;
+- decimal numbers, true, false and null.
+
+It reads white space and comments as serde_json5 does, and it refuses what
+serde_json5 refuses:
+
+- a number with a leading zero;
+- a `/*` comment that does not close;
+- a character that json5 does not count as white space.
+
+It also refuses forms that the documents do not use:
+
+- a hexadecimal number, Infinity and NaN;
+- a `\\u` or `\\x` escape;
+- a string continued on the next line.
+
+Each refusal raises Json5Error, which says where the reader stopped. So a
+document that the reader cannot read fails its test, and no test passes a
+document that peppy refuses to read.
 """
 
 from __future__ import annotations
@@ -37,9 +49,9 @@ _SKIP_DIRS = frozenset({".git", ".peppy", ".venv", "venv", "__pycache__", ".pyte
 # string does not hold one.
 _LINE_TERMINATORS = "\n\r\u2028\u2029"
 _LINE_TERMINATOR = re.compile(f"[{_LINE_TERMINATORS}]")
-# The white space of json5 besides the line terminators and the space
-# separators (Unicode category Zs): tab, vertical tab, form feed and the
-# byte order mark.
+# The white space of json5 that is not a line terminator or a space
+# separator (Unicode category Zs). That is tab, vertical tab, form feed and
+# the byte order mark.
 _SPACE = "\t\v\f\ufeff"
 _ESCAPE = re.compile(r"\\(.)")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r"}
@@ -58,7 +70,7 @@ class Json5Error(ValueError):
 
 def exposure_documents(root: Path) -> list[Path]:
     """Every json5 document under `root` whose schema is an MCP exposure,
-    listed in the repository index or not: a rule of the tests holds for
+    listed in the repository index or not. A rule of the tests holds for
     any document that could be published. Raises Json5Error, naming the
     file, for a json5 document this module does not read."""
     found = []
@@ -82,10 +94,10 @@ def read_json5(path: Path) -> object:
 
 
 def parse_json5(text: str) -> object:
-    """The value the json5 document `text` holds: an object as a dict whose
-    keys keep their document order, an array as a list, a number as an int
-    or a float. Raises Json5Error for a form this module does not read, and
-    for an object that holds one key twice, which peppy refuses too."""
+    """The value the json5 document `text` holds. An object is a dict whose
+    keys keep their document order, an array is a list, and a number is an
+    int or a float. Raises Json5Error for a form this module does not read,
+    and for an object that holds one key twice, which peppy refuses too."""
     reader = _Reader(_strip_comments(text))
     value = reader.read_value()
     reader.read_end()
@@ -93,9 +105,9 @@ def parse_json5(text: str) -> object:
 
 
 def _strip_comments(text: str) -> str:
-    """The document with each `/* */` comment read as one space and each
-    `//` comment as nothing up to the end of its line, so a comment
-    separates what stands on its two sides, as serde_json5 reads it. String
+    """The document with each `/* */` comment read as one space, and each
+    `//` comment read as nothing up to the end of its line. So a comment
+    separates what stands on its two sides, as in serde_json5. String
     contents are kept as they are, comment markers inside them included.
     Raises Json5Error for a `/*` comment that does not close."""
     out: list[str] = []

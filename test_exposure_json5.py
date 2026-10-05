@@ -1,6 +1,6 @@
-"""The json5 reader the tests of this repository share: it reads the forms
-the exposure documents use, and refuses every other form instead of reading
-it wrong."""
+"""The json5 reader that the tests of this repository share. It reads the
+forms that the exposure documents use, and refuses the other forms instead
+of reading them wrong."""
 
 from __future__ import annotations
 

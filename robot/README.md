@@ -44,9 +44,9 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 `robot.move_arm`, `robot.move_arm_joints` and `robot.move_gripper` name a limb as the listing
 reports it under `limbs`. A pose is in the robot frame: fixed to the robot's base, its origin the
 point the base stands on, +X the way the robot faces, +Y to its left, +Z up. `robot.check_arm_move`
-says whether a `robot.move_arm` goal has a plan, and moves nothing; `robot.stop` ends every planned
-move in flight on the robot, whoever started it, and each limb holds where it was commanded to be
-when the stop came, with no gripper opened. `robot.move_to_ready` and `robot.move_to_home` report
+says whether a `robot.move_arm` goal has a plan, and moves nothing. `robot.stop` ends every planned
+move in flight on the robot, whoever started it. Then each limb holds where it was commanded to be
+when the stop came, and no gripper opens. `robot.move_to_ready` and `robot.move_to_home` report
 `arm_names`, `positions` and `orientations`: the grasp point of each arm in the robot frame,
 measured when the move ended. The three arrays are empty when the robot has no fresh measured pose
 of an arm. `robot.move_gripper` answers when the gripper stands still, and its

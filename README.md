@@ -89,7 +89,7 @@ A model reads what peppy publishes of an exposure:
 The comments of the document and of its contracts do not reach the model.
 
 Each fact lives in one text. A rule that several tools of one endpoint share lives in the
-endpoint's `instructions`, for example the units, the frames and the placement rule of the
+endpoint's `instructions`. Examples are the units, the frames and the placement rule of the
 simulated world. What one tool does, and what follows its call, lives in that tool's
 `description`. Another text names the tool or the rule, and does not say it again.
 
