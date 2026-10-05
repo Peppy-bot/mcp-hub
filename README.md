@@ -117,8 +117,13 @@ checks that the sentence is there, not that it is true.
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
 else. The reader refuses each form that serde_json5, the json5 reader of peppy, refuses. It also
-refuses the forms of json5 that the documents do not use. So a document that it cannot read fails
-its test.
+refuses some forms that the documents do not use:
+
+- a hexadecimal number, Infinity and NaN;
+- a `\u` or `\x` escape;
+- a string continued on the next line.
+
+So a document that it cannot read fails its test.
 
 ## Simulation contracts
 

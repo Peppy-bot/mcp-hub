@@ -10,11 +10,13 @@ nest braces (`restrict`, `representation`). It also misses the forms of
 json5 that it does not expect, such as a quoted key or a string in single
 quotes.
 
-`parse_json5` reads the part of json5 that the documents use:
+`parse_json5` reads these forms of json5:
 
 - objects with bare or quoted keys, and arrays, both with trailing commas;
 - strings in single or double quotes;
-- decimal numbers, true, false and null.
+- decimal numbers, a sign, an exponent and a leading or trailing decimal
+  point included;
+- true, false and null.
 
 It reads white space and comments as serde_json5 does, and it refuses what
 serde_json5 refuses:

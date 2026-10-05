@@ -1,6 +1,6 @@
 """The json5 reader that the tests of this repository share. It reads the
-forms that the exposure documents use, and refuses the other forms instead
-of reading them wrong."""
+forms that its module lists, and it refuses a form that it would read
+wrong."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def test_escapes_read_as_the_text_they_name() -> None:
     assert parse_json5(document) == {"a": "say \"hi\"\n\tit's \\ done"}
 
 
-def test_the_forms_the_documents_use_are_read() -> None:
+def test_the_forms_the_reader_takes_are_read() -> None:
     document = """// A comment before the document.
     {
       bare: 1,
