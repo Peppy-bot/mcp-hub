@@ -49,9 +49,8 @@ move in flight on the robot, whoever started it. Then each limb holds where it w
 when the stop came, and no gripper opens. `robot.move_to_ready` and `robot.move_to_home` report
 `arm_names`, `positions` and `orientations`: the grasp point of each arm in the robot frame,
 measured when the move ended. The three arrays are empty when the robot has no fresh measured pose
-of an arm. `robot.move_gripper` answers when the gripper stands still, and its
-`final_opening` is the opening measured then: the target, or the opening where an object or the
-effort cap holds the jaws.
+of an arm. `robot.move_gripper` answers when the gripper stands still. Its `final_opening` is the
+opening measured then: the target, or where an object or the effort cap holds the jaws.
 `robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
 frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
 takes. `robot.describe_workspace` says where on a flat surface at a given height the robot can

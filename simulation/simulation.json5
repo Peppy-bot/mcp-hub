@@ -1,23 +1,27 @@
-// The simulated world a stack's robots run in, as one MCP surface: the
-// scene (assets, the objects standing in it and their poses, the loaded
-// scene, the robots and their placement), the controls its objects offer
-// (a desk's height), its light sources, the optical properties of its
-// materials, a picture of it from any viewpoint, its clock (the time now, a
-// pause, a step), and where a robot can work in it (the surfaces and objects
-// its arms reach and its perception camera sees). Nothing here has a
-// counterpart on the physical robot; the title says so, the instructions
-// open by saying so, and every description says so, so a model reading this
-// endpoint never mistakes it for a real-robot surface. Waldo alone
-// implements object_controls, scene_lighting, scene_materials, scene_view,
-// simulation_clock and scene_workspace, so only a Waldo stack serves this
-// document; the robots' own surface is the robot_control document, served
-// on hardware and in simulation alike. The inventory
+// The simulated world a stack's robots run in, as one MCP surface. It
+// gives:
+// - the scene: the assets, the objects standing in it and their poses, the
+//   loaded scene, the robots and their placement;
+// - the controls its objects offer, such as a desk's height;
+// - its light sources and the optical properties of its materials;
+// - a picture of it from any viewpoint;
+// - its clock: the time now, a pause, a step;
+// - where a robot can work in it: the surfaces and objects its arms reach
+//   and its perception camera sees.
+//
+// Nothing here has a counterpart on the physical robot. The title, the
+// opening of the instructions and every description say so. So a model
+// reading this endpoint never mistakes it for a real-robot surface. Waldo
+// alone implements object_controls, scene_lighting, scene_materials,
+// scene_view, simulation_clock and scene_workspace, so only a Waldo stack
+// serves this document. The robots' own surface is the robot_control
+// document, served on hardware and in simulation alike. The inventory that
 // scene.get_objects_list reports, and where workspace.* says a robot can
-// work, are the world's setup, for a caller that checks it; a robot's task
-// still finds its items through the robot's own perception. The velocities
-// of the same objects, streamed for evaluation, are the engine's
-// object_state contract, which stays inside the peppy framework, as the
-// README's ground-truth rule says.
+// work, are the world's setup, for a caller that checks it. A robot's task
+// finds its items through the robot's own perception. The velocities of the
+// same objects, streamed for evaluation, are the engine's object_state
+// contract. That contract stays inside the peppy framework, as the README's
+// ground-truth rule says.
 //
 // This document is the whole artifact. A launcher lists it under
 // `source: { exposures: ["simulation:v1"] }`, binds its seven targets to
