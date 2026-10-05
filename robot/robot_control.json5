@@ -89,7 +89,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "ea11a3ebf99228cb8353da08ca9f5e39330db549bf7b7d71471f2529e07e15af",
+        sha256: "6939906f3c96829fa7e6187529a6e418ebf1a24e771f6bf20ff3125bdb3e99c7",
       },
       actions: [
         {
