@@ -24,7 +24,7 @@ model does transfers to the physical robots:
 | Family | Document | What it publishes | On the physical robots |
 | --- | --- | --- | --- |
 | Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its spawned objects, its light sources, its materials, a picture of it from any viewpoint, its clock, where a robot can work in it, and the record of the calls that changed it | no |
+| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint, its clock, where a robot can work in it, and the record of the calls that changed it | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
 model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
@@ -77,6 +77,54 @@ peppy mcp catalog <exposure_name>:<tag>                 # the derived catalog: r
 Generation refuses, naming both files, if your change claims a `name:tag` another one already
 publishes. Rename yours: within one repository, a `name:tag` is claimed by exactly one file.
 
+### Writing tool texts
+
+A model reads what peppy publishes of an exposure:
+
+- the server `title` and `instructions`;
+- the name and `description` of each tool and of each resource;
+- the input and output schemas of each tool, which peppy derives from the contract. The input
+  schema carries the document's `restrict` bounds as its minimum and maximum.
+
+The comments of the document and of its contracts do not reach the model.
+
+Each fact lives in one text. A rule that several tools of one endpoint share lives in the
+endpoint's `instructions`. Examples are the units, the frames and the placement rule of the
+simulated world. What one tool does, and what follows its call, lives in that tool's
+`description`. Another text names the tool or the rule, and does not say it again.
+
+A setter is an entry of a target's `services` or `actions` whose `operation` is not `read_only`.
+The description of a covered setter says four things, in this order:
+
+1. what the call changes;
+2. what holds after the call, in a sentence that begins with `After the call,`;
+3. what the call refuses, with the name of the shared rule of the `instructions` that refuses it;
+4. what the call does not check, where a model can think that it does.
+
+A text states a physical fact only when a test of the code behind the tool pins it.
+
+[`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the
+description of a covered setter has no sentence that begins with `After the call,`. The capital
+letter and the comma are part of the rule. The words must begin a sentence: "the effective value
+after the call" inside a sentence does not count. The covered targets are the ones in its
+`COVERED_TARGETS`: every target of `simulation/simulation.json5`, and the `postures` and
+`limb_motion` targets of `robot/robot_control.json5`. Its `UNCOVERED_TARGETS` names every other
+target of every exposure document, each with the reason. The test fails for a target that neither
+list names, and for a setter of a covered target that its `COVERED_SETTERS` does not name. So a
+target or a setter joins the rule, or stays out of it, only when its author says so. The test
+checks that the sentence is there, not that it is true.
+
+The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
+json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
+else. The reader refuses each form that serde_json5, the json5 reader of peppy, refuses. It also
+refuses some forms that the documents do not use:
+
+- a hexadecimal number, Infinity and NaN;
+- a `\u` or `\x` escape;
+- a string continued on the next line.
+
+So a document that it cannot read fails its test.
+
 ## Simulation contracts
 
 An exposure is the one surface a model drives on the real robot and in simulation alike: the same
@@ -103,7 +151,7 @@ another.
 ### What only a simulation gives, published under a wording rule
 
 `scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses,
-the robots and their bases), `object_controls` (what a spawned object lets a caller set, a desk's
+the robots and their bases), `object_controls` (what an object lets a caller set, a desk's
 height), `scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it
 from any viewpoint and shows the catalogue's preview of an asset, `simulation_clock` holds its
 time (the time now, a pause, a step), and `scene_workspace` measures where a robot can work in it

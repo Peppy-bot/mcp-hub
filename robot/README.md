@@ -44,10 +44,13 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 `robot.move_arm`, `robot.move_arm_joints` and `robot.move_gripper` name a limb as the listing
 reports it under `limbs`. A pose is in the robot frame: fixed to the robot's base, its origin the
 point the base stands on, +X the way the robot faces, +Y to its left, +Z up. `robot.check_arm_move`
-says whether a `robot.move_arm` goal has a plan, and moves nothing; `robot.stop` ends every planned
-move in flight on the robot, whoever started it, and the robot holds where it is.
-`robot.move_gripper` answers when the gripper stands still, and its `final_opening` is the opening
-measured then: the target, or the opening where an object or the effort cap holds the jaws.
+says whether a `robot.move_arm` goal has a plan, and moves nothing. `robot.stop` ends every planned
+move in flight on the robot, whoever started it. Then each limb holds where it was commanded to be
+when the stop came, and no gripper opens. `robot.move_to_ready` and `robot.move_to_home` report
+`arm_names`, `positions` and `orientations`: the grasp point of each arm in the robot frame,
+measured when the move ended. The three arrays are empty when the robot has no fresh measured pose
+of an arm. `robot.move_gripper` answers when the gripper stands still. Its `final_opening` is the
+opening measured then: the target, or where an object or the effort cap holds the jaws.
 `robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
 frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
 takes. `robot.describe_workspace` says where on a flat surface at a given height the robot can
@@ -95,12 +98,17 @@ so a client that finds a robot in a state it did not command can tell whether an
 the endpoint did it. A motion a teleoperation or another node commanded is not in it.
 
 Every contract is pinned by sha256 to the document this exposure was written against. The
-cameras' brightness and contrast stay private. The server's `instructions` tell a model to list
-first, that this is the surface to prefer over any simulation endpoint, how to address the limbs,
-which units and the robot frame apply, to look before moving, to call `robot.move_to_ready` before
-any `robot.move_arm`, to check a pose with `robot.check_arm_move` first, to call
-`robot.describe_workspace` to learn where to put items for a task, and to call
-`robot.check_positions` before the robot grabs an item `brain.scan_items` found.
+cameras' brightness and contrast stay private. The server's `instructions` tell a model:
+
+- to list first, and that this is the surface to prefer over any simulation endpoint;
+- how to address the limbs, and which units and robot frame apply;
+- to call `robot.move_to_ready` before any `robot.move_arm`;
+- that no robot move checks the floor, a table, an object or a held item;
+- that a move with success true does not prove that the arm arrived;
+- what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
+
+The description of each move and of `robot.stop` says what holds after the call. That sentence
+begins with `After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.
 
 ## Launching it
 
