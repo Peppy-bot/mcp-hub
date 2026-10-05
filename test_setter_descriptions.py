@@ -37,13 +37,9 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from pathlib import Path
-
 import pytest
 
-from exposure_json5 import exposure_documents, parse_json5, read_json5
-
-ROOT = Path(__file__).resolve().parent
+from exposure_json5 import REPOSITORY_ROOT, document_name, exposure_documents, parse_json5, read_json5
 
 AFTER_THE_CALL = "After the call,"
 # The sentence opens the description, or follows the end of another sentence.
@@ -151,11 +147,7 @@ def setter_violations(document: dict, targets: Iterable[str]) -> list[str]:
 
 
 def read_document(relative: str) -> dict:
-    return read_json5(ROOT / relative)
-
-
-def _relative(path: Path) -> str:
-    return str(path.relative_to(ROOT))
+    return read_json5(REPOSITORY_ROOT / relative)
 
 
 @pytest.mark.parametrize("relative", sorted(COVERED_TARGETS))
@@ -173,7 +165,7 @@ def test_the_covered_setters_are_the_listed_ones(relative: str) -> None:
     )
 
 
-@pytest.mark.parametrize("relative", [_relative(path) for path in exposure_documents(ROOT)])
+@pytest.mark.parametrize("relative", [document_name(path) for path in exposure_documents(REPOSITORY_ROOT)])
 def test_every_target_is_covered_or_left_out_by_name(relative: str) -> None:
     targets = set(read_document(relative)["targets"])
     covered = set(COVERED_TARGETS.get(relative, ()))
@@ -186,7 +178,7 @@ def test_every_target_is_covered_or_left_out_by_name(relative: str) -> None:
 
 
 def test_the_lists_name_exposure_documents() -> None:
-    documents = {_relative(path) for path in exposure_documents(ROOT)}
+    documents = {document_name(path) for path in exposure_documents(REPOSITORY_ROOT)}
     listed = set(COVERED_TARGETS) | set(UNCOVERED_TARGETS)
     assert listed <= documents, f"listed but not an exposure document: {sorted(listed - documents)}"
 

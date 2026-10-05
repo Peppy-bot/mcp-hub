@@ -47,9 +47,7 @@ from pathlib import Path
 
 import pytest
 
-from exposure_json5 import Json5Error, exposure_documents, parse_json5, read_json5
-
-ROOT = Path(__file__).resolve().parent
+from exposure_json5 import REPOSITORY_ROOT, Json5Error, document_name, exposure_documents, parse_json5, read_json5
 
 # Contracts whose members are simulation ground truth: an engine's report of
 # what it alone can know. Nothing on a real robot implements them, so no
@@ -157,40 +155,36 @@ def wording_violations(path: Path) -> list[str]:
     return violations
 
 
-def _relative(path: Path) -> str:
-    return str(path.relative_to(ROOT))
-
-
 def test_the_checkout_has_exposures_to_check() -> None:
-    assert exposure_documents(ROOT), "no mcp_exposure/v1 document found: the walk is broken"
+    assert exposure_documents(REPOSITORY_ROOT), "no mcp_exposure/v1 document found: the walk is broken"
 
 
 def test_the_checkout_has_simulation_documents_to_check() -> None:
-    assert simulation_documents(ROOT), "no exposure under simulation/: the walk is broken"
+    assert simulation_documents(REPOSITORY_ROOT), "no exposure under simulation/: the walk is broken"
 
 
-@pytest.mark.parametrize("path", exposure_documents(ROOT), ids=_relative)
+@pytest.mark.parametrize("path", exposure_documents(REPOSITORY_ROOT), ids=document_name)
 def test_no_exposure_targets_a_forbidden_contract(path: Path) -> None:
     offending = forbidden_targets(path)
     assert not offending, (
-        f"{_relative(path)} targets {', '.join(offending)}: simulation ground truth and the "
+        f"{document_name(path)} targets {', '.join(offending)}: simulation ground truth and the "
         "internal camera channel stay inside the peppy framework and never reach an MCP endpoint"
     )
 
 
-@pytest.mark.parametrize("path", exposure_documents(ROOT), ids=_relative)
+@pytest.mark.parametrize("path", exposure_documents(REPOSITORY_ROOT), ids=document_name)
 def test_what_only_a_simulation_gives_lives_under_simulation(path: Path) -> None:
-    misplaced = misplaced_simulation_only_targets(path, ROOT)
+    misplaced = misplaced_simulation_only_targets(path, REPOSITORY_ROOT)
     assert not misplaced, (
-        f"{_relative(path)} targets {', '.join(misplaced)}: an exposure on what only a "
+        f"{document_name(path)} targets {', '.join(misplaced)}: an exposure on what only a "
         f"simulation gives lives under {SIMULATION_DIR}/"
     )
 
 
-@pytest.mark.parametrize("path", simulation_documents(ROOT), ids=_relative)
+@pytest.mark.parametrize("path", simulation_documents(REPOSITORY_ROOT), ids=document_name)
 def test_simulation_documents_say_what_they_are(path: Path) -> None:
     violations = wording_violations(path)
-    assert not violations, f"{_relative(path)}: " + "; ".join(violations)
+    assert not violations, f"{document_name(path)}: " + "; ".join(violations)
 
 
 _OFFENDING = """// A target on ground truth, which this repository refuses.

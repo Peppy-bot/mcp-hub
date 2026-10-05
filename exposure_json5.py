@@ -3,12 +3,12 @@
 peppy reads an exposure with serde_json5. The tests of this repository run
 where the pull request workflow installs pytest and nothing else, so every
 test reads the documents with this module. `exposure_documents` finds the
-exposures of a checkout, `read_json5` reads one file, and `parse_json5` reads
-a text. A test reads the structure of a document, never its text. A regular
-expression cannot cut one tool entry out of a document, because the entries
-nest braces (`restrict`, `representation`). It also misses the forms of
-json5 that it does not expect, such as a quoted key or a string in single
-quotes.
+exposures of a checkout, `document_name` names one for a test, `read_json5`
+reads one file, and `parse_json5` reads a text. A test reads the structure of
+a document, never its text. A regular expression cannot cut one tool entry out
+of a document, because the entries nest braces (`restrict`, `representation`).
+It also misses the forms of json5 that it does not expect, such as a quoted
+key or a string in single quotes.
 
 `parse_json5` reads these forms of json5:
 
@@ -42,6 +42,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+# The root of this repository's checkout: this module sits there.
+REPOSITORY_ROOT = Path(__file__).resolve().parent
 # The schema of an MCP exposure document.
 EXPOSURE_SCHEMA = "mcp_exposure/v1"
 # Directories that hold no document of this repository.
@@ -83,6 +85,12 @@ def exposure_documents(root: Path) -> list[Path]:
         if isinstance(document, dict) and document.get("peppy_schema") == EXPOSURE_SCHEMA:
             found.append(path)
     return found
+
+
+def document_name(path: Path) -> str:
+    """The name a test gives the document at `path`: its path relative to
+    the repository root, such as `simulation/simulation.json5`."""
+    return str(path.relative_to(REPOSITORY_ROOT))
 
 
 def read_json5(path: Path) -> object:

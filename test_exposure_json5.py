@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from exposure_json5 import Json5Error, parse_json5
+from exposure_json5 import REPOSITORY_ROOT, Json5Error, document_name, parse_json5
 
 
 def test_strings_keep_their_comment_markers() -> None:
@@ -57,6 +57,11 @@ def test_a_number_has_a_leading_zero_only_when_its_integer_part_is_zero() -> Non
 
 def test_an_object_keeps_the_order_of_its_keys() -> None:
     assert list(parse_json5("{ b: 1, a: 2, c: 3 }")) == ["b", "a", "c"]
+
+
+def test_a_document_is_named_by_its_path_in_the_repository() -> None:
+    assert document_name(REPOSITORY_ROOT / "simulation" / "simulation.json5") == "simulation/simulation.json5"
+    assert (REPOSITORY_ROOT / "exposure_json5.py").is_file()
 
 
 def test_an_int_stays_an_int() -> None:
