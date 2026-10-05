@@ -103,9 +103,7 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
 - that a move with success true does not prove that the arm arrived;
-- what the result of `robot.move_to_ready` and `robot.move_to_home` reports;
-- to call `robot.describe_workspace` to learn where to put items for a task;
-- to call `robot.check_positions` before the robot grabs an item that `brain.scan_items` found.
+- what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
 
 The description of each move and of `robot.stop` says what holds after the call. That sentence
 begins with `After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.
