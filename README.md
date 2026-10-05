@@ -105,12 +105,14 @@ A text states a physical fact only when a test of the code behind the tool pins 
 
 [`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the
 description of a covered setter has no sentence that begins with `After the call,`. The capital
-letter and the comma are part of the rule, and the words must begin a sentence: "the effective
-value after the call" inside a sentence does not count. The test covers every target of
-`simulation/simulation.json5` and the `postures` and `limb_motion` targets of
-`robot/robot_control.json5`, the list in its `COVERED_TARGETS`, and it compares the setters it
-finds there with the list in its `COVERED_SETTERS`, so a target or a setter joins the rule only
-when its author adds it to a list. It checks that the sentence is there, not that it is true.
+letter and the comma are part of the rule. The words must begin a sentence: "the effective value
+after the call" inside a sentence does not count. The covered targets are the ones in its
+`COVERED_TARGETS`: every target of `simulation/simulation.json5`, and the `postures` and
+`limb_motion` targets of `robot/robot_control.json5`. Its `UNCOVERED_TARGETS` names every other
+target of every exposure document, each with the reason. The test fails for a target that neither
+list names, and for a setter of a covered target that its `COVERED_SETTERS` does not name. So a
+target or a setter joins the rule, or stays out of it, only when its author says so. The test
+checks that the sentence is there, not that it is true.
 
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing

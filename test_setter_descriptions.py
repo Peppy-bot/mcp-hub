@@ -20,13 +20,14 @@ question mark or an exclamation mark. Several descriptions say "the
 effective value after the call" inside a sentence, and that form does not
 count.
 
-The covered targets are an explicit list, so a target is covered because its
-author decided it: every target of the simulated world's document, and the
-posture and limb moves of the robots' document. The other targets of the
-robots' document, its cameras, brain and recorder among them, are not
-covered. The setters the covered targets give are an explicit list too, so
-a new setter, or a tool whose operation changes, fails here until the list
-names it.
+Each target of each exposure document is in one of two explicit lists, so
+its author decides whether the rule covers it. COVERED_TARGETS holds every
+target of the simulated world's document, and the posture and limb moves of
+the robots' document. UNCOVERED_TARGETS holds every other target, with the
+reason. A target in no list fails here, and so does a target in both lists.
+A target left out because it has no setter fails here when it gets one. The
+setters of the covered targets are an explicit list too, so a new setter, or
+a tool whose operation changes, fails here until the list names it.
 
 The documents are read with `exposure_json5`, since the pull request
 workflow installs pytest and nothing else.
@@ -40,7 +41,7 @@ from pathlib import Path
 
 import pytest
 
-from exposure_json5 import parse_json5
+from exposure_json5 import exposure_documents, parse_json5, read_json5
 
 ROOT = Path(__file__).resolve().parent
 
@@ -50,11 +51,37 @@ _AFTER_THE_CALL_SENTENCE = re.compile(r"(?:^|[.!?]\s+)" + re.escape(AFTER_THE_CA
 
 SIMULATION_DOCUMENT = "simulation/simulation.json5"
 ROBOT_DOCUMENT = "robot/robot_control.json5"
+RECORDING_DOCUMENT = "recording/camera_and_recording.json5"
 
 # The targets whose setters the rule covers, per exposure document.
 COVERED_TARGETS = {
     SIMULATION_DOCUMENT: ("scene", "controls", "lighting", "materials", "view", "clock", "workspace"),
     ROBOT_DOCUMENT: ("postures", "limb_motion"),
+}
+
+# The reason of a target that has no setter.
+NO_SETTER = "it has no setter"
+# The targets the rule does not cover, per exposure document, each with the
+# reason.
+UNCOVERED_TARGETS = {
+    ROBOT_DOCUMENT: {
+        "identity": NO_SETTER,
+        "limb_state": NO_SETTER,
+        "collision": NO_SETTER,
+        "camera": "its setters set a camera's device controls",
+        "depth_camera": "its setters set a camera's device controls",
+        "camera_profile": "its setter resets a camera's device controls",
+        "camera_geometry": NO_SETTER,
+        "camera_mounts": NO_SETTER,
+        "workspace": NO_SETTER,
+        "item_perception": "its actions are the brain's sequences",
+        "item_manipulation": "its actions are the brain's sequences",
+        "recorder": "its action records an episode",
+    },
+    RECORDING_DOCUMENT: {
+        "camera": "its setter sets a camera's device control",
+        "recorder": "its action records an episode",
+    },
 }
 
 # The setters the covered targets give, per exposure document.
@@ -124,7 +151,11 @@ def setter_violations(document: dict, targets: Iterable[str]) -> list[str]:
 
 
 def read_document(relative: str) -> dict:
-    return parse_json5((ROOT / relative).read_text(encoding="utf-8"))
+    return read_json5(ROOT / relative)
+
+
+def _relative(path: Path) -> str:
+    return str(path.relative_to(ROOT))
 
 
 @pytest.mark.parametrize("relative", sorted(COVERED_TARGETS))
@@ -142,9 +173,29 @@ def test_the_covered_setters_are_the_listed_ones(relative: str) -> None:
     )
 
 
-def test_every_target_of_the_simulated_world_is_covered() -> None:
-    targets = read_document(SIMULATION_DOCUMENT)["targets"]
-    assert sorted(targets) == sorted(COVERED_TARGETS[SIMULATION_DOCUMENT])
+@pytest.mark.parametrize("relative", [_relative(path) for path in exposure_documents(ROOT)])
+def test_every_target_is_covered_or_left_out_by_name(relative: str) -> None:
+    targets = set(read_document(relative)["targets"])
+    covered = set(COVERED_TARGETS.get(relative, ()))
+    uncovered = set(UNCOVERED_TARGETS.get(relative, {}))
+    assert not covered & uncovered, f"{relative}: both covered and left out: {sorted(covered & uncovered)}"
+    assert covered | uncovered == targets, (
+        f"{relative}: in no list {sorted(targets - covered - uncovered)}, "
+        f"listed but not a target {sorted((covered | uncovered) - targets)}"
+    )
+
+
+def test_the_lists_name_exposure_documents() -> None:
+    documents = {_relative(path) for path in exposure_documents(ROOT)}
+    listed = set(COVERED_TARGETS) | set(UNCOVERED_TARGETS)
+    assert listed <= documents, f"listed but not an exposure document: {sorted(listed - documents)}"
+
+
+@pytest.mark.parametrize("relative", sorted(UNCOVERED_TARGETS))
+def test_a_target_left_out_for_having_no_setter_has_none(relative: str) -> None:
+    no_setter = [target for target, reason in UNCOVERED_TARGETS[relative].items() if reason == NO_SETTER]
+    tools = [entry["tool"] for entry in setters(read_document(relative), no_setter)]
+    assert not tools, f"{relative}: a target listed with no setter gives {tools}"
 
 
 _FIXTURE = """// Two covered targets, the tools that are not setters, and a target
