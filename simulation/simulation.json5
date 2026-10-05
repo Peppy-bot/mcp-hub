@@ -82,7 +82,7 @@
         {
           member: "get_asset_categories",
           tool: "scene.get_asset_categories",
-          description: "Count the assets the simulation can place per category, in categories: kind (scene or object), category and count. Call it first, then scene.get_assets_list with a kind and a category to list the entries of one category. Takes no arguments and changes nothing.",
+          description: "Count the assets the simulation can place per category, in categories: kind (scene or object), category and count. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
