@@ -1,12 +1,13 @@
 """Read the json5 documents of this repository with the standard library alone.
 
 peppy reads an exposure with serde_json5. The tests of this repository run
-where the pull request workflow installs pytest and nothing else, so they read
-the documents with this module: `strip_comments` and `unescape` for a test
-that looks at the text, and `parse_json5` for a test that needs the document's
-structure, such as which tool of which target has which operation. A regular
+where the pull request workflow installs pytest and nothing else, so every
+test reads the documents with this module. `exposure_documents` finds the
+exposures of a checkout, `read_json5` reads one file, and `parse_json5` reads
+a text. A test reads the structure of a document, never its text: a regular
 expression cannot cut one tool entry out of a document, because the entries
-nest braces (`restrict`, `representation`).
+nest braces (`restrict`, `representation`), and it misses the forms of json5
+it does not expect, such as a quoted key or a string in single quotes.
 
 `parse_json5` reads the part of json5 that the documents use: objects with
 bare or quoted keys, arrays, trailing commas, strings in single or double
@@ -25,6 +26,12 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from pathlib import Path
+
+# The schema of an MCP exposure document.
+EXPOSURE_SCHEMA = "mcp_exposure/v1"
+# Directories that hold no document of this repository.
+_SKIP_DIRS = frozenset({".git", ".peppy", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules"})
 
 # The characters that end a line in json5: they end a `//` comment, and a
 # string does not hold one.
@@ -36,7 +43,7 @@ _LINE_TERMINATOR = re.compile(f"[{_LINE_TERMINATORS}]")
 _SPACE = "\t\v\f\ufeff"
 _ESCAPE = re.compile(r"\\(.)")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r"}
-# The escapes `unescape` does not read as json5 does: each would give a wrong
+# The escapes `_unescape` does not read as json5 does: each would give a wrong
 # text, so `parse_json5` refuses a string that holds one.
 _UNREAD_ESCAPES = frozenset("bfv0123456789xu" + _LINE_TERMINATORS)
 _IDENTIFIER = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
@@ -49,7 +56,43 @@ class Json5Error(ValueError):
     """A document that `parse_json5` does not read, with where it stopped."""
 
 
-def strip_comments(text: str) -> str:
+def exposure_documents(root: Path) -> list[Path]:
+    """Every json5 document under `root` whose schema is an MCP exposure,
+    listed in the repository index or not: a rule of the tests holds for
+    any document that could be published. Raises Json5Error, naming the
+    file, for a json5 document this module does not read."""
+    found = []
+    for path in sorted(root.rglob("*.json5")):
+        if _SKIP_DIRS.intersection(path.relative_to(root).parts):
+            continue
+        document = read_json5(path)
+        if isinstance(document, dict) and document.get("peppy_schema") == EXPOSURE_SCHEMA:
+            found.append(path)
+    return found
+
+
+def read_json5(path: Path) -> object:
+    """The value of the json5 document at `path`, as `parse_json5` gives it.
+    Raises Json5Error, naming the file, for a form this module does not
+    read."""
+    try:
+        return parse_json5(path.read_text(encoding="utf-8"))
+    except Json5Error as error:
+        raise Json5Error(f"{path}: {error}") from error
+
+
+def parse_json5(text: str) -> object:
+    """The value the json5 document `text` holds: an object as a dict whose
+    keys keep their document order, an array as a list, a number as an int
+    or a float. Raises Json5Error for a form this module does not read, and
+    for an object that holds one key twice, which peppy refuses too."""
+    reader = _Reader(_strip_comments(text))
+    value = reader.read_value()
+    reader.read_end()
+    return value
+
+
+def _strip_comments(text: str) -> str:
     """The document with each `/* */` comment read as one space and each
     `//` comment as nothing up to the end of its line, so a comment
     separates what stands on its two sides, as serde_json5 reads it. String
@@ -80,21 +123,10 @@ def strip_comments(text: str) -> str:
     return "".join(out)
 
 
-def unescape(body: str) -> str:
+def _unescape(body: str) -> str:
     """The text of a string literal's body: `\\"` reads as `"`, `\\\\` as
     `\\`, and the whitespace escapes as the whitespace they name."""
     return _ESCAPE.sub(lambda m: _ESCAPES.get(m.group(1), m.group(1)), body)
-
-
-def parse_json5(text: str) -> object:
-    """The value the json5 document `text` holds: an object as a dict whose
-    keys keep their document order, an array as a list, a number as an int
-    or a float. Raises Json5Error for a form this module does not read, and
-    for an object that holds one key twice, which peppy refuses too."""
-    reader = _Reader(strip_comments(text))
-    value = reader.read_value()
-    reader.read_end()
-    return value
 
 
 class _Reader:
@@ -178,7 +210,7 @@ class _Reader:
             raise self._error(f"a closing {quote}")
         body = self.text[self.pos + 1 : end]
         self.pos = end + 1
-        return unescape(body)
+        return _unescape(body)
 
     def _read_char(self, char: str) -> bool:
         """Whether the next character after any space is `char`, read if so."""

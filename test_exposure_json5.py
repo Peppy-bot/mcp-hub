@@ -6,16 +6,17 @@ from __future__ import annotations
 
 import pytest
 
-from exposure_json5 import Json5Error, parse_json5, strip_comments, unescape
+from exposure_json5 import Json5Error, parse_json5
 
 
 def test_strings_keep_their_comment_markers() -> None:
-    assert strip_comments('{ a: "http://x", b: 1 /* c */ } // d') == '{ a: "http://x", b: 1   } '
-    assert strip_comments("{ a: 'it\\'s // not a comment' }") == "{ a: 'it\\'s // not a comment' }"
+    assert parse_json5('{ a: "http://x", b: 1 /* c */ } // d') == {"a": "http://x", "b": 1}
+    assert parse_json5("{ a: 'it\\'s // not /* a */ comment' }") == {"a": "it's // not /* a */ comment"}
 
 
 def test_escapes_read_as_the_text_they_name() -> None:
-    assert unescape('say \\"hi\\"\\n\\tit\\\'s \\\\ done') == "say \"hi\"\n\tit's \\ done"
+    document = '{ a: "say \\"hi\\"\\n\\tit\\\'s \\\\ done" }'
+    assert parse_json5(document) == {"a": "say \"hi\"\n\tit's \\ done"}
 
 
 def test_the_forms_the_documents_use_are_read() -> None:

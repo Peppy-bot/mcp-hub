@@ -112,10 +112,11 @@ value after the call" inside a sentence does not count. The test covers every ta
 finds there with the list in its `COVERED_SETTERS`, so a target or a setter joins the rule only
 when its author adds it to a list. It checks that the sentence is there, not that it is true.
 
-The tests read the documents with [`exposure_json5.py`](exposure_json5.py), a json5 reader that
-uses the Python standard library alone, since the workflow installs pytest and nothing else. It
-reads the forms of json5 that the documents use and refuses every other form, so a document it
-cannot read fails its test.
+The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
+json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
+else. The reader refuses each form that serde_json5, the json5 reader of peppy, refuses. It also
+refuses the forms of json5 that the documents do not use. So a document that it cannot read fails
+its test.
 
 ## Simulation contracts
 

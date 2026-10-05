@@ -34,17 +34,20 @@ service and action contains the word "simulation" or "simulated". A model
 reading such an endpoint is never left to mistake it for a real-robot surface.
 
 pytest collects it from the repository root without the workflow naming it;
-the exposures it checks are discovered the same way.
+the exposures it checks are discovered the same way. It reads each document
+with `exposure_json5`, so a rule reads the document's structure, whatever
+json5 form a key or a string takes.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from exposure_json5 import strip_comments, unescape
+from exposure_json5 import Json5Error, exposure_documents, parse_json5, read_json5
 
 ROOT = Path(__file__).resolve().parent
 
@@ -88,36 +91,6 @@ SIMULATION_INSTRUCTIONS_OPENING = (
 )
 _SIMULATION_WORD = re.compile(r"\b(?:simulation|simulated)\b", re.IGNORECASE)
 
-EXPOSURE_SCHEMA = "mcp_exposure/v1"
-
-# Directories that hold no document of this repository.
-_SKIP_DIRS = {".git", ".peppy", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules"}
-
-_SCHEMA = re.compile(r"""peppy_schema\s*:\s*["']([^"']*)["']""")
-# A target's `contract: { name, tag, sha256 }` block: no braces nest inside it.
-_CONTRACT = re.compile(r"contract\s*:\s*\{([^{}]*)\}")
-_NAME = re.compile(r"""\bname\s*:\s*["']([^"']*)["']""")
-# A double-quoted string with its escapes, the form every prose field of the
-# documents here takes. Group 1 is the raw body; `unescape` reads it.
-_STRING = r'"((?:[^"\\]|\\.)*)"'
-_TITLE = re.compile(r"\btitle\s*:\s*" + _STRING)
-_INSTRUCTIONS = re.compile(r"\binstructions\s*:\s*" + _STRING)
-_DESCRIPTION = re.compile(r"\bdescription\s*:\s*" + _STRING)
-
-
-def exposure_documents(root: Path) -> list[Path]:
-    """Every json5 document under `root` whose schema is an MCP exposure,
-    listed in the repository index or not: the rule holds for any document
-    that could be published."""
-    found = []
-    for path in sorted(root.rglob("*.json5")):
-        if _SKIP_DIRS.intersection(path.relative_to(root).parts):
-            continue
-        match = _SCHEMA.search(strip_comments(path.read_text(encoding="utf-8")))
-        if match and match.group(1) == EXPOSURE_SCHEMA:
-            found.append(path)
-    return found
-
 
 def in_simulation_dir(path: Path, root: Path) -> bool:
     """Whether `path` sits under `root`'s `simulation/` directory."""
@@ -129,20 +102,15 @@ def simulation_documents(root: Path) -> list[Path]:
     return [path for path in exposure_documents(root) if in_simulation_dir(path, root)]
 
 
-def targeted_contracts(document: str) -> list[str]:
-    """The contract names the document's targets bind, in file order."""
-    names = []
-    for block in _CONTRACT.finditer(strip_comments(document)):
-        match = _NAME.search(block.group(1))
-        if match:
-            names.append(match.group(1))
-    return names
+def targeted_contracts(document: dict) -> list[str]:
+    """The contract names the document's targets bind, in document order."""
+    return [target["contract"]["name"] for target in document.get("targets", {}).values()]
 
 
 def forbidden_targets(path: Path) -> list[str]:
     """The forbidden contracts `path` targets; an empty list is the rule
     holding."""
-    targeted = targeted_contracts(path.read_text(encoding="utf-8"))
+    targeted = targeted_contracts(read_json5(path))
     return [name for name in targeted if name in FORBIDDEN_CONTRACTS]
 
 
@@ -151,26 +119,37 @@ def misplaced_simulation_only_targets(path: Path, root: Path) -> list[str]:
     `simulation/`; an empty list is the rule holding."""
     if in_simulation_dir(path, root):
         return []
-    targeted = targeted_contracts(path.read_text(encoding="utf-8"))
+    targeted = targeted_contracts(read_json5(path))
     return [name for name in targeted if name in SIMULATION_ONLY_CONTRACTS]
+
+
+def descriptions(value: object) -> Iterator[str]:
+    """Every value of a `description` key in `value`, at any depth, in
+    document order: the call record's, each tool's, each resource's and
+    each picture tool's."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "description":
+                yield item
+            else:
+                yield from descriptions(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from descriptions(item)
 
 
 def wording_violations(path: Path) -> list[str]:
     """Each part of the simulation wording rule `path` breaks, named; an
     empty list is the rule holding. The title and the instructions are
     checked whole; every description is checked for the word."""
-    text = strip_comments(path.read_text(encoding="utf-8"))
+    document = read_json5(path)
+    server = document.get("server", {})
     violations = []
-    title = _TITLE.search(text)
-    if not title or not unescape(title.group(1)).endswith(SIMULATION_TITLE_SUFFIX):
+    if not server.get("title", "").endswith(SIMULATION_TITLE_SUFFIX):
         violations.append(f"title must end with `{SIMULATION_TITLE_SUFFIX}`")
-    instructions = _INSTRUCTIONS.search(text)
-    if not instructions or not unescape(instructions.group(1)).startswith(
-        SIMULATION_INSTRUCTIONS_OPENING
-    ):
+    if not server.get("instructions", "").startswith(SIMULATION_INSTRUCTIONS_OPENING):
         violations.append(f"instructions must open with `{SIMULATION_INSTRUCTIONS_OPENING}`")
-    for match in _DESCRIPTION.finditer(text):
-        description = unescape(match.group(1))
+    for description in descriptions(document):
         if not _SIMULATION_WORD.search(description):
             violations.append(
                 f'description "{description}" must contain "simulation" or "simulated"'
@@ -341,8 +320,7 @@ def test_other_contracts_comments_and_prose_pass() -> None:
                 actions: [ { member: "move_to_ready", description: "no object_state here" } ] },
       },
     }"""
-    assert targeted_contracts(document) == ["rgb_camera", "postures"]
-    assert not [name for name in targeted_contracts(document) if name in FORBIDDEN_CONTRACTS]
+    assert targeted_contracts(parse_json5(document)) == ["rgb_camera", "postures"]
 
 
 _COMPLIANT = """// A simulation-only exposure that follows every rule.
@@ -364,7 +342,10 @@ _COMPLIANT = """// A simulation-only exposure that follows every rule.
           description: "Authored lighting back, in the simulation.",
           operation: "mutating", deadline_ms: 5000 },
       ],
-      topics: [],
+      topics: [
+        { member: "frames", resource: "lighting.frame", description: "The latest simulated frame.",
+          picture: { tool: "lighting.look", description: "Look at the simulated lights." } },
+      ],
     },
   },
 }
@@ -448,8 +429,47 @@ def test_documents_of_other_schemas_are_not_exposures(tmp_path: Path) -> None:
     assert exposure_documents(tmp_path) == []
 
 
-def test_prose_with_escaped_quotes_is_read_whole() -> None:
-    text = 'description: "mode is \\"auto\\" or \\"manual\\", in the simulation."'
-    match = _DESCRIPTION.search(text)
-    assert match
-    assert unescape(match.group(1)) == 'mode is "auto" or "manual", in the simulation.'
+def test_a_quoted_key_names_a_forbidden_contract_too(tmp_path: Path) -> None:
+    path = tmp_path / "sim_objects.json5"
+    document = _OFFENDING.replace('contract: { name: "object_state", tag: "v1" }',
+                                  '"contract": { "name": "object_state", \'tag\': "v1" }')
+    assert document != _OFFENDING
+    path.write_text(document, encoding="utf-8")
+    assert exposure_documents(tmp_path) == [path]
+    assert forbidden_targets(path) == ["object_state"]
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        ('description: "Authored lighting back, in the simulation."', "description: 'Authored lighting back.'"),
+        ('description: "Authored lighting back, in the simulation."', '"description": "Authored lighting back."'),
+        ('picture: { tool: "lighting.look", description: "Look at the simulated lights." }',
+         'picture: { tool: "lighting.look", description: "Look at the lights." }'),
+    ],
+    ids=["single quotes", "quoted key", "picture tool"],
+)
+def test_a_description_without_the_word_is_caught_whatever_its_form(
+    tmp_path: Path, before: str, after: str
+) -> None:
+    (tmp_path / SIMULATION_DIR).mkdir()
+    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
+    assert before in _COMPLIANT
+    path.write_text(_COMPLIANT.replace(before, after), encoding="utf-8")
+    violations = wording_violations(path)
+    assert len(violations) == 1, violations
+    assert violations[0].startswith("description"), violations[0]
+
+
+def test_prose_with_escaped_quotes_is_read_whole(tmp_path: Path) -> None:
+    (tmp_path / SIMULATION_DIR).mkdir()
+    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
+    path.write_text(_COMPLIANT, encoding="utf-8")
+    assert 'Every light of the simulated scene, with "id" and kind.' in descriptions(read_json5(path))
+
+
+def test_a_document_the_reader_cannot_read_is_named(tmp_path: Path) -> None:
+    path = tmp_path / "broken.json5"
+    path.write_text('{ peppy_schema: "mcp_exposure/v1", manifest: { name: 007 } }', encoding="utf-8")
+    with pytest.raises(Json5Error, match="broken.json5"):
+        exposure_documents(tmp_path)
