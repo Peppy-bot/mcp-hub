@@ -216,7 +216,7 @@
         {
           member: "set_object_control",
           tool: "controls.set_object_control",
-          description: "Set one control of an object in the simulation: object_id and control are ids controls.get_object_controls lists, value a number in the control's unit within its min and max. After the call, a control in m or rad stands its part at the new value, like a teleport, even into another object: nothing checks what the part moves into. What rests on that part follows the support rule of this endpoint's instructions, so set such a control before you place things on the part. A control in m/s runs its part's surface at the new speed from the next physics step, a negative value the other way, and carries what rests on it. A refused request (unknown object or control, a value not finite or out of bounds) changes nothing and says why in message. Answers with current_value, the value the control stands at after the call, 0 when the object or the control is unknown.",
+          description: "Set one control of an object in the simulation: object_id and control are ids controls.get_object_controls lists, value a number in the control's unit within its min and max. After the call, a control in m or rad stands its part at the new value, like a teleport, even into another object: nothing checks what the part moves into. What rests on that part follows the support rule of this endpoint's instructions, so set such a control before you place things on the part. A control in m/s runs its part's surface at the new speed from the next physics step, a negative value the other way, and carries what rests on it. An unknown object or control, or a value that is not finite or is out of bounds, is refused. Answers with current_value, the value the control stands at after the call, 0 when the object or the control is unknown.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -246,7 +246,7 @@
         {
           member: "set_light_intensity",
           tool: "lighting.set_light_intensity",
-          description: "Set a simulated light's strength: illuminance in lux for a directional light, luminous flux in lumens for a point or spot lamp, or the radiance scale of an environment map (the map's stored radiance times this scale, in cd/m2). light_id comes from lighting.get_lighting. After the call, the light's strength is current_value, the value lighting.get_lighting then reports. value must be finite, nonnegative and at most the light's reported max, and a refused request leaves the light as it was.",
+          description: "Set a simulated light's strength: illuminance in lux for a directional light, luminous flux in lumens for a point or spot lamp, or the radiance scale of an environment map (the map's stored radiance times this scale, in cd/m2). light_id comes from lighting.get_lighting. After the call, the light's strength is current_value, the value lighting.get_lighting then reports. value must be finite, nonnegative and at most the light's reported max.",
           operation: "mutating",
           deadline_ms: 5000,
           // The contract's `f64` is unbounded; the endpoint accepts a
@@ -259,14 +259,14 @@
         {
           member: "set_light_color",
           tool: "lighting.set_light_color",
-          description: "Set a simulated light's colour, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. After the call, the light has the colour current_color. Not supported by an environment light, whose colour is its map; a refused request leaves the light as it was.",
+          description: "Set a simulated light's colour, color = linear RGB [r, g, b] in the unit interval. light_id comes from lighting.get_lighting. After the call, the light has the colour current_color. Not supported by an environment light, whose colour is its map.",
           operation: "mutating",
           deadline_ms: 5000,
         },
         {
           member: "set_light_position",
           tool: "lighting.set_light_position",
-          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in metres, Z up. light_id comes from lighting.get_lighting. After the call, the lamp sits at current_position. A directional or environment light has no position and refuses, leaving the light as it was.",
+          description: "Set where a simulated point or spot lamp sits, position = world-frame [x, y, z] in metres, Z up. light_id comes from lighting.get_lighting. After the call, the lamp sits at current_position. A directional or environment light has no position and refuses.",
           operation: "mutating",
           deadline_ms: 5000,
         },
@@ -280,7 +280,7 @@
         {
           member: "set_light_cone",
           tool: "lighting.set_light_cone",
-          description: "Set a simulated spot lamp's cone, half angles in radians: full intensity inside inner_angle, none beyond outer_angle, with 0 <= inner_angle < outer_angle < pi/2. light_id comes from lighting.get_lighting. After the call, the lamp's cone has the half angles current_inner_angle and current_outer_angle. The two angles are checked together and applied together, and a refused request leaves the lamp as it was.",
+          description: "Set a simulated spot lamp's cone, half angles in radians: full intensity inside inner_angle, none beyond outer_angle, with 0 <= inner_angle < outer_angle < pi/2. light_id comes from lighting.get_lighting. After the call, the lamp's cone has the half angles current_inner_angle and current_outer_angle.",
           operation: "mutating",
           deadline_ms: 5000,
           // Half angles below pi/2; the ordering of the two is the engine's
@@ -293,7 +293,7 @@
         {
           member: "set_light_orientation",
           tool: "lighting.set_light_orientation",
-          description: "Set a simulated environment map's orientation, orientation = a unit quaternion [x, y, z, w] rotating the map into the world frame. light_id comes from lighting.get_lighting. After the call, the environment map is turned by current_orientation. Only an environment light supports it, and a refused request leaves the light as it was.",
+          description: "Set a simulated environment map's orientation, orientation = a unit quaternion [x, y, z, w] rotating the map into the world frame. light_id comes from lighting.get_lighting. After the call, the environment map is turned by current_orientation. Only an environment light supports it.",
           operation: "mutating",
           deadline_ms: 5000,
         },
@@ -328,14 +328,14 @@
         {
           member: "set_material_color",
           tool: "materials.set_material_color",
-          description: "Set a simulated material's base colour, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials. After the call, every surface that shares the material has the base colour current_color. A refused request leaves the material as it was.",
+          description: "Set a simulated material's base colour, color = linear RGB reflectance [r, g, b] in the unit interval. material_id comes from materials.get_materials. After the call, every surface that shares the material has the base colour current_color.",
           operation: "mutating",
           deadline_ms: 5000,
         },
         {
           member: "set_material_finish",
           tool: "materials.set_material_finish",
-          description: "Set a simulated material's finish: metallic and roughness, both in the unit interval (0 metallic a dielectric, 1 a conductor; 0 roughness a mirror finish, 1 fully diffuse). material_id comes from materials.get_materials. After the call, every surface that shares the material has the finish current_metallic and current_roughness. The two values are checked together and applied together, and a refused request leaves the material as it was.",
+          description: "Set a simulated material's finish: metallic and roughness, both in the unit interval (0 metallic a dielectric, 1 a conductor; 0 roughness a mirror finish, 1 fully diffuse). material_id comes from materials.get_materials. After the call, every surface that shares the material has the finish current_metallic and current_roughness.",
           operation: "mutating",
           deadline_ms: 5000,
           // The contract's `f64` is unbounded; the metallic-roughness model
