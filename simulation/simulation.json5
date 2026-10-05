@@ -112,7 +112,7 @@
         {
           member: "get_robots_list",
           tool: "scene.get_robots_list",
-          description: "List the robots in the simulation, one entry each in robots: robot, the name scene.move_robot takes and the name robot.list reports on the robots' endpoint, where every tool takes it; model, its robot catalogue id; position, its base's world-frame [x, y, z] in metres; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world places itself. Takes no arguments and changes nothing.",
+          description: "List the robots in the simulation, one entry each in robots: robot, the robot's name, which scene.move_robot takes; model, its robot catalogue id; position, its base's world-frame [x, y, z] in metres; yaw, which way the base faces, in radians about the world's +Z; attached, true for a robot that joined and false for one the world places itself. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
