@@ -1,4 +1,4 @@
-// The simulated world OpenArm v2 robots run in, as one MCP surface: the
+// The simulated world a stack's robots run in, as one MCP surface: the
 // scene (assets, the objects standing in it and their poses, the loaded
 // scene, the robots and their placement), the controls its objects offer
 // (a desk's height), its light sources, the optical properties of its
