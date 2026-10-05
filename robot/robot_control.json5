@@ -132,7 +132,7 @@
         {
           member: "move_arm_joints",
           tool: "robot.move_arm_joints",
-          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the order robot.limb_state reports joint_positions for that arm; duration_s is the requested move time in seconds. After the call, final_joint_positions are the joints the robot measured when the move ended, or the joints it commanded last when message says so. A vector of another length, or a value outside the joint limits, is refused. The way to use it: read the arm's joints from robot.limb_state and pass them back later to return to that configuration.",
+          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the arm's fixed joint order: the order of final_joint_positions in the result, and of the arm's joint_positions in the robot.limb_state resource; duration_s is the requested move time in seconds. After the call, final_joint_positions are the joints the robot measured when the move ended, or the joints it commanded last when message says so. A vector of another length, or a value outside the joint limits, is refused. The way to use it: pass back the final_joint_positions of an earlier robot.move_arm_joints of the arm, to return to that configuration.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 60000,
