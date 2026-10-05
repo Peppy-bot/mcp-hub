@@ -100,7 +100,7 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 
 - to list first, and that this is the surface to prefer over any simulation endpoint;
 - how to address the limbs, and which units and robot frame apply;
-- to look before moving, and to call `robot.move_to_ready` before any `robot.move_arm`;
+- to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
 - that a move with success true does not prove that the arm arrived;
 - what the result of `robot.move_to_ready` and `robot.move_to_home` reports;
