@@ -1,23 +1,24 @@
-"""Every setter's description says what holds after the call.
+"""The description of every covered setter says what holds after the call.
 
 A model learns from a tool's description what a call changes and what
-follows from it: where an object comes to rest, what a robot does next, what
-nothing checks. So the description of every tool that changes the world or
-moves a robot has a sentence that begins with "After the call,", the second
-of the four parts that the README's "Writing tool texts" names. This test
-checks that the sentence is there, not that it is true: a text states a fact
-only when a test of the code behind the tool pins it.
+follows from it: where an object comes to rest, what a robot does next, and
+what nothing checks. So the description of every covered setter has a
+sentence that begins with "After the call,". That sentence is the second of
+the four parts that the README's "Writing tool texts" names. This test checks
+that the sentence is there, not that it is true. A text states a fact only
+when a test of the code behind the tool pins it.
 
 A setter is an entry of a target's `services` or `actions` whose operation
-is not read_only (peppy requires an operation on each entry: read_only or
-mutating for a service, long_running for an action). The call-record tool,
+is not read_only. peppy requires an operation on each entry: read_only or
+mutating for a service, long_running for an action. The call-record tool,
 the robot listing and the picture tools are not entries of a target's
 services or actions, so they are not setters.
 
-The sentence must begin a sentence, with the capital letter and the comma:
-it opens the description or follows a full stop, a question mark or an
-exclamation mark and white space. Several descriptions say "the effective
-value after the call" inside a sentence, and that form does not count.
+The sentence must begin a sentence, with the capital letter and the comma.
+It opens the description, or it follows white space after a full stop, a
+question mark or an exclamation mark. Several descriptions say "the
+effective value after the call" inside a sentence, and that form does not
+count.
 
 The covered targets are an explicit list, so a target is covered because its
 author decided it: every target of the simulated world's document, and the

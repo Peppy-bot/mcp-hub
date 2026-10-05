@@ -79,19 +79,26 @@ publishes. Rename yours: within one repository, a `name:tag` is claimed by exact
 
 ### Writing tool texts
 
-A model reads the server `instructions` and the `description` of each tool, and nothing else of the
-document: the comments of a contract do not reach it. Each fact lives in one text. A rule that
-several tools of one endpoint share (the units, the frames, the placement rule of the simulated
-world) lives in the endpoint's `instructions`; what one tool does, and what follows its call, lives
-in that tool's `description`. Another text names the tool or the rule, and does not say it again.
+A model reads what peppy publishes of an exposure:
 
-A setter is a tool of a target's `services` or `actions` whose `operation` is not `read_only`: it
-changes the world or moves a robot. Its description says four things, in this order:
+- the server `title` and `instructions`;
+- the name and `description` of each tool and of each resource;
+- the input and output schemas of each tool, which peppy derives from the contract. The input
+  schema carries the document's `restrict` bounds as its minimum and maximum.
+
+The comments of the document and of its contracts do not reach the model.
+
+Each fact lives in one text. A rule that several tools of one endpoint share lives in the
+endpoint's `instructions`, for example the units, the frames and the placement rule of the
+simulated world. What one tool does, and what follows its call, lives in that tool's
+`description`. Another text names the tool or the rule, and does not say it again.
+
+A setter is an entry of a target's `services` or `actions` whose `operation` is not `read_only`.
+The description of a covered setter says four things, in this order:
 
 1. what the call changes;
 2. what holds after the call, in a sentence that begins with `After the call,`;
-3. what the call refuses, with the name of the shared rule of the `instructions` that refuses it
-   rather than the rule again;
+3. what the call refuses, with the name of the shared rule of the `instructions` that refuses it;
 4. what the call does not check, where a model can think that it does.
 
 A text states a physical fact only when a test of the code behind the tool pins it.
