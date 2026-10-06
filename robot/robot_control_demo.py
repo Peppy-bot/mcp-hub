@@ -4,9 +4,9 @@
 The server serves the `robot_control:v1` exposure beside this file at
 http://127.0.0.1:8900/robot_control/v1/mcp whenever a launcher deploys its
 `robot_control` option, every robot listed on it and driven under its `mcp_commander`
-option:
+option, here alpha, an OpenArm v2 in Waldo:
 
-    peppy stack launch simulation_mcp
+    peppy stack launch simulation_mcp --join openarm_sim:alpha
 
 This file talks MCP (revision 2026-07-28) over Streamable HTTP with nothing
 but the standard library, in the stateless shape that server speaks: every
