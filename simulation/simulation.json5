@@ -7,24 +7,25 @@
 // - a picture of it from any viewpoint;
 // - its clock: the time now, a pause, a step;
 // - where a robot can work in it: the surfaces and objects its arms reach
-//   and its perception camera sees.
+//   and its perception camera sees;
+// - its reset to the world it started as.
 //
 // Nothing here has a counterpart on the physical robot. The title, the
 // opening of the instructions and every description say so. So a model
 // reading this endpoint never mistakes it for a real-robot surface. Waldo
 // alone implements object_controls, scene_lighting, scene_materials,
-// scene_view, simulation_clock and scene_workspace, so only a Waldo stack
-// serves this document. The robots' own surface is the robot_control
-// document, served on hardware and in simulation alike. The inventory that
-// scene.get_objects_list reports, and where workspace.* says a robot can
-// work, are the world's setup, for a caller that checks it. A robot's task
-// finds its items through the robot's own perception. The velocities of the
-// same objects, streamed for evaluation, are the engine's object_state
-// contract. That contract stays inside the peppy framework, as the README's
-// ground-truth rule says.
+// scene_view, simulation_clock, scene_workspace and simulation_reset, so
+// only a Waldo stack serves this document. The robots' own surface is the
+// robot_control document, served on hardware and in simulation alike. The
+// inventory that scene.get_objects_list reports, and where workspace.* says
+// a robot can work, are the world's setup, for a caller that checks it. A
+// robot's task finds its items through the robot's own perception. The
+// velocities of the same objects, streamed for evaluation, are the engine's
+// object_state contract. That contract stays inside the peppy framework, as
+// the README's ground-truth rule says.
 //
 // This document is the whole artifact. A launcher lists it under
-// `source: { exposures: ["simulation:v1"] }`, binds its seven targets to
+// `source: { exposures: ["simulation:v1"] }`, binds its eight targets to
 // the running simulation through `links`, and the server built into peppy
 // serves it at `/simulation/v1/mcp`. The launchers hub serves it through
 // the `world_control` axis of its `simulation_mcp` launcher, on port 8902, a
@@ -59,9 +60,9 @@
 
   targets: {
     // LOGICAL targets, not instances: each becomes a contract slot of the
-    // server, and the launcher binds all seven to the running simulation
-    // engine. One target holds one contract, so the seven contracts the
-    // engine serves are seven targets.
+    // server, and the launcher binds all eight to the running simulation
+    // engine. One target holds one contract, so the eight contracts the
+    // engine serves are eight targets.
     scene: {
       contract: {
         name: "scene_manipulation",
@@ -490,6 +491,32 @@
           operation: "read_only",
           deadline_ms: 30000,
           max_result_bytes: 65536,
+        },
+      ],
+    },
+
+    // The whole simulated world put back as it started, in one goal, for a
+    // caller that starts its work over on a blank slate. The robots' own
+    // nodes keep what they hold, so the description sends the caller to the
+    // robots' endpoint for the arms and the grippers.
+    reset: {
+      contract: {
+        name: "simulation_reset",
+        tag: "v1",
+        // Pinned like `scene` above (`sha256sum simulation/simulation_reset.json5`).
+        sha256: "90e45fd7b239a26b17543f4dd64280271629d3f27ea38cf33e496bdff41f8de9",
+      },
+
+      // One action. Before it rebuilds the world, Waldo waits for the
+      // builds whose commands it holds already (a large scene load among
+      // them), hence a deadline above scene.clear_scene's.
+      actions: [
+        {
+          member: "reset",
+          tool: "simulation.reset",
+          description: "Put the whole simulated world back as it started: the scene the simulation opened on, at scale 1, with its objects where that scene places them, whole, and no spawned object; every robot where it came to stand, where the world placed it or where it joined; the authored lighting and every material, the robots' materials too; every camera at its device's defaults; no push on any object; and the clock running, a step in progress ended. After the call, every object of the scene has a new object_id, so list the objects again with scene.get_objects_list before you use an id. The reset removes no robot and adds none. A robot's arms and grippers hold the targets they were last sent until a robot command moves them: bring them back through the robots' endpoint (robot.move_gripper, then robot.move_to_home). A scene.load_scene or a scene.spawn_object still downloading its files when the reset comes ends as cancelled and builds nothing. success is false, with message saying why, when the simulation refuses the reset or cannot rebuild its world, which then stands as it was. Simulated time goes on: the reset never turns the clock back.",
+          operation: "long_running",
+          deadline_ms: 120000,
         },
       ],
     },
