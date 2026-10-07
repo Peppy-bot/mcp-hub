@@ -51,7 +51,7 @@ RECORDING_DOCUMENT = "recording/camera_and_recording.json5"
 
 # The targets whose setters the rule covers, per exposure document.
 COVERED_TARGETS = {
-    SIMULATION_DOCUMENT: ("scene", "controls", "lighting", "materials", "view", "clock", "workspace"),
+    SIMULATION_DOCUMENT: ("scene", "controls", "lighting", "materials", "view", "clock", "workspace", "reset"),
     ROBOT_DOCUMENT: ("postures", "limb_motion"),
 }
 
@@ -104,6 +104,7 @@ COVERED_SETTERS = {
             "materials.reset_materials",
             "clock.set_paused",
             "clock.step",
+            "simulation.reset",
         }
     ),
     ROBOT_DOCUMENT: frozenset(

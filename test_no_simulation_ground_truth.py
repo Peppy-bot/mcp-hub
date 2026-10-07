@@ -23,14 +23,15 @@ What only a simulation gives reaches an endpoint under a wording rule.
 ``scene_manipulation``, ``object_controls``, ``scene_lighting`` and
 ``scene_materials`` edit the simulated world, ``scene_view`` pictures it from
 any viewpoint and shows the catalogue's preview of an asset,
-``simulation_clock`` holds its time, and ``scene_workspace`` measures where a
-robot can work in it; none has a physical counterpart, but a model
-legitimately drives them, as it does the cameras the simulation renders. An
-exposure targeting one of the seven lives under ``simulation/``, and every
-document there says what it is: the server title ends with
-``SIMULATION_TITLE_SUFFIX``, the instructions open with the sentence
-``SIMULATION_INSTRUCTIONS_OPENING``, and every ``description`` of every topic,
-service and action contains the word "simulation" or "simulated". A model
+``simulation_clock`` holds its time, ``scene_workspace`` measures where a
+robot can work in it, and ``simulation_reset`` puts it back as it started;
+none has a physical counterpart, but a model legitimately drives them, as it
+does the cameras the simulation renders. An exposure targeting one of the
+eight lives under ``simulation/``, and every document there says what it
+is: the server title ends with ``SIMULATION_TITLE_SUFFIX``, the instructions
+open with the sentence ``SIMULATION_INSTRUCTIONS_OPENING``, and every
+``description`` of every topic, service and action contains the word
+"simulation" or "simulated". A model
 reading such an endpoint is never left to mistake it for a real-robot surface.
 
 pytest collects it from the repository root without the workflow naming it;
@@ -65,8 +66,9 @@ FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
 # Contracts only a simulation gives: those that configure the simulated
 # world, its pictures (a view from a free viewpoint, an asset's preview),
-# its clock, and its measure of where a robot can work in it. A model
-# drives them, so an exposure may target them, from under `simulation/` only.
+# its clock, its measure of where a robot can work in it, and its reset. A
+# model drives them, so an exposure may target them, from under
+# `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
@@ -76,6 +78,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "scene_view",
         "simulation_clock",
         "scene_workspace",
+        "simulation_reset",
     }
 )
 
