@@ -157,9 +157,10 @@ viewpoint, finds in it what a region of such a picture shows, and shows the cata
 of an asset, `simulation_clock` holds its time (the
 time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
 by its stance and measures where a robot can work in it (the surfaces its arms reach and its
-perception camera sees, and whether given objects are workable where they stand), and
-`simulation_reset` puts it back as it started; none has a physical counterpart, but a
-model legitimately drives them to set the world up and check it. A robot's own answer to where it
+perception camera sees, whether given objects are workable where they stand, and where the items
+of a task fit on one surface), and `simulation_reset` puts it back as it started; none has a
+physical counterpart, but a model legitimately drives them to set the world up and check it.
+A robot's own answer to where it
 can work, from its design alone, is the robots' `workspace` target, and a robot's task finds its
 items through the robot's own perception. Exposures on them live under `simulation/`: today one
 document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the eight contracts
