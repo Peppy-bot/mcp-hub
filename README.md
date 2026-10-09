@@ -156,8 +156,8 @@ robots and their bases), `object_controls` (what an object lets a caller set, a 
 viewpoint, finds in it what a region of such a picture shows, and shows the catalogue's preview
 of an asset, `simulation_clock` holds its time (the
 time now, a pause, a step), `scene_workspace` measures where a robot can work in it (the surfaces
-its arms reach and its perception camera sees, and whether given objects are workable where they
-stand), and `simulation_reset` puts it back as it started; none has a physical counterpart, but a
+its arms reach and its perception camera sees, whether given objects are workable where they
+stand, and where the items of a task fit on one surface), and `simulation_reset` puts it back as it started; none has a physical counterpart, but a
 model legitimately drives them to set the world up and check it. A robot's own answer to where it
 can work, from its design alone, is the robots' `workspace` target, and a robot's task finds its
 items through the robot's own perception. Exposures on them live under `simulation/`: today one
