@@ -104,6 +104,7 @@ COVERED_SETTERS = {
             "materials.reset_materials",
             "clock.set_paused",
             "clock.step",
+            "workspace.stand_at",
             "simulation.reset",
         }
     ),

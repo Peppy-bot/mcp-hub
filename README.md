@@ -15,7 +15,7 @@ Exposures are grouped by what they publish:
 ```text
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
-simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, where a robot can work in it, and its reset as one document; a simulation launch option only
+simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, and its reset as one document; a simulation launch option only
 ```
 
 A stack publishes two endpoints, one per family, and the boundary between them is whether what a
@@ -24,7 +24,7 @@ model does transfers to the physical robots:
 | Family | Document | What it publishes | On the physical robots |
 | --- | --- | --- | --- |
 | Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | no |
+| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | no |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
 model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
@@ -155,9 +155,10 @@ robots and their bases), `object_controls` (what an object lets a caller set, a 
 `scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it from any
 viewpoint, finds in it what a region of such a picture shows, and shows the catalogue's preview
 of an asset, `simulation_clock` holds its time (the
-time now, a pause, a step), `scene_workspace` measures where a robot can work in it (the surfaces
-its arms reach and its perception camera sees, and whether given objects are workable where they
-stand), and `simulation_reset` puts it back as it started; none has a physical counterpart, but a
+time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
+by its stance and measures where a robot can work in it (the surfaces its arms reach and its
+perception camera sees, and whether given objects are workable where they stand), and
+`simulation_reset` puts it back as it started; none has a physical counterpart, but a
 model legitimately drives them to set the world up and check it. A robot's own answer to where it
 can work, from its design alone, is the robots' `workspace` target, and a robot's task finds its
 items through the robot's own perception. Exposures on them live under `simulation/`: today one
@@ -195,6 +196,20 @@ The test also fails an exposure that targets `scene_manipulation`, `object_contr
 `simulation_reset` from any other directory (its `SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
+
+### A world names no robot model
+
+A simulated world never names a robot model and never depends on one: a scene and its work
+surfaces say nothing of which robots can work there. `workspace.stand_at` stands any robot at a
+work surface by its stance (a standing robot on the joining spot in front of it, a mounted robot
+clamped on the edge of its top), and `workspace.describe` and `workspace.check` measure whether that
+robot can work it. So the texts of a `simulation/` document describe worlds without models and
+robots in general terms, by their stance. [`test_no_robot_models_in_simulation.py`](test_no_robot_models_in_simulation.py)
+fails a `simulation/` document whose title, instructions or any description names a robot model,
+by its id or its label, whatever the case, or a field that lists robots (`workable_by`). mcp-hub
+does not read the simulation's catalogue, so the test holds the ids and the labels of the robot
+models the hubs simulate (its `ROBOT_MODELS`): the change that brings a new model into the
+simulation's catalogue adds it there.
 
 ## Continuous integration
 

@@ -98,6 +98,15 @@ def in_simulation_dir(path: Path, root: Path) -> bool:
     return path.relative_to(root).parts[0] == SIMULATION_DIR
 
 
+def write_simulation_document(root: Path, name: str, document: str) -> Path:
+    """Writes `document` as `name` under `root`'s `simulation/` directory,
+    which it makes when missing: the path written."""
+    (root / SIMULATION_DIR).mkdir(exist_ok=True)
+    path = root / SIMULATION_DIR / name
+    path.write_text(document, encoding="utf-8")
+    return path
+
+
 def simulation_documents(root: Path) -> list[Path]:
     """The exposures under `root`'s `simulation/` directory."""
     return [path for path in exposure_documents(root) if in_simulation_dir(path, root)]
@@ -298,9 +307,7 @@ def test_targets_on_contacts_and_sensors_are_refused(tmp_path: Path) -> None:
 
 
 def test_a_target_on_the_internal_camera_channel_is_refused(tmp_path: Path) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_camera_knobs.json5"
-    path.write_text(_OFFENDING_CAMERA_CHANNEL, encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_camera_knobs.json5", _OFFENDING_CAMERA_CHANNEL)
     assert exposure_documents(tmp_path) == [path]
     # Under simulation/ or not, the channel is refused outright.
     assert forbidden_targets(path) == ["sim_camera_control"]
@@ -359,9 +366,7 @@ def test_a_simulation_only_exposure_outside_simulation_is_caught(tmp_path: Path,
 
 
 def test_a_simulation_only_exposure_under_simulation_passes(tmp_path: Path) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
-    path.write_text(_COMPLIANT, encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT)
     assert simulation_documents(tmp_path) == [path]
     assert misplaced_simulation_only_targets(path, tmp_path) == []
     assert forbidden_targets(path) == []
@@ -390,24 +395,20 @@ def test_a_camera_exposure_outside_simulation_is_not_misplaced(tmp_path: Path) -
 def test_a_simulation_document_missing_a_wording_part_is_caught(
     tmp_path: Path, part: str, before: str, after: str
 ) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
     assert before in _COMPLIANT
-    path.write_text(_COMPLIANT.replace(before, after), encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
     violations = wording_violations(path)
     assert len(violations) == 1, violations
     assert violations[0].startswith(part), violations[0]
 
 
 def test_a_simulation_document_missing_every_wording_part_names_each(tmp_path: Path) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
     document = _COMPLIANT
     document = document.replace("Scene lighting (simulation only)", "Scene lighting")
     document = document.replace("This endpoint configures a simulated world. ", "")
     document = document.replace("Every light of the simulated scene", "Every light of the scene")
     document = document.replace("Authored lighting back, in the simulation.", "Authored lighting back.")
-    path.write_text(document, encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_lights.json5", document)
     parts = [violation.split(" ", 1)[0] for violation in wording_violations(path)]
     assert parts == ["title", "instructions", "description", "description"]
 
@@ -449,19 +450,15 @@ def test_a_quoted_key_names_a_forbidden_contract_too(tmp_path: Path) -> None:
 def test_a_description_without_the_word_is_caught_whatever_its_form(
     tmp_path: Path, before: str, after: str
 ) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
     assert before in _COMPLIANT
-    path.write_text(_COMPLIANT.replace(before, after), encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
     violations = wording_violations(path)
     assert len(violations) == 1, violations
     assert violations[0].startswith("description"), violations[0]
 
 
 def test_prose_with_escaped_quotes_is_read_whole(tmp_path: Path) -> None:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_lights.json5"
-    path.write_text(_COMPLIANT, encoding="utf-8")
+    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT)
     assert 'Every light of the simulated scene, with "id" and kind.' in descriptions(read_json5(path))
 
 
