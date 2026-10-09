@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 from exposure_json5 import REPOSITORY_ROOT, document_name, read_json5
-from test_no_simulation_ground_truth import SIMULATION_DIR, descriptions, simulation_documents
+from test_no_simulation_ground_truth import descriptions, simulation_documents, write_simulation_document
 
 # The robot models the hubs simulate, each by its id and its label.
 ROBOT_MODELS = (
@@ -72,10 +72,6 @@ def model_mentions(path: Path) -> list[str]:
     return found
 
 
-def test_the_checkout_has_simulation_documents_to_check() -> None:
-    assert simulation_documents(REPOSITORY_ROOT), "no exposure under simulation/: the walk is broken"
-
-
 @pytest.mark.parametrize("path", simulation_documents(REPOSITORY_ROOT), ids=document_name)
 def test_simulation_documents_name_no_robot_model(path: Path) -> None:
     mentions = model_mentions(path)
@@ -107,15 +103,8 @@ _DOCUMENT = """// A simulation-only exposure that names no robot model.
 """
 
 
-def _written(tmp_path: Path, document: str) -> Path:
-    (tmp_path / SIMULATION_DIR).mkdir()
-    path = tmp_path / SIMULATION_DIR / "sim_workspace.json5"
-    path.write_text(document, encoding="utf-8")
-    return path
-
-
 def test_a_document_that_names_no_model_passes(tmp_path: Path) -> None:
-    assert model_mentions(_written(tmp_path, _DOCUMENT)) == []
+    assert model_mentions(write_simulation_document(tmp_path, "sim_workspace.json5", _DOCUMENT)) == []
 
 
 @pytest.mark.parametrize(
@@ -147,7 +136,8 @@ def test_a_text_that_names_a_model_is_caught(
     tmp_path: Path, before: str, after: str, part: str, name: str
 ) -> None:
     assert before in _DOCUMENT
-    mentions = model_mentions(_written(tmp_path, _DOCUMENT.replace(before, after)))
+    document = _DOCUMENT.replace(before, after)
+    mentions = model_mentions(write_simulation_document(tmp_path, "sim_workspace.json5", document))
     assert len(mentions) == 1, mentions
     assert mentions[0].startswith(f"{part} names {name}"), mentions[0]
 
