@@ -6,6 +6,11 @@
         path: "recording/camera_and_recording.json5"
       }
     },
+    framework_controls: {
+      v1: {
+        path: "framework/framework_controls.json5"
+      }
+    },
     robot_control: {
       v1: {
         path: "robot/robot_control.json5"

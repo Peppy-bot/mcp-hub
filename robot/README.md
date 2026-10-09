@@ -122,14 +122,15 @@ moves, and its camera rig adds the cameras under that option, `cameras` on hardw
 `cameras_sim` in simulation, so a robot without a rig is listed with no camera. The server reads
 one clock, the simulation's beside a simulation and wall time on the physical robots, so a stack
 under it is real or simulated. A join adds its robot to the running server and a removal takes
-it out:
+it out, whether it comes from the command line or from `stack.join` and `stack.remove` on the
+framework's endpoint:
 
 ```sh
-peppy stack launch simulation_mcp                                                   # Waldo, this endpoint beside the simulated world's, no robot listed
+peppy stack launch simulation_mcp                                                   # Waldo, this endpoint beside the simulated world's and the framework's, no robot listed
 peppy stack launch simulation_mcp --join openarm_sim:alpha                          # alpha, an OpenArm v2 over MCP
 peppy stack launch simulation_mcp --join openarm_sim:alpha,so101_sim:charlie        # alpha and an SO-101 on the one URL
 peppy stack join openarm_sim:bravo                                                  # listed when the join returns
-peppy stack launch simulation_mcp --with mujoco,world_control=none                  # MuJoCo, this endpoint alone
+peppy stack launch simulation_mcp --with mujoco,world_control=none                  # MuJoCo, this endpoint and the framework's
 peppy stack launch physical --with robot_control
 peppy stack join openarm:alpha --with v2,mcp_commander,cameras                      # the real robot
 ```
@@ -139,9 +140,16 @@ Only Waldo models the cameras' response, so under MuJoCo and Isaac Sim the frame
 and the geometry tools work and the setters refuse with a message, as the `instructions` tell a
 model to expect. On hardware the `uvc_camera_linux` and `zed_camera` nodes describe no profile or
 geometry, so the listing leaves those tools out of such a robot's `tools` and a call on them is
-refused. The `simulation_mcp` launch also serves the simulated world's own endpoint,
-[`simulation:v1`](../simulation/simulation.json5), on port 8902; it has no counterpart on the real
-robots, and a client moving there drops that one entry.
+refused. The `simulation_mcp` launch also serves the two other endpoints of a simulation stack, one
+per family, as the [repository README](../README.md#repository-structure) describes. The simulated
+world's endpoint, [`simulation:v1`](../simulation/simulation.json5), is on port 8902. It has no
+counterpart on the real robots, and a client moving there drops that entry. The framework's
+endpoint, [`framework_controls:v1`](../framework/framework_controls.json5), is on port 8903, and
+the `robot_control` option of `simulation_mcp` deploys it with this endpoint. Its `stack.join`
+adds a robot to the stack, and this endpoint lists the robot when the call ends with success. Its
+`stack.remove` removes a robot, and this endpoint stops listing it. A client moving to the real
+robots keeps that entry where the launcher of the real robots deploys the framework's endpoint. No
+launcher of the launchers hub deploys it on the real robots.
 
 The endpoint is `http://127.0.0.1:8900/robot_control/v1/mcp`, listed by `peppy stack list` in its
 `Instance endpoints` table.

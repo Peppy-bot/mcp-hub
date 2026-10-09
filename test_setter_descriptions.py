@@ -22,9 +22,11 @@ count.
 
 Each target of each exposure document is in one of two explicit lists, so
 its author decides whether the rule covers it. COVERED_TARGETS holds every
-target of the simulated world's document, and the posture and limb moves of
-the robots' document. UNCOVERED_TARGETS holds every other target, with the
-reason. A target in no list fails here, and so does a target in both lists.
+target of the simulated world's document, the posture and limb moves of the
+robots' document, and the stack of the framework's document. A target that
+names a daemon interface is read as a target that names a contract: its
+setters are the entries of its services and actions too. UNCOVERED_TARGETS
+holds every other target, with the reason. A target in no list fails here, and so does a target in both lists.
 A target left out because it has no setter fails here when it gets one. The
 setters of the covered targets are an explicit list too. So a new setter, or
 a tool whose operation changes, fails here until the list names it.
@@ -47,12 +49,14 @@ _AFTER_THE_CALL_SENTENCE = re.compile(r"(?:^|[.!?]\s+)" + re.escape(AFTER_THE_CA
 
 SIMULATION_DOCUMENT = "simulation/simulation.json5"
 ROBOT_DOCUMENT = "robot/robot_control.json5"
+FRAMEWORK_DOCUMENT = "framework/framework_controls.json5"
 RECORDING_DOCUMENT = "recording/camera_and_recording.json5"
 
 # The targets whose setters the rule covers, per exposure document.
 COVERED_TARGETS = {
     SIMULATION_DOCUMENT: ("scene", "controls", "lighting", "materials", "view", "clock", "workspace", "reset"),
     ROBOT_DOCUMENT: ("postures", "limb_motion"),
+    FRAMEWORK_DOCUMENT: ("stack",),
 }
 
 # The reason of a target that has no setter.
@@ -118,6 +122,7 @@ COVERED_SETTERS = {
             "robot.stop",
         }
     ),
+    FRAMEWORK_DOCUMENT: frozenset({"stack.join", "stack.remove"}),
 }
 
 

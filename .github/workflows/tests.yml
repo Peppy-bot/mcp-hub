@@ -5,10 +5,12 @@ name: Tests
 # request that adds, moves, renames or deletes an exposure leaves it stale
 # unless the author regenerates it, and a stale index makes an exposure
 # silently invisible to every machine that consumes this repository. The
-# exposures themselves reference contracts that live in the contracts hub;
-# an exposure selecting a member its contract does not declare, or breaking
-# a policy rule, would only fail at launch. Both are caught here, on the
-# branch of the person who caused them.
+# exposures themselves reference contracts that live in the contracts hub,
+# and daemon interfaces that are compiled into peppy; an exposure selecting
+# a member its contract or its interface does not declare, naming an
+# interface tag that the peppy build does not serve, or breaking a policy
+# rule, would only fail at launch. Both are caught here, on the branch of
+# the person who caused them.
 #
 # It runs on every pull request rather than behind a path filter: a removal
 # or a rename drifts the index just as an addition does.
