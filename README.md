@@ -2,9 +2,9 @@
 
 A repository of Peppy **MCP exposures** (`peppy_schema: "mcp_exposure/v1"`).
 
-An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub) and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, a camera topic also as a picture tool that answers with its latest frame as an image, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
+An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub), or of the interfaces of the peppy daemon, and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, a camera topic also as a picture tool that answers with its latest frame as an image, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
 
-The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each exposure target to a running implementer of its contract through `links`, and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on, its `mcp_commander` option adding the moves. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
+The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each contract target to a running implementer of its contract through `links`, gives each daemon target its scope through `daemon_scopes` (see [Contract targets and daemon targets](#contract-targets-and-daemon-targets)), and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on, its `mcp_commander` option adding the moves, and `framework_controls:v1` in `mcp/fragments/framework_controls.json5`. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
 
 `peppy` configures this repository by default, so a launcher on any machine can list what it publishes.
 
@@ -16,20 +16,33 @@ Exposures are grouped by what they publish:
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
 simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, and its reset as one document; a simulation launch option only
+framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, through an interface of the peppy daemon, as one document
 ```
 
-A stack publishes two endpoints, one per family, and the boundary between them is whether what a
-model does transfers to the physical robots:
+The exposures of `robot/`, `simulation/` and `framework/` are three families, grouped by where a
+call goes. A simulation stack publishes one endpoint per family, so the user and the model can
+always tell where a call goes:
 
-| Family | Document | What it publishes | On the physical robots |
+| Family | Document | A call goes to | On the physical robots |
 | --- | --- | --- | --- |
-| Robots | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | every robot of the stack by name: who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | yes |
-| Simulated world | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | no |
+| `robot/` | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | the robot itself: every robot of the stack by name, who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | the same |
+| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | absent |
+| `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, and the record of the calls that changed it | the same functions; the launcher's scope decides what a client may change |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
-model reads two preambles: the robots' says it is the robots' own surface and is to be preferred,
-the simulated world's says it sets the world up and is never a way to complete a task. On the
-physical robots the second endpoint is absent.
+model reads three preambles: the robots' says it is the robots' own surface and is to be preferred,
+the simulated world's says it sets the world up and is never a way to complete a task, and the
+framework's says it controls the stack of nodes, not the world and not the motion of a robot. The
+bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the three
+endpoints:
+
+- the robots', `http://127.0.0.1:8900/robot_control/v1/mcp`;
+- the simulated world's, `http://127.0.0.1:8902/simulation/v1/mcp`;
+- the framework's, `http://127.0.0.1:8903/framework_controls/v1/mcp`.
+
+A client that moves to the physical robots drops its `simulation` entry. It keeps its
+`framework_controls` entry where the launcher of the physical robots deploys the framework's
+endpoint. No launcher of the launchers hub deploys it on the physical robots.
 
 The robots' document declares itself a per-robot surface (`robots: { list, describe }`): every
 target is a set the stack's robots fill, the routing argument is `robot`, which every tool but the
@@ -37,9 +50,37 @@ listing one takes, and resources are published per robot. A join adds its robot 
 server and a removal takes it out. The exposure, its client script, and its tests have their own
 guide: [`robot/README.md`](robot/README.md).
 
+## Contract targets and daemon targets
+
+A target names exactly one source, `contract` or `daemon`:
+
+- A contract target names a contract of the contracts hub by `name` and `tag`, and can pin the
+  contract bytes with `sha256`. A node implements the contract. The launcher binds the target to a
+  running node: with `links` on a fixed surface, and with the `add_links` of each robot copy on a
+  per-robot surface.
+- A daemon target names an interface that is compiled into peppy, by `name` and `tag`, with no
+  `sha256`. The peppy daemon that started the server serves the interface, and no node implements
+  it. peppy serves one tag of each interface, the tag of its release, so a document that names an
+  interface goes with the peppy release that serves that tag. A daemon target sits on a fixed
+  surface: a document with a daemon target declares no `robots`.
+
+The launcher scopes each daemon target. The instance that serves the target gives the scope under
+`daemon_scopes`, keyed by the target name, or an adjustment of the launcher gives it with
+`set_daemon_scopes`. A scope belongs to the stack, so the adjustments of a robot copy give none.
+The scope limits what a client may change, and the server narrows the published schemas with it.
+A launch refuses a daemon target with no scope, and a scope that does not parse into the type of
+its interface.
+
+The members, the public names, the descriptions and every policy field are the same for the two
+kinds of target. A `framework/` document names daemon targets only, and only a `framework/`
+document names a daemon target: a `robot/`, `simulation/` or `recording/` document names contract
+targets only. [`test_exposure_families.py`](test_exposure_families.py) fails the pull request that
+breaks this rule, and names each target of the wrong kind.
+
 ## Adding an exposure
 
-Create a `.json5` file under the relevant category:
+Create a `.json5` file under the directory of its family. A `robot/`, `simulation/` or
+`recording/` document names contract targets:
 
 ```json5
 {
@@ -50,6 +91,26 @@ Create a `.json5` file under the relevant category:
     "<logical_target>": {
       contract: { name: "<contract_name>", tag: "<tag>" }, // sha256 optional: pins the contract bytes
       topics:   [ /* member, resource, description, freshness, update, ... */ ],
+      services: [ /* member, tool, description, operation, deadline_ms, ... */ ],
+      actions:  [ /* member, tool, description, operation, deadline_ms or progress_timeout_ms, ... */ ],
+    },
+  },
+}
+```
+
+A `framework/` document names daemon targets, and declares no `robots`:
+
+```json5
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "<exposure_name>", tag: "<tag>" },
+  server: {
+    title: "<what a client sees> (peppy framework)",
+    instructions: "<the opening sentence of the framework family> <prose for the model>",
+  },
+  targets: {
+    "<logical_target>": {
+      daemon: { name: "<interface_name>", tag: "<tag>" }, // no sha256: the interface is compiled into peppy
       services: [ /* member, tool, description, operation, deadline_ms, ... */ ],
       actions:  [ /* member, tool, description, operation, deadline_ms or progress_timeout_ms, ... */ ],
     },
@@ -83,10 +144,11 @@ A model reads what peppy publishes of an exposure:
 
 - the server `title` and `instructions`;
 - the name and `description` of each tool and of each resource;
-- the input and output schemas of each tool, which peppy derives from the contract. The input
-  schema carries the document's `restrict` bounds as its minimum and maximum.
+- the input and output schemas of each tool, which peppy derives from the contract or from the
+  daemon interface. The input schema carries the document's `restrict` bounds as its minimum and
+  maximum, and the launcher's scope narrows the schemas of a daemon target.
 
-The comments of the document and of its contracts do not reach the model.
+The comments of the document, of its contracts and of its daemon interfaces do not reach the model.
 
 Each fact lives in one text. A rule that several tools of one endpoint share lives in the
 endpoint's `instructions`. Examples are the units, the frames and the placement rule of the
@@ -107,12 +169,13 @@ A text states a physical fact only when a test of the code behind the tool pins 
 description of a covered setter has no sentence that begins with `After the call,`. The capital
 letter and the comma are part of the rule. The words must begin a sentence: "the effective value
 after the call" inside a sentence does not count. The covered targets are the ones in its
-`COVERED_TARGETS`: every target of `simulation/simulation.json5`, and the `postures` and
-`limb_motion` targets of `robot/robot_control.json5`. Its `UNCOVERED_TARGETS` names every other
-target of every exposure document, each with the reason. The test fails for a target that neither
-list names, and for a setter of a covered target that its `COVERED_SETTERS` does not name. So a
-target or a setter joins the rule, or stays out of it, only when its author says so. The test
-checks that the sentence is there, not that it is true.
+`COVERED_TARGETS`: every target of `simulation/simulation.json5`, the `postures` and
+`limb_motion` targets of `robot/robot_control.json5`, and the `stack` target of
+`framework/framework_controls.json5`. Its `UNCOVERED_TARGETS` names every other target of every
+exposure document, each with the reason. The test fails for a target that neither list names, and
+for a setter of a covered target that its `COVERED_SETTERS` does not name. So a target or a setter
+joins the rule, or stays out of it, only when its author says so. The test checks that the sentence
+is there, not that it is true.
 
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
@@ -198,19 +261,68 @@ The test also fails an exposure that targets `scene_manipulation`, `object_contr
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
 
-### A world names no robot model
+## The framework's stack
+
+[`framework/framework_controls.json5`](framework/framework_controls.json5)
+(`framework_controls:v1`) is the document of the `framework/` family. Its one target, `stack`,
+names the daemon interface `stack_copies:v1`, and its tools add robots to the stack and remove
+them:
+
+| Tool | Interface member | Policy |
+| --- | --- | --- |
+| `stack.list` | `stack_copies:v1` `list` | read only, 5 s |
+| `stack.join` | `stack_copies:v1` `join` | task, 660 s progress window |
+| `stack.remove` | `stack_copies:v1` `remove` | task, 660 s progress window |
+
+`stack.list` reports the robot options that a client can add, with the description of each, the
+robots of these options on the stack, `max_copies`, the most robots of these options that the
+stack holds, and `change`, the addition or removal of one of these robots that runs now, from any
+client. A robot that is being added is in the robots of the stack only once its addition has
+succeeded. `stack.join` adds a robot of an option under a name, as `peppy stack join OPTION:NAME`
+does, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel or a lost call
+stops the wait and not the change of the stack, which `stack.list` reports under `change` until it
+ends. `stack.recent_calls` is the endpoint's call record.
+The launcher's scope gives the options, their descriptions and `max_copies`, so the document names
+no option and no robot model. The robots' endpoint drives a robot that `stack.join` adds, under its
+name. A simulated robot stands in the simulated world when `stack.join` ends with success, and
+`workspace.stand_at` on the simulated world's endpoint then stands it at a work surface.
+
+The launchers hub serves the document through the `robot_control` option of its `simulation_mcp`
+launcher, at `http://127.0.0.1:8903/framework_controls/v1/mcp`, beside the robots' endpoint, under
+every simulation engine. `--with robot_control=none` switches off both endpoints. The other
+launchers of the launchers hub do not deploy it.
+
+A model reading this endpoint must never mistake it for the robots' or the simulated world's, so
+every document under `framework/` says what it is, and
+[`test_exposure_families.py`](test_exposure_families.py) enforces the wording:
+
+- the server `title` ends with `(peppy framework)`;
+- the server `instructions` open with the exact sentence
+  `This endpoint controls the peppy framework that runs the robots: the stack of nodes, not the world and not the motion of a robot.`;
+- every `description` of every topic, service and action contains the word `stack` (a whole word,
+  any case).
+
+A pull request that adds a `framework/` document without the suffix, the opening sentence, or the
+word in one of its descriptions fails, naming the part that is missing. The wording of the two
+families is defined once, as `SIMULATION` and `FRAMEWORK` in
+[`exposure_families.py`](exposure_families.py).
+
+## No robot model in a world or in the framework
 
 A simulated world never names a robot model and never depends on one: a scene and its work
 surfaces say nothing of which robots can work there. `workspace.stand_at` stands any robot at a
 work surface by its stance (a standing robot on the joining spot in front of it, a mounted robot
 clamped on the edge of its top), and `workspace.describe` and `workspace.check` measure whether that
 robot can work it. So the texts of a `simulation/` document describe worlds without models and
-robots in general terms, by their stance. [`test_no_robot_models_in_simulation.py`](test_no_robot_models_in_simulation.py)
-fails a `simulation/` document whose title, instructions or any description names a robot model,
-by its id or its label, whatever the case, or a field that lists robots (`workable_by`). mcp-hub
-does not read the simulation's catalogue, so the test holds the ids and the labels of the robot
-models the hubs simulate (its `ROBOT_MODELS`): the change that brings a new model into the
-simulation's catalogue adds it there.
+robots in general terms, by their stance. The texts of a `framework/` document name no robot model
+either: the launcher's scope names the robots that a stack can add, with a description of each, so
+one document serves every launcher.
+[`test_no_robot_models_in_simulation_or_framework.py`](test_no_robot_models_in_simulation_or_framework.py)
+fails a `simulation/` or `framework/` document whose title, instructions or any description names
+a robot model, by its id or its label, whatever the case, or a field that lists robots
+(`workable_by`). mcp-hub does not read the simulation's catalogue, so the test holds the ids and
+the labels of the robot models the hubs simulate (its one `ROBOT_MODELS` list): the change that
+brings a new model into the simulation's catalogue adds it there.
 
 ## Continuous integration
 
@@ -219,10 +331,11 @@ request with the peppy and the sibling hub commits that the shared `hub-ci-peppy
 peppy repository resolves: a sibling hub is pinned at its branch named like the pull request's head
 branch where it has one, and at its `main` otherwise. It starts an isolated daemon, caches the
 contract repositories, and runs `peppy repo index . --check --validate-mcp-exposures`, so an
-exposure selecting a member its contract does not declare, breaking a policy rule, or pinning bytes
-the contracts hub no longer serves fails the pull request that causes it. It also refuses artifacts
-derived from an exposure (a `*_mcp/` directory or a `*.bundle.json` file): the server is built into
-peppy and the catalog is derived on demand, so only the documents belong here.
+exposure selecting a member that its contract or its daemon interface does not declare, breaking a
+policy rule, pinning bytes the contracts hub no longer serves, or naming a daemon interface or a
+tag of it that the peppy build does not serve fails the pull request that causes it. It also
+refuses artifacts derived from an exposure (a `*_mcp/` directory or a `*.bundle.json` file): the
+server is built into peppy and the catalog is derived on demand, so only the documents belong here.
 
 The same workflow's `python-tests` job runs `pytest` from the repository root with no path and no
 pattern: it collects every `test_*.py` and `*_test.py` under the checkout (`pytest.ini` lets it into

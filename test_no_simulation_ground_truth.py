@@ -28,11 +28,14 @@ robot can work in it, and ``simulation_reset`` puts it back as it started;
 none has a physical counterpart, but a model legitimately drives them, as it
 does the cameras the simulation renders. An exposure targeting one of the
 eight lives under ``simulation/``, and every document there says what it
-is: the server title ends with ``SIMULATION_TITLE_SUFFIX``, the instructions
-open with the sentence ``SIMULATION_INSTRUCTIONS_OPENING``, and every
-``description`` of every topic, service and action contains the word
-"simulation" or "simulated". A model
-reading such an endpoint is never left to mistake it for a real-robot surface.
+is, by the wording of ``SIMULATION`` in ``exposure_families``: the server
+title ends with "(simulation only)", the instructions open with its
+sentence, and every ``description`` of every topic, service and action
+contains the word "simulation" or "simulated". A model reading such an
+endpoint is never left to mistake it for a real-robot surface.
+
+A target that names a daemon interface binds no contract, so these rules read
+the contract targets only.
 
 pytest collects it from the repository root without the workflow naming it;
 the exposures it checks are discovered the same way. It reads each document
@@ -42,12 +45,11 @@ json5 form a key or a string takes.
 
 from __future__ import annotations
 
-import re
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
+from exposure_families import SIMULATION, TargetKind, descriptions, target_sources
 from exposure_json5 import REPOSITORY_ROOT, Json5Error, document_name, exposure_documents, parse_json5, read_json5
 
 # Contracts whose members are simulation ground truth: an engine's report of
@@ -82,39 +84,11 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
     }
 )
 
-# The directory of every exposure that exists only in simulation, and the
-# wording each document there carries so a model can tell.
-SIMULATION_DIR = "simulation"
-SIMULATION_TITLE_SUFFIX = "(simulation only)"
-SIMULATION_INSTRUCTIONS_OPENING = (
-    "This endpoint configures a simulated world. "
-    "It has no effect on and no counterpart in the physical robot."
-)
-_SIMULATION_WORD = re.compile(r"\b(?:simulation|simulated)\b", re.IGNORECASE)
-
-
-def in_simulation_dir(path: Path, root: Path) -> bool:
-    """Whether `path` sits under `root`'s `simulation/` directory."""
-    return path.relative_to(root).parts[0] == SIMULATION_DIR
-
-
-def write_simulation_document(root: Path, name: str, document: str) -> Path:
-    """Writes `document` as `name` under `root`'s `simulation/` directory,
-    which it makes when missing: the path written."""
-    (root / SIMULATION_DIR).mkdir(exist_ok=True)
-    path = root / SIMULATION_DIR / name
-    path.write_text(document, encoding="utf-8")
-    return path
-
-
-def simulation_documents(root: Path) -> list[Path]:
-    """The exposures under `root`'s `simulation/` directory."""
-    return [path for path in exposure_documents(root) if in_simulation_dir(path, root)]
-
 
 def targeted_contracts(document: dict) -> list[str]:
-    """The contract names the document's targets bind, in document order."""
-    return [target["contract"]["name"] for target in document.get("targets", {}).values()]
+    """The contract names the document's contract targets bind, in document
+    order. A daemon target binds no contract, so it is not in the list."""
+    return [source.name for source in target_sources(document).values() if source.kind is TargetKind.CONTRACT]
 
 
 def forbidden_targets(path: Path) -> list[str]:
@@ -127,44 +101,10 @@ def forbidden_targets(path: Path) -> list[str]:
 def misplaced_simulation_only_targets(path: Path, root: Path) -> list[str]:
     """The simulation-only contracts `path` targets from outside
     `simulation/`; an empty list is the rule holding."""
-    if in_simulation_dir(path, root):
+    if SIMULATION.holds(path, root):
         return []
     targeted = targeted_contracts(read_json5(path))
     return [name for name in targeted if name in SIMULATION_ONLY_CONTRACTS]
-
-
-def descriptions(value: object) -> Iterator[str]:
-    """Every value of a `description` key in `value`, at any depth, in
-    document order: the call record's, each tool's, each resource's and
-    each picture tool's."""
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if key == "description":
-                yield item
-            else:
-                yield from descriptions(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from descriptions(item)
-
-
-def wording_violations(path: Path) -> list[str]:
-    """Each part of the simulation wording rule `path` breaks, named; an
-    empty list is the rule holding. The title and the instructions are
-    checked whole; every description is checked for the word."""
-    document = read_json5(path)
-    server = document.get("server", {})
-    violations = []
-    if not server.get("title", "").endswith(SIMULATION_TITLE_SUFFIX):
-        violations.append(f"title must end with `{SIMULATION_TITLE_SUFFIX}`")
-    if not server.get("instructions", "").startswith(SIMULATION_INSTRUCTIONS_OPENING):
-        violations.append(f"instructions must open with `{SIMULATION_INSTRUCTIONS_OPENING}`")
-    for description in descriptions(document):
-        if not _SIMULATION_WORD.search(description):
-            violations.append(
-                f'description "{description}" must contain "simulation" or "simulated"'
-            )
-    return violations
 
 
 def test_the_checkout_has_exposures_to_check() -> None:
@@ -172,7 +112,7 @@ def test_the_checkout_has_exposures_to_check() -> None:
 
 
 def test_the_checkout_has_simulation_documents_to_check() -> None:
-    assert simulation_documents(REPOSITORY_ROOT), "no exposure under simulation/: the walk is broken"
+    assert SIMULATION.documents(REPOSITORY_ROOT), "no exposure under simulation/: the walk is broken"
 
 
 @pytest.mark.parametrize("path", exposure_documents(REPOSITORY_ROOT), ids=document_name)
@@ -189,13 +129,13 @@ def test_what_only_a_simulation_gives_lives_under_simulation(path: Path) -> None
     misplaced = misplaced_simulation_only_targets(path, REPOSITORY_ROOT)
     assert not misplaced, (
         f"{document_name(path)} targets {', '.join(misplaced)}: an exposure on what only a "
-        f"simulation gives lives under {SIMULATION_DIR}/"
+        f"simulation gives lives under {SIMULATION.directory}/"
     )
 
 
-@pytest.mark.parametrize("path", simulation_documents(REPOSITORY_ROOT), ids=document_name)
+@pytest.mark.parametrize("path", SIMULATION.documents(REPOSITORY_ROOT), ids=document_name)
 def test_simulation_documents_say_what_they_are(path: Path) -> None:
-    violations = wording_violations(path)
+    violations = SIMULATION.wording_violations(path)
     assert not violations, f"{document_name(path)}: " + "; ".join(violations)
 
 
@@ -307,7 +247,7 @@ def test_targets_on_contacts_and_sensors_are_refused(tmp_path: Path) -> None:
 
 
 def test_a_target_on_the_internal_camera_channel_is_refused(tmp_path: Path) -> None:
-    path = write_simulation_document(tmp_path, "sim_camera_knobs.json5", _OFFENDING_CAMERA_CHANNEL)
+    path = SIMULATION.write_document(tmp_path, "sim_camera_knobs.json5", _OFFENDING_CAMERA_CHANNEL)
     assert exposure_documents(tmp_path) == [path]
     # Under simulation/ or not, the channel is refused outright.
     assert forbidden_targets(path) == ["sim_camera_control"]
@@ -325,6 +265,23 @@ def test_other_contracts_comments_and_prose_pass() -> None:
       },
     }"""
     assert targeted_contracts(parse_json5(document)) == ["rgb_camera", "postures"]
+
+
+def test_a_daemon_target_binds_no_contract(tmp_path: Path) -> None:
+    # A daemon interface named like a forbidden contract is still no contract.
+    path = tmp_path / "stack.json5"
+    path.write_text(
+        """{
+      peppy_schema: "mcp_exposure/v1",
+      targets: {
+        stack: { daemon: { name: "object_state", tag: "v1" }, services: [] },
+        arms: { contract: { name: "postures", tag: "v1" }, actions: [] },
+      },
+    }""",
+        encoding="utf-8",
+    )
+    assert targeted_contracts(read_json5(path)) == ["postures"]
+    assert forbidden_targets(path) == []
 
 
 _COMPLIANT = """// A simulation-only exposure that follows every rule.
@@ -366,11 +323,11 @@ def test_a_simulation_only_exposure_outside_simulation_is_caught(tmp_path: Path,
 
 
 def test_a_simulation_only_exposure_under_simulation_passes(tmp_path: Path) -> None:
-    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT)
-    assert simulation_documents(tmp_path) == [path]
+    path = SIMULATION.write_document(tmp_path, "sim_lights.json5", _COMPLIANT)
+    assert SIMULATION.documents(tmp_path) == [path]
     assert misplaced_simulation_only_targets(path, tmp_path) == []
     assert forbidden_targets(path) == []
-    assert wording_violations(path) == []
+    assert SIMULATION.wording_violations(path) == []
 
 
 def test_a_camera_exposure_outside_simulation_is_not_misplaced(tmp_path: Path) -> None:
@@ -396,8 +353,8 @@ def test_a_simulation_document_missing_a_wording_part_is_caught(
     tmp_path: Path, part: str, before: str, after: str
 ) -> None:
     assert before in _COMPLIANT
-    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
-    violations = wording_violations(path)
+    path = SIMULATION.write_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
+    violations = SIMULATION.wording_violations(path)
     assert len(violations) == 1, violations
     assert violations[0].startswith(part), violations[0]
 
@@ -408,16 +365,16 @@ def test_a_simulation_document_missing_every_wording_part_names_each(tmp_path: P
     document = document.replace("This endpoint configures a simulated world. ", "")
     document = document.replace("Every light of the simulated scene", "Every light of the scene")
     document = document.replace("Authored lighting back, in the simulation.", "Authored lighting back.")
-    path = write_simulation_document(tmp_path, "sim_lights.json5", document)
-    parts = [violation.split(" ", 1)[0] for violation in wording_violations(path)]
+    path = SIMULATION.write_document(tmp_path, "sim_lights.json5", document)
+    parts = [violation.split(" ", 1)[0] for violation in SIMULATION.wording_violations(path)]
     assert parts == ["title", "instructions", "description", "description"]
 
 
 def test_the_wording_word_is_matched_whole_and_case_insensitively() -> None:
-    assert _SIMULATION_WORD.search("Latest frame from the Simulated camera.")
-    assert _SIMULATION_WORD.search("in the SIMULATION.")
-    assert not _SIMULATION_WORD.search("a simulator's frame")
-    assert not _SIMULATION_WORD.search("simulations of the arm")
+    assert SIMULATION.has_a_description_word("Latest frame from the Simulated camera.")
+    assert SIMULATION.has_a_description_word("in the SIMULATION.")
+    assert not SIMULATION.has_a_description_word("a simulator's frame")
+    assert not SIMULATION.has_a_description_word("simulations of the arm")
 
 
 def test_documents_of_other_schemas_are_not_exposures(tmp_path: Path) -> None:
@@ -451,14 +408,14 @@ def test_a_description_without_the_word_is_caught_whatever_its_form(
     tmp_path: Path, before: str, after: str
 ) -> None:
     assert before in _COMPLIANT
-    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
-    violations = wording_violations(path)
+    path = SIMULATION.write_document(tmp_path, "sim_lights.json5", _COMPLIANT.replace(before, after))
+    violations = SIMULATION.wording_violations(path)
     assert len(violations) == 1, violations
     assert violations[0].startswith("description"), violations[0]
 
 
 def test_prose_with_escaped_quotes_is_read_whole(tmp_path: Path) -> None:
-    path = write_simulation_document(tmp_path, "sim_lights.json5", _COMPLIANT)
+    path = SIMULATION.write_document(tmp_path, "sim_lights.json5", _COMPLIANT)
     assert 'Every light of the simulated scene, with "id" and kind.' in descriptions(read_json5(path))
 
 
