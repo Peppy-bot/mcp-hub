@@ -275,10 +275,13 @@ them:
 | `stack.remove` | `stack_copies:v1` `remove` | task, 660 s progress window |
 
 `stack.list` reports the robot options that a client can add, with the description of each, the
-robots of these options on the stack, and `max_copies`, the most robots of these options that the
-stack holds. `stack.join` adds a robot of an option under a name, as `peppy stack join OPTION:NAME`
+robots of these options on the stack, `max_copies`, the most robots of these options that the
+stack holds, and `change`, the addition or removal of one of these robots that runs now, from any
+client. A robot that is being added is in the robots of the stack only once its addition has
+succeeded. `stack.join` adds a robot of an option under a name, as `peppy stack join OPTION:NAME`
 does, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel or a lost call
-stops the wait and not the change of the stack. `stack.recent_calls` is the endpoint's call record.
+stops the wait and not the change of the stack, which `stack.list` reports under `change` until it
+ends. `stack.recent_calls` is the endpoint's call record.
 The launcher's scope gives the options, their descriptions and `max_copies`, so the document names
 no option and no robot model. The robots' endpoint drives a robot that `stack.join` adds, under its
 name. A simulated robot stands in the simulated world when `stack.join` ends with success, and
