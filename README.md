@@ -146,14 +146,20 @@ A model reads what peppy publishes of an exposure:
 - the name and `description` of each tool and of each resource;
 - the input and output schemas of each tool, which peppy derives from the contract or from the
   daemon interface. The input schema carries the document's `restrict` bounds as its minimum and
-  maximum, and the launcher's scope narrows the schemas of a daemon target.
+  maximum, and the launcher's scope narrows the schemas of a daemon target. The input of
+  `stack.join` takes only the robot options of the scope and the features of these options, and a
+  machine by the rule of a core node name alone: it never lists the machines, because they change
+  while the endpoint runs;
+- the answers of the tools. The answer of `stack.list` carries the line that the launcher's scope
+  gives each robot option and each of its features.
 
 The comments of the document, of its contracts and of its daemon interfaces do not reach the model.
 
 Each fact lives in one text. A rule that several tools of one endpoint share lives in the
 endpoint's `instructions`. Examples are the units, the frames and the placement rule of the
-simulated world. What one tool does, and what follows its call, lives in that tool's
-`description`. Another text names the tool or the rule, and does not say it again.
+simulated world, and what a feature and a machine are on the framework's endpoint. What one tool
+does, and what follows its call, lives in that tool's `description`. Another text names the tool
+or the rule, and does not say it again.
 
 A setter is an entry of a target's `services` or `actions` whose `operation` is not `read_only`.
 The description of a covered setter says four things, in this order:
@@ -274,18 +280,38 @@ them:
 | `stack.join` | `stack_copies:v1` `join` | task, 660 s progress window |
 | `stack.remove` | `stack_copies:v1` `remove` | task, 660 s progress window |
 
-`stack.list` reports the robot options that a client can add, with the description of each, the
-robots of these options on the stack, `max_copies`, the most robots of these options that the
-stack holds, and `change`, the addition or removal of one of these robots that runs now, from any
-client. A robot that is being added is in the robots of the stack only once its addition has
-succeeded. `stack.join` adds a robot of an option under a name, as `peppy stack join OPTION:NAME`
-does, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel or a lost call
-stops the wait and not the change of the stack, which `stack.list` reports under `change` until it
-ends. `stack.recent_calls` is the endpoint's call record.
-The launcher's scope gives the options, their descriptions and `max_copies`, so the document names
-no option and no robot model. The robots' endpoint drives a robot that `stack.join` adds, under its
-name. A simulated robot stands in the simulated world when `stack.join` ends with success, and
-`workspace.stand_at` on the simulated world's endpoint then stands it at a work surface.
+`stack.list` reports the robot options that a client can add, with the description and the
+features of each, the machines of the stack, the robots of these options on the stack,
+`max_copies`, the most robots of these options that the stack holds, and `change`, the addition or
+removal of one of these robots that runs now, from any client. A robot that is being added is in
+the robots of the stack only once its addition has succeeded. `stack.join` adds a robot of an
+option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel or
+a lost call stops the wait and not the change of the stack, which `stack.list` reports under
+`change` until it ends. `stack.recent_calls` is the endpoint's call record.
+
+A feature is a choice that the launcher's scope offers on a robot option: it selects one option of
+one own axis of the robot option, that option brings at least one node, and the scope gives the
+feature a name and one line for the model. A robot holds a feature only when it is added with it,
+so a robot with no feature is the robot of its option's launcher entry. A machine is a peppy
+daemon, by its core node name: the name that `--core-node-name` sets or that the daemon generates.
+A `core_node` link of a launcher file never reaches the model. A robot runs on one machine, and
+each of its features runs on the robot's machine or on another one. `stack.list` gives
+`this_core_node`, the machine of this stack, and `core_nodes`, this machine and the live daemons of
+the same workspace or project, which it reads on every call.
+
+Each robot that `stack.list` lists has the fields of a `stack.join` input: `name`, `option`,
+`core_node`, the robot's machine, and `features`, each `{feature, core_node}`. `stack.join` adds a
+robot as `peppy stack join OPTION:NAME@CORE_NODE` does with one `--with AXIS=OPTION@CORE_NODE` word
+for each feature, the axis and the option that the scope gives the feature. So a listed robot that
+`stack.join` added is its own recipe: its fields make the same robot on the same machines. The
+listing of a robot that the command line added shows its features only, not the other words of its
+join.
+
+The launcher's scope gives the options, their descriptions, their features and `max_copies`, so the
+document names no robot model, no option and no feature. The robots' endpoint drives a robot that
+`stack.join` adds, under its name. A simulated robot stands in the simulated world when
+`stack.join` ends with success, and `workspace.stand_at` on the simulated world's endpoint then
+stands it at a work surface.
 
 The launchers hub serves the document through the `robot_control` option of its `simulation_mcp`
 launcher, at `http://127.0.0.1:8903/framework_controls/v1/mcp`, beside the robots' endpoint, under
