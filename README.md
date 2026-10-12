@@ -30,9 +30,9 @@ always tell where a call goes:
 | `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, and the record of the calls that changed it | the same functions; the launcher's scope decides what a client may change |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
-model reads three preambles: the robots' says it is the robots' own surface and is to be preferred,
-the simulated world's says it sets the world up and is never a way to complete a task, and the
-framework's says it controls the stack of nodes, not the world and not the motion of a robot. The
+model reads three preambles: the robots' says it is the robots' own surface and names no other
+endpoint, the simulated world's says it sets the world up and is never a way to complete a task, and
+the framework's says it controls the stack of nodes, not the world and not the motion of a robot. The
 bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the three
 endpoints:
 
@@ -360,6 +360,20 @@ a robot model, by its id or its label, whatever the case, or a field that lists 
 (`workable_by`). mcp-hub does not read the simulation's catalogue, so the test holds the ids and
 the labels of the robot models the hubs simulate (its one `ROBOT_MODELS` list): the change that
 brings a new model into the simulation's catalogue adds it there.
+
+## The robots' endpoint names no other endpoint
+
+A client can read the robots' endpoint alone: a client of the physical robots, where no simulated
+world's endpoint runs, or a client that drives the robots for one task and is given no other
+endpoint. Such a client cannot call a tool of another endpoint, and a text that names one tells it
+of a world it does not have. So the texts of a `robot/` document name no other endpoint and no tool
+of one. A fact that joins the robots' endpoint to another lives in the texts of the other endpoint:
+the simulated world's instructions say that a robot's name there is its name on the robots'
+endpoint, how its world frame maps to the robot frame, and that it never completes a task.
+[`test_robot_endpoint_names_no_other_endpoint.py`](test_robot_endpoint_names_no_other_endpoint.py)
+fails a `robot/` document whose title, instructions or any description names a tool of a
+`simulation/` or `framework/` document of the checkout, or says "endpoint" other than as "this
+endpoint" or "this one endpoint", whatever the case.
 
 ## Continuous integration
 

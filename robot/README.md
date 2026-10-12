@@ -100,12 +100,18 @@ the endpoint did it. A motion a teleoperation or another node commanded is not i
 Every contract is pinned by sha256 to the document this exposure was written against. The
 cameras' brightness and contrast stay private. The server's `instructions` tell a model:
 
-- to list first, and that this is the surface to prefer over any simulation endpoint;
+- to list first, and that what a robot cannot do through these tools, it cannot do;
 - how to address the limbs, and which units and robot frame apply;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
 - that a move with success true does not prove that the arm arrived;
 - what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
+
+A client can read this endpoint alone, on the physical robots or for one task, so no text of the
+document names another endpoint or a tool of one. The simulated world's instructions say that a
+robot's name there is its name here, how its world frame maps to the robot frame, and that it never
+completes a task. The rule and its test are in
+[The robots' endpoint names no other endpoint](../README.md#the-robots-endpoint-names-no-other-endpoint).
 
 The description of each move and of `robot.stop` says what holds after the call. That sentence
 begins with `After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.

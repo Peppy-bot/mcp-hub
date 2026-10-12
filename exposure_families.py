@@ -23,6 +23,9 @@ and `FRAMEWORK` are the two families. `test_no_simulation_ground_truth.py`
 applies the wording of `SIMULATION`, and `test_exposure_families.py` applies
 the wording of `FRAMEWORK` and the rule of the target kinds.
 
+`texts` gives each text of a document that a model reads, and `tool_names`
+the name of each tool of a document, for the rules on what a text names.
+
 Each function reads the structure of a document with `exposure_json5`, so a
 rule reads the same document whatever json5 form a key or a string takes.
 """
@@ -84,19 +87,50 @@ def target_sources(document: dict) -> dict[str, TargetSource]:
     return {name: parse_target_source(name, target) for name, target in document.get("targets", {}).items()}
 
 
+def values_of(key: str, value: object) -> Iterator[object]:
+    """Every value of `key` in `value`, at any depth, in document order. A
+    value of `key` is not searched further."""
+    if isinstance(value, dict):
+        for name, item in value.items():
+            if name == key:
+                yield item
+            else:
+                yield from values_of(key, item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from values_of(key, item)
+
+
 def descriptions(value: object) -> Iterator[str]:
     """Every value of a `description` key in `value`, at any depth, in
     document order: the call record's, each tool's, each resource's and
     each picture tool's."""
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if key == "description":
-                yield item
-            else:
-                yield from descriptions(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from descriptions(item)
+    yield from values_of("description", value)
+
+
+def tool_names(value: object) -> Iterator[str]:
+    """Every value of a `tool` key in `value`, at any depth, in document
+    order: the name of each tool, the call record's and the listing's
+    included."""
+    yield from values_of("tool", value)
+
+
+def texts(document: dict) -> list[tuple[str, str]]:
+    """Each text of `document` a model reads, named: its server title, its
+    instructions and every description."""
+    server = document.get("server", {})
+    named = [("title", server.get("title", "")), ("instructions", server.get("instructions", ""))]
+    return named + [("description", description) for description in descriptions(document)]
+
+
+def sits_under(path: Path, root: Path, directory: str) -> bool:
+    """Whether `path` sits under the top-level `directory` of `root`."""
+    return path.relative_to(root).parts[0] == directory
+
+
+def documents_under(root: Path, directory: str) -> list[Path]:
+    """The exposures under the top-level `directory` of `root`."""
+    return [path for path in exposure_documents(root) if sits_under(path, root, directory)]
 
 
 @dataclass(frozen=True)
@@ -115,11 +149,11 @@ class Family:
     def holds(self, path: Path, root: Path) -> bool:
         """Whether `path` sits under the directory of this family in
         `root`."""
-        return path.relative_to(root).parts[0] == self.directory
+        return sits_under(path, root, self.directory)
 
     def documents(self, root: Path) -> list[Path]:
         """The exposures under the directory of this family in `root`."""
-        return [path for path in exposure_documents(root) if self.holds(path, root)]
+        return documents_under(root, self.directory)
 
     def write_document(self, root: Path, name: str, document: str) -> Path:
         """Writes `document` as `name` under the directory of this family in
