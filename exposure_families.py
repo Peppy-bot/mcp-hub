@@ -123,6 +123,16 @@ def texts(document: dict) -> list[tuple[str, str]]:
     return named + [("description", description) for description in descriptions(document)]
 
 
+def sits_under(path: Path, root: Path, directory: str) -> bool:
+    """Whether `path` sits under the top-level `directory` of `root`."""
+    return path.relative_to(root).parts[0] == directory
+
+
+def documents_under(root: Path, directory: str) -> list[Path]:
+    """The exposures under the top-level `directory` of `root`."""
+    return [path for path in exposure_documents(root) if sits_under(path, root, directory)]
+
+
 @dataclass(frozen=True)
 class Family:
     """A family whose documents say what they are. Every document under
@@ -139,11 +149,11 @@ class Family:
     def holds(self, path: Path, root: Path) -> bool:
         """Whether `path` sits under the directory of this family in
         `root`."""
-        return path.relative_to(root).parts[0] == self.directory
+        return sits_under(path, root, self.directory)
 
     def documents(self, root: Path) -> list[Path]:
         """The exposures under the directory of this family in `root`."""
-        return [path for path in exposure_documents(root) if self.holds(path, root)]
+        return documents_under(root, self.directory)
 
     def write_document(self, root: Path, name: str, document: str) -> Path:
         """Writes `document` as `name` under the directory of this family in

@@ -36,8 +36,8 @@ from pathlib import Path
 
 import pytest
 
-from exposure_families import FRAMEWORK, SIMULATION, texts, tool_names
-from exposure_json5 import REPOSITORY_ROOT, document_name, exposure_documents, read_json5
+from exposure_families import FRAMEWORK, SIMULATION, documents_under, texts, tool_names
+from exposure_json5 import REPOSITORY_ROOT, document_name, read_json5
 
 # The directory of the robots' documents.
 ROBOT_DIRECTORY = "robot"
@@ -55,7 +55,7 @@ _CONTEXT = 60
 
 def robot_documents(root: Path) -> list[Path]:
     """The exposures under ``ROBOT_DIRECTORY`` in `root`."""
-    return [path for path in exposure_documents(root) if path.relative_to(root).parts[0] == ROBOT_DIRECTORY]
+    return documents_under(root, ROBOT_DIRECTORY)
 
 
 def other_endpoint_tools(root: Path) -> frozenset[str]:
