@@ -26,7 +26,7 @@ always tell where a call goes:
 | Family | Document | A call goes to | On the physical robots |
 | --- | --- | --- | --- |
 | `robot/` | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | the robot itself: every robot of the stack by name, who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | the same |
-| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | absent |
+| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | absent |
 | `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, and the record of the calls that changed it | the same functions; the launcher's scope decides what a client may change |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
@@ -220,10 +220,10 @@ another.
 ### What only a simulation gives, published under a wording rule
 
 `scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses, the
-robots and their bases), `object_controls` (what an object lets a caller set, a desk's height),
-`scene_lighting` and `scene_materials` edit the simulated world, `scene_view` pictures it from any
-viewpoint, finds in it what a region of such a picture shows, and shows the catalogue's preview
-of an asset, `simulation_clock` holds its time (the
+landmarks and the state of one object, the robots and their bases), `object_controls` (what an
+object lets a caller set, a desk's height), `scene_lighting` and `scene_materials` edit the
+simulated world, `scene_view` pictures it from any viewpoint, finds in it what a region of such a
+picture shows, and shows the catalogue's preview of an asset, `simulation_clock` holds its time (the
 time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
 by its stance and measures where a robot can work in it (the surfaces its arms reach and its
 perception camera sees, whether given objects are workable where they stand, and where the items
@@ -241,6 +241,17 @@ at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the ro
 from a robot copy and outlives it. Waldo is the one simulation implementing the controls, lighting,
 materials, view, clock, workspace and reset contracts, so the launcher requires it beside that
 option. No real-robot fragment lists the document.
+
+`scene.get_object`, the `get_object` service of `scene_manipulation`, gives one object at one
+instant: its landmarks in the world frame and its state, such as whether it broke, where its
+contents went, how far they cooked, whether it is crushed and how hot it and its heaters are. The
+state is a fact of the simulation, as a position is. So it reaches an endpoint through
+`scene_manipulation`, a contract that only a simulation gives, and never through `object_state`,
+which is ground truth. It has two uses. In phase 1 of sim-chat, the world setup, it lets the
+agent check an event that the user asks for in the world, such as a drop or a heating. It lets the
+eval judge of sim-chat, an MCP client as the agent is, read the result of a scenario. A robot task
+never reads it: phase 2 of sim-chat, the robot actions, offers no tool that gives it, and the view
+of phase 2 holds no answer that gave it.
 
 The cameras are not simulation-only. The rig the simulation renders publishes
 `rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera_linux` and `zed_camera`
