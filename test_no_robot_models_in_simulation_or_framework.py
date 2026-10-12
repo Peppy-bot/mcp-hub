@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-from exposure_families import FRAMEWORK, SIMULATION, Family, descriptions
+from exposure_families import FRAMEWORK, SIMULATION, Family, texts
 from exposure_json5 import REPOSITORY_ROOT, document_name, read_json5
 
 # The robot models the hubs simulate, each by its id and its label.
@@ -64,14 +64,6 @@ def named_in(text: str) -> list[str]:
     whatever the case, each once in the order of ``_FORBIDDEN``."""
     lowered = text.lower()
     return [name for name in _FORBIDDEN if name in lowered]
-
-
-def texts(document: dict) -> list[tuple[str, str]]:
-    """Each text of `document` a model reads, named: its server title, its
-    instructions and every description."""
-    server = document.get("server", {})
-    named = [("title", server.get("title", "")), ("instructions", server.get("instructions", ""))]
-    return named + [("description", description) for description in descriptions(document)]
 
 
 def model_mentions(path: Path) -> list[str]:
