@@ -561,7 +561,7 @@
         {
           member: "identify_item",
           tool: "brain.identify_item",
-          description: "Find one item through the robot's brain and mint an item_id for it. This is the robot's own answer to \"is there a banana\" or \"where is the mug\": ask it rather than judging from a camera frame, since only an item it identifies here can be grabbed. description is the item's plain name, two or three words at most, such as \"red mug\" or \"banana\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on; timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a robot-frame position in meters, an orientation only when the robot resolved one, confidence from 0 to 1, and region, the item's x0, y0, x1, y1 in pixels of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. Finding nothing is a failure whose message says so. Starts no motion.",
+          description: "Find one item through the robot's brain and mint an item_id for it. This is the robot's own answer to \"is there a banana\" or \"where is the mug\": ask it rather than judging from a camera frame, since only an item it identifies here can be grabbed. description is the item's name in a few plain words, such as \"apple\" or \"red mug\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on. To choose between several items of the same kind, call brain.scan_items and pick the item by its position. timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a robot-frame position in meters, an orientation only when the robot resolved one, confidence from 0 to 1, and region, the item's x0, y0, x1, y1 in pixels of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. Finding nothing is a failure whose message says so. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -578,7 +578,7 @@
         {
           member: "grab_item",
           tool: "brain.grab_item",
-          description: "Close one of the robot's grippers on an item. gripper_name is one of the names brain.get_state reports for the robot, or empty to let it pick a free gripper suited to the item. Give item_id from brain.identify_item, or leave it empty and give position in the robot frame in meters and, optionally, orientation. max_effort caps the grip in the gripper's effort unit, 0 for the default. Refused when the gripper is unknown or already holds an item, when no gripper is free, or when item_id is one the robot no longer recognizes. Returns the gripper_name and item_id now held; the robot reports it is holding the item from then on.",
+          description: "Close one of the robot's grippers on an item. gripper_name is one of the names brain.get_state reports for the robot, or empty to let it pick a free gripper suited to the item. Give item_id from brain.identify_item or brain.scan_items, or leave it empty and give position in the robot frame in meters and, optionally, orientation. max_effort caps the grip in the gripper's effort unit, 0 for the default. Refused when the gripper is unknown or already holds an item, when no gripper is free, or when item_id is one the robot no longer recognizes. Returns the gripper_name and item_id now held; the robot reports it is holding the item from then on.",
           operation: "long_running",
           safety_sensitive: true,
           // A reach, a close, and a check: several lower level moves in
@@ -615,6 +615,42 @@
           member: "get_state",
           tool: "brain.get_state",
           description: "Report what the robot's brain is doing right now. current_action is the running sequence's name, empty when idle; current_action_elapsed_s is how long it has run. gripper_names lists the robot's grippers in a fixed order, the names the other brain tools accept, and holding and held_item_ids are index-aligned with it: true and the item_id where that gripper holds an item, false and empty otherwise.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
+    // The model each role of a robot's brain runs, the models it takes, and
+    // the switch of one while the brain runs.
+    brain_model: {
+      contract: {
+        name: "brain_model",
+        tag: "v1",
+        sha256: "59418320965737db1f7367ac222481effa8675f700c6a11ed04549e0f8a2a2f6",
+      },
+      actions: [
+        {
+          member: "switch_model",
+          tool: "brain.switch_model",
+          description: "Make model the active model of one role of the robot's brain while the brain runs. role is \"perception\", the model brain.scan_items and brain.identify_item use, or \"manipulation\", the model brain.grab_item, brain.drop_item and brain.place_item use; model is one of the names brain.list_models gives for that role. After the call, every goal of that role that starts uses the new model and brain.get_model reports it; a goal that was running finishes on the model it started with. Refused while a goal of that role runs, while another switch of that role runs, and for a role or a model the brain does not take; failed when the brain cannot reach the model. A refused or failed switch leaves the role on its model and returns role and model empty. The brain checks that it reaches the model and that the model answers, not how well the model finds items. Starts no motion.",
+          operation: "long_running",
+          // A switch may reach a hosted model once before it answers.
+          deadline_ms: 60000,
+        },
+      ],
+      services: [
+        {
+          member: "get_model",
+          tool: "brain.get_model",
+          description: "Report the model each role of the robot's brain runs now: roles and models, index-aligned, one entry per role. \"none\" is a role with no model, whose goals the brain refuses. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "list_models",
+          tool: "brain.list_models",
+          description: "Report every model the robot's brain takes for each role: roles and models, index-aligned, one entry per model, grouped by role in the order brain.get_model gives. These are the names brain.switch_model takes. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
