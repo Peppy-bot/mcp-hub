@@ -83,8 +83,9 @@ the frame as an image, which is what a model sees, so the two pictures are tools
 samples stay a resource.
 
 A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.grab_item`,
-`brain.place_item`, `brain.drop_item` and `brain.abort` as tasks and `brain.get_state` as a tool
-(`item_perception:v1`, `item_manipulation:v1`), and one with a recorder
+`brain.place_item`, `brain.drop_item`, `brain.abort` and `brain.switch_model` as tasks and
+`brain.get_state`, `brain.get_model` and `brain.list_models` as tools (`item_perception:v1`,
+`item_manipulation:v1`, `brain_model:v1`), and one with a recorder
 `recorder.record_episode` (`episode_recording:v1`), confirmation gated. A scan and an identify
 report each item's region in the picture `depth_camera.look` gives for the camera they name, with
 the frame's size and capture time. Resources are published per
