@@ -548,7 +548,7 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "ed789491531873b32e4a392a27c2b6c62ced426a0588bf6910f92be23a79248d",
+        sha256: "66ebc89364b2544909ea9b8f79bad95a094fe67a058ee3dcfab3252e4c842ab0",
       },
       actions: [
         {
@@ -572,7 +572,7 @@
       contract: {
         name: "item_manipulation",
         tag: "v1",
-        sha256: "5838cec2497623cf8e67c6319c72e81ea8571af17e4953227bf38ad2dee0a158",
+        sha256: "1bddbe93a4d8a757ce23b6742e76db23d25fc28d1811be259ea460c78b64c5f1",
       },
       actions: [
         {
