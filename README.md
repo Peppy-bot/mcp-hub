@@ -15,7 +15,7 @@ Exposures are grouped by what they publish:
 ```text
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
-simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, and its reset as one document; a simulation launch option only
+simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and its reset as one document; a simulation launch option only
 framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, through an interface of the peppy daemon, as one document
 ```
 
@@ -26,7 +26,7 @@ always tell where a call goes:
 | Family | Document | A call goes to | On the physical robots |
 | --- | --- | --- | --- |
 | `robot/` | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | the robot itself: every robot of the stack by name, who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | the same |
-| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, its reset to the world it started as, and the record of the calls that changed it | absent |
+| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams and the holds that keep a sensor at its own rate, its reset to the world it started as, and the record of the calls that changed it | absent |
 | `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, and the record of the calls that changed it | the same functions; the launcher's scope decides what a client may change |
 
 A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
@@ -227,20 +227,23 @@ picture shows, and shows the catalogue's preview of an asset, `simulation_clock`
 time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
 by its stance and measures where a robot can work in it (the surfaces its arms reach and its
 perception camera sees, whether given objects are workable where they stand, and where the items
-of a task fit on one surface), and `simulation_reset` puts it back as it started; none has a
-physical counterpart, but a model legitimately drives them to set the world up and check it.
+of a task fit on one surface), `sim_sensor_streams` sets the rate at which it renders the cameras
+of each robot's rig (1 Hz until a client application holds them, their own rate while it does), and
+`simulation_reset` puts it back as it started; none has a physical counterpart, but a model
+legitimately drives them to set the world up and check it, and a client application holds the
+sensors that it shows or records.
 A robot's own answer to where it
 can work, from its design alone, is the robots' `workspace` target, and a robot's task finds its
 items through the robot's own perception. Exposures on them live under `simulation/`: today one
-document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the eight contracts
-as its `scene`, `controls`, `lighting`, `materials`, `view`, `clock`, `workspace` and `reset`
-targets. Only a simulation launch option serves it: the `world_control` axis of the [launchers
+document, [`simulation/simulation.json5`](simulation/simulation.json5), holding the nine contracts
+as its `scene`, `controls`, `lighting`, `materials`, `view`, `clock`, `workspace`, `sensor_streams`
+and `reset` targets. Only a simulation launch option serves it: the `world_control` axis of the [launchers
 hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher, deployed by the file,
 at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the robots' endpoint
 `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it needs nothing
 from a robot copy and outlives it. Waldo is the one simulation implementing the controls, lighting,
-materials, view, clock, workspace and reset contracts, so the launcher requires it beside that
-option. No real-robot fragment lists the document.
+materials, view, clock, workspace, sensor streams and reset contracts, so the launcher requires it
+beside that option. No real-robot fragment lists the document.
 
 `scene.get_object`, the `get_object` service of `scene_manipulation`, gives one object at one
 instant: its landmarks in the world frame and its state, such as whether it broke, where its
@@ -273,8 +276,9 @@ document under `simulation/` says what it is, and the same test enforces the wor
   `simulated` (a whole word, any case).
 
 The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
-`scene_lighting`, `scene_materials`, `scene_view`, `simulation_clock`, `scene_workspace` or
-`simulation_reset` from any other directory (its `SIMULATION_ONLY_CONTRACTS`). A pull
+`scene_lighting`, `scene_materials`, `scene_view`, `simulation_clock`, `scene_workspace`,
+`sim_sensor_streams` or `simulation_reset` from any other directory (its
+`SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
 

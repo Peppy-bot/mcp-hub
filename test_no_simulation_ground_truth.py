@@ -24,12 +24,13 @@ What only a simulation gives reaches an endpoint under a wording rule.
 ``scene_materials`` edit the simulated world, ``scene_view`` pictures it from
 any viewpoint and shows the catalogue's preview of an asset,
 ``simulation_clock`` holds its time, ``scene_workspace`` measures where a
-robot can work in it, and ``simulation_reset`` puts it back as it started;
-none has a physical counterpart, but a model legitimately drives them, as it
-does the cameras the simulation renders. An exposure targeting one of the
-eight lives under ``simulation/``, and every document there says what it
-is, by the wording of ``SIMULATION`` in ``exposure_families``: the server
-title ends with "(simulation only)", the instructions open with its
+robot can work in it, ``sim_sensor_streams`` sets the rate at which it
+renders each robot's cameras, and ``simulation_reset`` puts it back as it
+started; none has a physical counterpart, but a model legitimately drives
+them, as it does the cameras the simulation renders. An exposure targeting
+one of the nine lives under ``simulation/``, and every document there says
+what it is, by the wording of ``SIMULATION`` in ``exposure_families``: the
+server title ends with "(simulation only)", the instructions open with its
 sentence, and every ``description`` of every topic, service and action
 contains the word "simulation" or "simulated". A model reading such an
 endpoint is never left to mistake it for a real-robot surface.
@@ -68,9 +69,9 @@ FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
 # Contracts only a simulation gives: those that configure the simulated
 # world, its pictures (a view from a free viewpoint, an asset's preview),
-# its clock, its measure of where a robot can work in it, and its reset. A
-# model drives them, so an exposure may target them, from under
-# `simulation/` only.
+# its clock, its measure of where a robot can work in it, the rate of its
+# robots' sensor streams, and its reset. A model drives them, so an exposure
+# may target them, from under `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
@@ -80,6 +81,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "scene_view",
         "simulation_clock",
         "scene_workspace",
+        "sim_sensor_streams",
         "simulation_reset",
     }
 )
