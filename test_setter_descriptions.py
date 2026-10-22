@@ -54,7 +54,17 @@ RECORDING_DOCUMENT = "recording/camera_and_recording.json5"
 
 # The targets whose setters the rule covers, per exposure document.
 COVERED_TARGETS = {
-    SIMULATION_DOCUMENT: ("scene", "controls", "lighting", "materials", "view", "clock", "workspace", "reset"),
+    SIMULATION_DOCUMENT: (
+        "scene",
+        "controls",
+        "lighting",
+        "materials",
+        "view",
+        "clock",
+        "workspace",
+        "sensor_streams",
+        "reset",
+    ),
     ROBOT_DOCUMENT: ("postures", "limb_motion", "brain_model"),
     FRAMEWORK_DOCUMENT: ("stack",),
 }
@@ -109,6 +119,8 @@ COVERED_SETTERS = {
             "clock.set_paused",
             "clock.step",
             "workspace.stand_at",
+            "sensors.hold",
+            "sensors.release",
             "simulation.reset",
         }
     ),
