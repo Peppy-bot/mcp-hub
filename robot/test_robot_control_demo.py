@@ -94,12 +94,16 @@ TOOL_FIELDS = {
         "duration_s": "number",
         "plan_position_tolerance_m": "number",
         "plan_orientation_tolerance_rad": "number",
+        "settle_position_tolerance_m": "number",
+        "settle_orientation_tolerance_rad": "number",
+        "settle_timeout_s": "number",
         demo.ROBOT_ARGUMENT: "string",
     },
     demo.TOOL_MOVE_GRIPPER: {
         "gripper_name": "string",
         "opening": "number",
         "max_effort": "number",
+        "settle_timeout_s": "number",
         demo.ROBOT_ARGUMENT: "string",
     },
     # The listing tool takes nothing and answers within the call.
@@ -685,8 +689,11 @@ class ScriptTests(StandInCase):
                 "position": [0.3, 0.2, 0.4],
                 "orientation": [0.0, 0.0, 0.0, 1.0],
                 "duration_s": 0.0,
-                "plan_position_tolerance_m": 0.0,
-                "plan_orientation_tolerance_rad": 0.0,
+                "plan_position_tolerance_m": demo.PLAN_POSITION_TOLERANCE_M,
+                "plan_orientation_tolerance_rad": demo.PLAN_ORIENTATION_TOLERANCE_RAD,
+                "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
+                "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
+                "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
             },
         )
 
@@ -844,7 +851,13 @@ class ClientTests(StandInCase):
         }
         server = self.serve(Scenario(steps))
         client = demo.McpClient(server.url, client_capabilities={})
-        arguments = {demo.ROBOT_ARGUMENT: ROBOT, "gripper_name": "left_gripper", "opening": 0.0, "max_effort": 1.0}
+        arguments = {
+            demo.ROBOT_ARGUMENT: ROBOT,
+            "gripper_name": "left_gripper",
+            "opening": 0.0,
+            "max_effort": 1.0,
+            "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
+        }
         self.assertEqual(
             client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}}),
             tool_error("the action failed: the provider abandoned the goal"),
