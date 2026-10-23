@@ -253,7 +253,7 @@
         name: "scene_lighting",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_lighting.json5`).
-        sha256: "9e66157ee1882c4f06f6cbbfadb02170603366c4562b671be6adc0849b10dd89",
+        sha256: "56d8b606e6094b09f3f2d034eb7247cbc1db295f5dd67c1d07aec7ee54b9a4d9",
       },
 
       // Each service becomes a tool that answers within one request. The
@@ -264,7 +264,7 @@
         {
           member: "get_lighting",
           tool: "lighting.get_lighting",
-          description: "Report every light of the loaded simulated scene as a JSON object in lighting_json: scene (the scene asset id), ambient_lux, fill_lux and lights, each with id, kind, label and properties keyed by property name (illuminance_lux, luminous_flux_lm, radiance_scale, color_rgb, position_m, direction, inner_angle_rad, outer_angle_rad, orientation_xyzw), each with unit, default, value and, for scalars, min and max. A light lists only the properties it supports. success is false, with message saying why, while no scene is loaded. Takes no arguments and changes nothing.",
+          description: "Report every light of the loaded simulated scene as a JSON object in lighting_json: scene (the scene asset id), ambient_lux, fill_lux and lights, each with id, kind, label, baked_indirect and properties keyed by property name (illuminance_lux, luminous_flux_lm, radiance_scale, color_rgb, position_m, direction, inner_angle_rad, outer_angle_rad, orientation_xyzw), each with unit, default, value and, for scalars, min and max. A light lists only the properties it supports. baked_indirect tells whether the light's baked indirect light (its light bounced off the scene's fixed surfaces, computed offline) is on: on; none when the scene has none for this light; off_light_moved after its position, direction or orientation changed, until lighting.reset_lighting, until simulation.reset or until it is set back; off_scene_changed after scene.move_object or scene.remove_object moved or removed a fixed object of the scene, until scene.load_scene or simulation.reset loads a scene. success is false, with message saying why, while no scene is loaded. Takes no arguments and changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
