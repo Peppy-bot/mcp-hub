@@ -614,7 +614,7 @@
         {
           member: "get_state",
           tool: "brain.get_state",
-          description: "Report what the robot's brain is doing right now. current_action is the running sequence's name, empty when idle; current_action_elapsed_s is how long it has run. gripper_names lists the robot's grippers in a fixed order, the names the other brain tools accept, and holding and held_item_ids are index-aligned with it: true and the item_id where that gripper holds an item, false and empty otherwise.",
+          description: "Report what the robot's brain is doing right now. current_action is the running sequence's name, empty when idle; current_action_elapsed_s is how long it has run. gripper_names lists the robot's grippers in a fixed order, the names the other brain tools accept, and holding and held_item_ids are index-aligned with it: true and the item_id where that gripper holds an item, false and empty otherwise. holding follows the brain's results, not the jaws: it turns true when brain.grab_item succeeds and false when brain.drop_item or brain.place_item does. gripper_openings, index-aligned too, is each gripper's opening as the robot last measured it, 0 closed to 1 fully open, empty until the robot has measured every gripper: an item that slipped out after a grab reads holding true and an opening near 0.",
           operation: "read_only",
           deadline_ms: 2000,
         },
