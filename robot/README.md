@@ -28,11 +28,11 @@ Every other tool takes `robot`. The robot's identity, moves and state:
 | --------------------------- | ----------------------------------- | ------------------------------- |
 | `robot.get_identity`        | `robot_identity:v1` `get_identity`  | read only, 2 s                  |
 | `robot.get_limb_names`      | `limb_state:v1` `get_limb_names`    | read only, 2 s                  |
-| `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 60 s                      |
-| `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 60 s                      |
-| `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 60 s                      |
-| `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 60 s                      |
-| `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 30 s                      |
+| `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 65 s                      |
+| `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 65 s                      |
+| `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 125 s                     |
+| `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 125 s                     |
+| `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 65 s                      |
 | `robot.stop`                | `limb_motion:v1` `stop`             | mutating, 2 s                   |
 | `robot.check_arm_move`      | `limb_motion:v1` `check_arm_move`   | read only, 5 s                  |
 | `robot.get_camera_poses`    | `camera_mounts:v1` `get_camera_poses` | read only, 2 s                |
@@ -49,8 +49,9 @@ move in flight on the robot, whoever started it. Then each limb holds where it w
 when the stop came, and no gripper opens. `robot.move_to_ready` and `robot.move_to_home` report
 `arm_names`, `positions` and `orientations`: the grasp point of each arm in the robot frame,
 measured when the move ended. The three arrays are empty when the robot has no fresh measured pose
-of an arm. `robot.move_gripper` answers when the gripper stands still. Its `final_opening` is the
-opening measured then: the target, or where an object or the effort cap holds the jaws.
+of an arm. `robot.move_gripper` answers once the gripper stands still, or at its settle timeout. Its
+`final_opening` is the opening measured then: the target, where an object or the effort cap holds
+the jaws, or wherever they stood at the timeout.
 `robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
 frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
 takes. `robot.describe_workspace` says where on a flat surface at a given height the robot can
@@ -105,7 +106,8 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 - how to address the limbs, and which units and robot frame apply;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
-- that a move with success true does not prove that the arm arrived;
+- that an arm move with success true means the measured arm settled within the tolerances the call
+  names, and that a gripper move never fails on its settle;
 - what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
 
 A client can read this endpoint alone, on the physical robots or for one task, so no text of the
