@@ -447,7 +447,7 @@ def build_parser():
         "--plan-position-tolerance-m",
         type=float,
         default=PLAN_POSITION_TOLERANCE_M,
-        help="how far the planned position may sit from the requested one",
+        help="how far the planned position may sit from the requested one; 0.001 suits openarm_v2, 0.01 so101",
     )
     arm.add_argument(
         "--plan-orientation-tolerance-rad",

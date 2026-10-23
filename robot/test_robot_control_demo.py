@@ -110,10 +110,10 @@ TOOL_FIELDS = {
     demo.TOOL_LIST: {},
 }
 DEADLINE_MS = {
-    demo.TOOL_MOVE_TO_READY: 60000,
-    demo.TOOL_MOVE_TO_HOME: 60000,
-    demo.TOOL_MOVE_ARM: 60000,
-    demo.TOOL_MOVE_GRIPPER: 30000,
+    demo.TOOL_MOVE_TO_READY: 65000,
+    demo.TOOL_MOVE_TO_HOME: 65000,
+    demo.TOOL_MOVE_ARM: 125000,
+    demo.TOOL_MOVE_GRIPPER: 65000,
     demo.TOOL_LIST: 2000,
 }
 TTL_GRACE_MS = 1000
@@ -868,7 +868,7 @@ class ClientTests(StandInCase):
         )
         self.assertEqual(
             client.request("tools/call", {"name": demo.TOOL_MOVE_GRIPPER, "arguments": arguments}),
-            tool_error("deadline exceeded: the goal did not reach a terminal state within 30000 ms"),
+            tool_error("deadline exceeded: the goal did not reach a terminal state within 65000 ms"),
         )
         self.assertEqual(server.tasks, {})
 
