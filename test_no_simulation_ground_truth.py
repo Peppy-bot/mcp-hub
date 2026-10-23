@@ -25,9 +25,11 @@ What only a simulation gives reaches an endpoint under a wording rule.
 any viewpoint and shows the catalogue's preview of an asset,
 ``simulation_clock`` holds its time, ``scene_workspace`` measures where a
 robot can work in it, ``sim_sensor_streams`` sets the rate at which it
-renders each robot's cameras, and ``simulation_reset`` puts it back as it
-started; none has a physical counterpart, but a model legitimately drives
-them, as it does the cameras the simulation renders. An exposure targeting
+renders each robot's cameras, and ``simulation_world`` keeps the record of
+its setup, rebuilds it from a world document and judges it. None has a
+physical counterpart. A model legitimately drives the first eight, as it
+does the cameras the simulation renders, and the applier of worlds drives
+``simulation_world``. An exposure targeting
 one of the nine lives under ``simulation/``, and every document there says
 what it is, by the wording of ``SIMULATION`` in ``exposure_families``: the
 server title ends with "(simulation only)", the instructions open with its
@@ -46,6 +48,7 @@ json5 form a key or a string takes.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -67,11 +70,12 @@ INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
 # Everything an exposure may not target.
 FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
-# Contracts only a simulation gives: those that configure the simulated
-# world, its pictures (a view from a free viewpoint, an asset's preview),
-# its clock, its measure of where a robot can work in it, the rate of its
-# robots' sensor streams, and its reset. A model drives them, so an exposure
-# may target them, from under `simulation/` only.
+# Contracts only a simulation gives: those that configure the simulated world,
+# its pictures (a view from a free viewpoint, an asset's preview), its clock,
+# its measure of where a robot can work in it, the rate of its robots' sensor
+# streams, and its worlds (simulation_world). A model drives the first eight
+# and the applier of worlds drives simulation_world, so an exposure may target
+# them, from under `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
@@ -82,7 +86,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "simulation_clock",
         "scene_workspace",
         "sim_sensor_streams",
-        "simulation_reset",
+        "simulation_world",
     }
 )
 
@@ -133,6 +137,42 @@ def test_what_only_a_simulation_gives_lives_under_simulation(path: Path) -> None
         f"{document_name(path)} targets {', '.join(misplaced)}: an exposure on what only a "
         f"simulation gives lives under {SIMULATION.directory}/"
     )
+
+
+def test_the_simulation_exposures_target_what_only_a_simulation_gives() -> None:
+    targeted = {
+        name for path in SIMULATION.documents(REPOSITORY_ROOT) for name in targeted_contracts(read_json5(path))
+    }
+    assert targeted == SIMULATION_ONLY_CONTRACTS, (
+        f"the exposures under {SIMULATION.directory}/ target {', '.join(sorted(targeted))}, and "
+        f"SIMULATION_ONLY_CONTRACTS holds {', '.join(sorted(SIMULATION_ONLY_CONTRACTS))}: list each "
+        "contract only a simulation gives, and no other"
+    )
+
+
+def cited_rules(text: str) -> set[str]:
+    """The rules a text cites as "the <name> rule of this endpoint's
+    instructions"."""
+    return set(re.findall(r"the (\w+) rule of this endpoint's instructions", text))
+
+
+def labelled_rules(instructions: str) -> set[str]:
+    """The rules the instructions label, each as "<Name> rule:"."""
+    return {name.lower() for name in re.findall(r"(\w+) rule:", instructions)}
+
+
+@pytest.mark.parametrize("path", SIMULATION.documents(REPOSITORY_ROOT), ids=document_name)
+def test_every_rule_a_description_cites_is_labelled_in_the_instructions(path: Path) -> None:
+    document = read_json5(path)
+    cited = set().union(*(cited_rules(text) for text in descriptions(document)))
+    missing = cited - labelled_rules(document["server"]["instructions"])
+    assert not missing, f"{document_name(path)} cites rules its instructions do not label: {sorted(missing)}"
+
+
+def test_a_cited_rule_the_instructions_do_not_label_is_named() -> None:
+    assert cited_rules("free by the naming rule of this endpoint's instructions") == {"naming"}
+    assert labelled_rules("Placement rule: the simulation refuses") == {"placement"}
+    assert cited_rules("by the snap rule of this endpoint's instructions") - labelled_rules("Naming rule: x") == {"snap"}
 
 
 @pytest.mark.parametrize("path", SIMULATION.documents(REPOSITORY_ROOT), ids=document_name)
