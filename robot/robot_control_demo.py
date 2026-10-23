@@ -83,6 +83,14 @@ ROBOT_ARGUMENT = "robot"
 GRIPPER_CLOSED = 0.0
 GRIPPER_OPEN = 1.0
 DEMO_POSTURE_DURATION_S = 4.0
+# The tolerances and settle timeout the move commands send when none is
+# given, the values the tools' descriptions name for openarm_v2. Both limbs
+# take the same settle timeout.
+PLAN_POSITION_TOLERANCE_M = 0.001
+PLAN_ORIENTATION_TOLERANCE_RAD = 0.01
+SETTLE_POSITION_TOLERANCE_M = 0.02
+SETTLE_ORIENTATION_TOLERANCE_RAD = 0.15
+SETTLE_TIMEOUT_S = 2.0
 
 EXIT_OK = 0
 EXIT_NOT_DONE = 1
@@ -359,16 +367,19 @@ def command_move_arm(client, args, out, sleep):
         "duration_s": args.duration_s,
         "plan_position_tolerance_m": args.plan_position_tolerance_m,
         "plan_orientation_tolerance_rad": args.plan_orientation_tolerance_rad,
+        "settle_position_tolerance_m": args.settle_position_tolerance_m,
+        "settle_orientation_tolerance_rad": args.settle_orientation_tolerance_rad,
+        "settle_timeout_s": args.settle_timeout_s,
     }
     return run_move(client, TOOL_MOVE_ARM, addressed(args.robot, goal), out, sleep)
 
 
-def gripper_goal(gripper_name, opening, max_effort=0.0):
-    return {"gripper_name": gripper_name, "opening": opening, "max_effort": max_effort}
+def gripper_goal(gripper_name, opening, max_effort=0.0, settle_timeout_s=SETTLE_TIMEOUT_S):
+    return {"gripper_name": gripper_name, "opening": opening, "max_effort": max_effort, "settle_timeout_s": settle_timeout_s}
 
 
 def command_move_gripper(client, args, out, sleep):
-    goal = gripper_goal(args.gripper, args.opening, args.max_effort)
+    goal = gripper_goal(args.gripper, args.opening, args.max_effort, args.settle_timeout_s)
     return run_move(client, TOOL_MOVE_GRIPPER, addressed(args.robot, goal), out, sleep)
 
 
@@ -411,6 +422,9 @@ def build_parser():
 
     robot_help = "the robot the move addresses, one of the names `list` reports"
     duration_help = "requested move time in seconds; 0 is as fast as the joint limits allow"
+    settle_timeout_help = (
+        "how long after the planned end the limb may still stand outside its settle tolerance before the move fails"
+    )
     ready = commands.add_parser("move-to-ready", help="bring the robot's arms to the working posture")
     ready.add_argument("--robot", required=True, help=robot_help)
     ready.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
@@ -432,15 +446,28 @@ def build_parser():
     arm.add_argument(
         "--plan-position-tolerance-m",
         type=float,
-        default=0.0,
-        help="how far the planned position may sit from the requested one; 0 is the planner's default",
+        default=PLAN_POSITION_TOLERANCE_M,
+        help="how far the planned position may sit from the requested one; 0.001 suits openarm_v2, 0.01 so101",
     )
     arm.add_argument(
         "--plan-orientation-tolerance-rad",
         type=float,
-        default=0.0,
-        help="how far the planned orientation may sit from the requested one; 0 is the planner's default",
+        default=PLAN_ORIENTATION_TOLERANCE_RAD,
+        help="how far the planned orientation may sit from the requested one; a five-joint arm needs a wide one",
     )
+    arm.add_argument(
+        "--settle-position-tolerance-m",
+        type=float,
+        default=SETTLE_POSITION_TOLERANCE_M,
+        help="how close the measured grasp point must come to the position for the move to succeed",
+    )
+    arm.add_argument(
+        "--settle-orientation-tolerance-rad",
+        type=float,
+        default=SETTLE_ORIENTATION_TOLERANCE_RAD,
+        help="how close the measured orientation must come to the requested one for the move to succeed",
+    )
+    arm.add_argument("--settle-timeout-s", type=float, default=SETTLE_TIMEOUT_S, help=settle_timeout_help)
     arm.set_defaults(run=command_move_arm)
 
     gripper = commands.add_parser("move-gripper", help="drive one gripper to an opening")
@@ -449,6 +476,12 @@ def build_parser():
     gripper.add_argument("--opening", type=float, required=True, help="fraction of jaw travel: 0 closed, 1 fully open")
     gripper.add_argument(
         "--max-effort", type=float, default=0.0, help="effort cap toward the target; 0 is no preference"
+    )
+    gripper.add_argument(
+        "--settle-timeout-s",
+        type=float,
+        default=SETTLE_TIMEOUT_S,
+        help="the longest to wait, from the planned end of the commanded travel on, for the jaws to stand still",
     )
     gripper.set_defaults(run=command_move_gripper)
 
