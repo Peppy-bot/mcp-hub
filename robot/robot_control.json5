@@ -548,7 +548,7 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "5588735dcffe12aa60e781dc6b15d1318f6a7b7dc762714be219bfa70fd02382",
+        sha256: "ab4fc95ac92bca5e54c280c2ee40488aebb73d7a0f3719dbca7e1730ab16f7b4",
       },
       actions: [
         {
@@ -627,7 +627,7 @@
       contract: {
         name: "brain_model",
         tag: "v1",
-        sha256: "984cc147726028e642871e8ce55155e704551b75434c20fa88da9539d5e536be",
+        sha256: "6c6195ae6c7f9376ab6fe0eb9cb0bf3aca3617e9ed34d38e71345548f73fb3fc",
       },
       actions: [
         {
