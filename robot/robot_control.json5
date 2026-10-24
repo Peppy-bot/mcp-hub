@@ -663,13 +663,13 @@
       contract: {
         name: "episode_recording",
         tag: "v1",
-        sha256: "365937a334aea9b08e13d224decbe4b24296e68b684eb5e7bd5887a053a6e85f",
+        sha256: "5116a236920738e5a4c4cf8f7235eb12b797c3edcb7033dddbff33bbde603f78",
       },
       actions: [
         {
           member: "record_episode",
           tool: "recorder.record_episode",
-          description: "Record one episode of the robot into its open dataset session, under task as the episode's task description; feedback reports frames_recorded and disk_free_bytes as it runs. The task never completes: cancelling it ends the episode and saves it, and the recorder ends the episode itself, saved, at its maximum episode length, on low disk space, when a source goes silent or stale, when it cannot keep its frame rate and when it shuts down. Each of these ends the task cancelled, and its status message gives a reason that names the cause, and the result: episode_index, frames_recorded and whether the episode was discarded. The recorder refuses an episode with precondition_failed while another episode records or a source is not ready, and fails it with attempt_failed when it cannot write or save the episode, whose frames are then dropped.",
+          description: "Record one episode of the robot into its open dataset session, under task as the episode's task description; feedback reports frames_recorded and disk_free_bytes as it runs. The task never completes: cancelling it ends the episode and saves it, and the recorder ends the episode itself, saved, at its maximum episode length, on low disk space, when a source goes silent or stale, when it cannot keep its frame rate and when it shuts down. Each of these ends the task cancelled, and its status message gives a reason that names the cause, and the result: episode_index of the saved episode, frames_recorded, and video_frames_missing, the frames that the shortest camera video of the episode misses against its state rows; an episode with missing frames should not be trained on. The recorder refuses an episode with precondition_failed while another episode records or a source is not ready, and fails it with attempt_failed when it cannot write or save the episode, whose frames are then dropped.",
           operation: "long_running",
           // Advertised to the client: recording accompanies motion.
           safety_sensitive: true,
