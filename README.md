@@ -303,7 +303,9 @@ the robots of the stack only once its addition has succeeded. `stack.join` adds 
 option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel
 of a call stops the change of the stack at the step it reached, and the stack ends the change as a
 failure at that step ends it. A call that closes, by a lost connection too, is cancelled, and a task
-outlives its connection. `stack.list` reports the change under `change` until it ends.
+outlives its connection. The endpoint cancels a change that sends no progress for one progress
+window, 660 s, and the call or the task fails. `stack.list` reports the change under `change` until
+it ends.
 `stack.recent_calls` is the endpoint's call record.
 
 A feature is a choice that the launcher's scope offers on a robot option: it selects one option of
