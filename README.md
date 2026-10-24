@@ -300,9 +300,11 @@ features of each, the machines of the stack, the robots of these options on the 
 `max_copies`, the most robots of these options that the stack holds, and `change`, the addition or
 removal of one of these robots that runs now, from any client. A robot that is being added is in
 the robots of the stack only once its addition has succeeded. `stack.join` adds a robot of an
-option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel or
-a lost call stops the wait and not the change of the stack, which `stack.list` reports under
-`change` until it ends. `stack.recent_calls` is the endpoint's call record.
+option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel
+of a call stops the change of the stack at the step it reached, and the stack ends the change as a
+failure at that step ends it. A call that closes, by a lost connection too, is cancelled, and a task
+outlives its connection. `stack.list` reports the change under `change` until it ends.
+`stack.recent_calls` is the endpoint's call record.
 
 A feature is a choice that the launcher's scope offers on a robot option: it selects one option of
 one own axis of the robot option, that option brings at least one node, and the scope gives the
@@ -325,8 +327,8 @@ join.
 The launcher's scope gives the options, their descriptions, their features and `max_copies`, so the
 document names no robot model, no option and no feature. The robots' endpoint drives a robot that
 `stack.join` adds, under its name. A simulated robot stands in the simulated world when
-`stack.join` ends with success, and `workspace.stand_at` on the simulated world's endpoint then
-stands it at a work surface.
+`stack.join` completes, and `workspace.stand_at` on the simulated world's endpoint then stands it
+at a work surface.
 
 The launchers hub serves the document through the `robot_control` option of its `simulation_mcp`
 launcher, at `http://127.0.0.1:8903/framework_controls/v1/mcp`, beside the robots' endpoint, under

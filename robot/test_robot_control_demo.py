@@ -134,23 +134,84 @@ def working(message=None):
     return view
 
 
+class GoalEnd(dict):
+    """The view a task settles on when its goal ends, with `call_result`, the
+    tool result that the same end gives a call that runs the goal inside it,
+    for a client without the tasks extension."""
+
+    def __init__(self, view, call_result):
+        super().__init__(view)
+        self.call_result = call_result
+
+
+def compact(value):
+    """`value` as the runtime writes JSON into a text: no blank."""
+    return json.dumps(value, separators=(",", ":"))
+
+
 def completed(outcome):
-    """The completed payload: the tool result the runtime builds from the
-    action's result."""
+    """A goal that completed: the tool result the runtime builds from the
+    action's result, the task's result and the call's answer alike."""
     result = {
         "resultType": "complete",
         "content": [{"type": "text", "text": json.dumps(outcome)}],
         "structuredContent": outcome,
         "isError": False,
     }
-    return {"status": "completed", "result": result}
+    return GoalEnd({"status": "completed", "result": result}, result)
 
 
-def failed(message):
-    return {"status": "failed", "error": {"code": -32603, "message": message}}
+def provider_failure(outcome, kind, message):
+    """A goal that the robot refused (`outcome` refused) or that ran and
+    failed (`outcome` failed), with its failure kind and message: the task
+    fails with the failure as the data of its error, and the call ends with
+    a tool error whose structured content is the failure."""
+    summary = f"the provider {outcome} the goal: {kind}: {message}"
+    failure = {"outcome": outcome, "failure_kind": kind, "message": message}
+    view = {"status": "failed", "error": {"code": -32603, "message": summary, "data": failure}}
+    call_result = {
+        "resultType": "complete",
+        "content": [{"type": "text", "text": summary}],
+        "structuredContent": failure,
+        "isError": True,
+    }
+    return GoalEnd(view, call_result)
 
 
-def cancelled():
+def refused(kind, message):
+    return provider_failure("refused", kind, message)
+
+
+def failed(kind, message):
+    return provider_failure("failed", kind, message)
+
+
+def failed_without_kind(detail):
+    """A goal that ended with no end its robot gave, such as one it
+    abandoned: the endpoint's words, and no failure kind."""
+    summary = f"the action failed: {detail}"
+    return GoalEnd({"status": "failed", "error": {"code": -32603, "message": summary}}, tool_error(summary))
+
+
+def cancelled(reason, result):
+    """A goal that ended cancelled, with its reason and the result its robot
+    ended it with: the task's status message gives both, and the call ends
+    with a tool error whose text gives the reason and whose structured
+    content is the result."""
+    summary = f"the action was cancelled: {reason}"
+    view = {"status": "cancelled", "statusMessage": f"{summary}: {compact(result)}"}
+    call_result = {
+        "resultType": "complete",
+        "content": [{"type": "text", "text": summary}, {"type": "text", "text": compact(result)}],
+        "structuredContent": result,
+        "isError": True,
+    }
+    return GoalEnd(view, call_result)
+
+
+def declined():
+    """The view of a task whose confirmation was declined: cancelled before
+    its goal was sent, with no status message."""
     return {"status": "cancelled"}
 
 
@@ -170,12 +231,22 @@ def tool_error(message):
     return {"resultType": "complete", "content": [{"type": "text", "text": message}], "isError": True}
 
 
+# Where the arms of alpha stand at its working posture: the posture result.
+POSTURE_RESULT = {
+    "arm_names": ["left_arm", "right_arm"],
+    "positions": [0.3, 0.2, 0.4, 0.3, -0.2, 0.4],
+    "orientations": [0.0, 0.7071068, 0.0, 0.7071068, 0.0, 0.7071068, 0.0, 0.7071068],
+}
+# The reason the runtime gives a goal its caller cancelled.
+CANCELLED_BY_ITS_CALLER = "cancelled by its caller"
+
+
 def posture_done():
-    return completed({"success": True, "message": "both arms at the posture"})
+    return completed(POSTURE_RESULT)
 
 
-def gripper_done(opening):
-    return completed({"success": True, "message": "done", "final_opening": opening, "action_time": 0.4})
+def gripper_done(opening, settled=True):
+    return completed({"settled": settled, "final_opening": opening, "action_time": 0.4})
 
 
 class Scenario:
@@ -186,7 +257,7 @@ class Scenario:
 
     def __init__(self, steps_by_tool=None, after_cancel=None, poll_interval_ms=0, tools=None, robots=None):
         self.steps_by_tool = steps_by_tool or {}
-        self.after_cancel = after_cancel or cancelled()
+        self.after_cancel = after_cancel or cancelled(CANCELLED_BY_ITS_CALLER, POSTURE_RESULT)
         self.poll_interval_ms = poll_interval_ms
         self.tools = tuple(TOOL_FIELDS) if tools is None else tuple(tools)
         self.robots = ROBOTS if robots is None else robots
@@ -279,17 +350,11 @@ def argument_problems(tool, arguments):
 
 def in_call_result(tool, steps):
     """The call's answer when the goal runs inside it, for a client without
-    the tasks extension: the view the goal settles on becomes the tool
-    result, with the runtime's tool error for a goal that failed or was
-    cancelled and its deadline error for one that never settled."""
+    the tasks extension: the tool result of the end the goal settles on, and
+    the runtime's deadline error for a goal that never settled."""
     settled = steps[-1]
-    status = settled["status"]
-    if status == "completed":
-        return settled["result"]
-    if status == "failed":
-        return tool_error("the action failed: " + settled["error"]["message"])
-    if status == "cancelled":
-        return tool_error("the action was cancelled")
+    if isinstance(settled, GoalEnd):
+        return settled.call_result
     return tool_error(f"deadline exceeded: the goal did not reach a terminal state within {DEADLINE_MS[tool]} ms")
 
 
@@ -479,7 +544,7 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
     def _tasks_update(self, params, meta):
         task = self._task(params)
         for key, response in (params.get("inputResponses") or {}).items():
-            task.answer(key, response, cancelled())
+            task.answer(key, response, declined())
         return {"resultType": "complete"}
 
     def _tasks_cancel(self, params, meta):
@@ -626,9 +691,9 @@ class ScriptTests(StandInCase):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: [working(), working("planning"), posture_done()]}))
         code, out, err, sleeps = self.run_script(server, "move-to-ready", "--robot", ROBOT, "--duration-s", "3")
         self.assertEqual(code, demo.EXIT_OK, err)
-        self.assertIn("robot.move_to_ready: completed: both arms at the posture", out)
+        self.assertIn("robot.move_to_ready: completed", out)
         self.assertIn("planning", out)
-        self.assertIn('"success": true', out)
+        self.assertIn('"arm_names": [', out)
         (call,) = server.calls("tools/call")
         self.assertEqual(call.params["name"], demo.TOOL_MOVE_TO_READY)
         self.assertEqual(call.params["arguments"], {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 3.0})
@@ -652,15 +717,14 @@ class ScriptTests(StandInCase):
         for poll in server.calls("tasks/get"):
             self.assertEqual(poll.headers["mcp-name"], poll.params["taskId"])
 
-    def test_a_refused_goal_is_a_failed_task_quoting_the_reason(self):
-        reason = "the provider rejected the goal: opening 2 outside [0, 1]"
-        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [failed(reason)]}))
+    def test_a_refused_goal_is_a_failed_task_quoting_its_failure_kind_and_message(self):
+        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [refused("rejected", "opening 2 is outside [0, 1]")]}))
         code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "right_gripper", "--opening", "2")
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn(f"robot.move_gripper: failed: {reason}", out)
+        self.assertIn("robot.move_gripper: refused (rejected): opening 2 is outside [0, 1]", out)
 
     def test_an_abandoned_goal_is_a_failed_task(self):
-        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed("the provider abandoned the goal")]}))
+        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed_without_kind("the provider abandoned the goal")]}))
         code, out, _, _ = self.run_script(
             server,
             "move-arm",
@@ -679,7 +743,7 @@ class ScriptTests(StandInCase):
             "1",
         )
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn("robot.move_arm: failed: the provider abandoned the goal", out)
+        self.assertIn("robot.move_arm: failed: the action failed: the provider abandoned the goal", out)
         (call,) = server.calls("tools/call")
         self.assertEqual(
             call.params["arguments"],
@@ -697,19 +761,39 @@ class ScriptTests(StandInCase):
             },
         )
 
-    def test_a_move_the_robot_did_not_finish_is_reported_without_success(self):
-        outcome = {"success": False, "message": "goal cancelled", "final_opening": 0.4, "action_time": 1.2}
-        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [completed(outcome)]}))
-        code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "1")
+    def test_a_move_the_robot_did_not_finish_is_reported_with_its_failure_kind_and_message(self):
+        unsettled = "still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end"
+        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed("timeout", unsettled)]}))
+        code, out, _, _ = self.run_script(
+            server, "move-arm", "--robot", ROBOT, "--arm", "left_arm", "--position", "0.3", "0.2", "0.4",
+            "--orientation", "0", "0", "0", "1",
+        )
         self.assertEqual(code, demo.EXIT_NOT_DONE)
-        self.assertIn("robot.move_gripper: completed without success: goal cancelled", out)
+        self.assertIn(f"robot.move_arm: failed (timeout): {unsettled}", out)
+
+    def test_a_gripper_move_that_completes_at_its_settle_timeout_is_done(self):
+        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [gripper_done(0.4, settled=False)]}))
+        code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "1")
+        self.assertEqual(code, demo.EXIT_OK)
+        self.assertIn("robot.move_gripper: completed", out)
+        self.assertIn('"settled": false', out)
         self.assertIn('"final_opening": 0.4', out)
+
+    def test_a_move_that_a_stop_ends_is_cancelled_with_its_reason(self):
+        reason = "stopped by robot.stop: the operator stopped the robot"
+        server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: [working(), cancelled(reason, POSTURE_RESULT)]}))
+        code, out, _, _ = self.run_script(server, "move-to-home", "--robot", ROBOT)
+        self.assertEqual(code, demo.EXIT_CANCELLED)
+        self.assertIn(f"  cancelled: the action was cancelled: {reason}: {compact(POSTURE_RESULT)}", out)
+        self.assertIn("robot.move_to_home: cancelled", out)
+        self.assertEqual(server.calls("tasks/cancel"), [])
 
     def test_ctrl_c_cancels_the_move_in_flight_and_waits_for_it_to_settle(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_TO_HOME: [working(), working(), posture_done()]}))
         code, out, _, _ = self.run_script(server, "move-to-home", "--robot", ROBOT, sleep=InterruptOnce())
         self.assertEqual(code, demo.EXIT_CANCELLED)
         self.assertIn("robot.move_to_home: cancelling task task-1", out)
+        self.assertIn(f"  cancelled: the action was cancelled: {CANCELLED_BY_ITS_CALLER}", out)
         self.assertIn("robot.move_to_home: cancelled", out)
         (cancel,) = server.calls("tasks/cancel")
         self.assertEqual(cancel.params["taskId"], "task-1")
@@ -720,7 +804,7 @@ class ScriptTests(StandInCase):
         code, out, _, _ = self.run_script(server, "move-to-ready", "--robot", ROBOT, sleep=InterruptOnce())
         self.assertEqual(code, demo.EXIT_OK)
         self.assertEqual(len(server.calls("tasks/cancel")), 1)
-        self.assertIn("robot.move_to_ready: completed: both arms at the posture", out)
+        self.assertIn("robot.move_to_ready: completed", out)
 
     def test_a_confirmation_request_is_accepted_before_the_goal_runs(self):
         steps = [confirmation_required(demo.TOOL_MOVE_TO_READY), working(), posture_done()]
@@ -807,10 +891,11 @@ class ScriptTests(StandInCase):
         self.assertEqual(server.tasks, {})
 
     def test_the_demo_stops_at_the_first_move_the_robot_did_not_do(self):
-        refusal = "the provider rejected the goal: gripper is already executing a move"
-        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [failed(refusal)]}))
+        refusal = refused("leader_streaming", "a leader streams left_gripper")
+        server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [refusal]}))
         code, out, _, _ = self.run_script(server, "demo", "--robot", ROBOT)
         self.assertEqual(code, demo.EXIT_NOT_DONE)
+        self.assertIn("robot.move_gripper: refused (leader_streaming): a leader streams left_gripper", out)
         self.assertIn("demo stopped at step 2", out)
         self.assertEqual(
             [call.params["name"] for call in server.calls("tools/call")],
@@ -844,33 +929,67 @@ class ClientTests(StandInCase):
         self.assertEqual(server.tasks, {})
 
     def test_without_the_tasks_capability_a_goal_ending_without_a_result_is_a_tool_error(self):
-        steps = {
-            demo.TOOL_MOVE_TO_READY: [working(), failed("the provider abandoned the goal")],
-            demo.TOOL_MOVE_TO_HOME: [working(), cancelled()],
-            demo.TOOL_MOVE_GRIPPER: [working()],
-        }
-        server = self.serve(Scenario(steps))
-        client = demo.McpClient(server.url, client_capabilities={})
-        arguments = {
-            demo.ROBOT_ARGUMENT: ROBOT,
-            "gripper_name": "left_gripper",
-            "opening": 0.0,
-            "max_effort": 1.0,
-            "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
-        }
-        self.assertEqual(
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}}),
-            tool_error("the action failed: the provider abandoned the goal"),
-        )
-        self.assertEqual(
-            client.request("tools/call", {"name": demo.TOOL_MOVE_TO_HOME, "arguments": {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}}),
-            tool_error("the action was cancelled"),
-        )
-        self.assertEqual(
-            client.request("tools/call", {"name": demo.TOOL_MOVE_GRIPPER, "arguments": arguments}),
-            tool_error("deadline exceeded: the goal did not reach a terminal state within 65000 ms"),
-        )
-        self.assertEqual(server.tasks, {})
+        def provider_failure_result(summary, outcome, kind, message):
+            return {
+                "resultType": "complete",
+                "content": [{"type": "text", "text": summary}],
+                "structuredContent": {"outcome": outcome, "failure_kind": kind, "message": message},
+                "isError": True,
+            }
+
+        cases = [
+            (
+                "refused",
+                refused("leader_streaming", "a leader streams left_arm"),
+                provider_failure_result(
+                    "the provider refused the goal: leader_streaming: a leader streams left_arm",
+                    "refused",
+                    "leader_streaming",
+                    "a leader streams left_arm",
+                ),
+            ),
+            (
+                "failed",
+                failed("unreachable", "no plan reaches the pose"),
+                provider_failure_result(
+                    "the provider failed the goal: unreachable: no plan reaches the pose",
+                    "failed",
+                    "unreachable",
+                    "no plan reaches the pose",
+                ),
+            ),
+            (
+                "failed without a failure kind",
+                failed_without_kind("the provider abandoned the goal"),
+                tool_error("the action failed: the provider abandoned the goal"),
+            ),
+            (
+                "cancelled",
+                cancelled(CANCELLED_BY_ITS_CALLER, POSTURE_RESULT),
+                {
+                    "resultType": "complete",
+                    "content": [
+                        {"type": "text", "text": f"the action was cancelled: {CANCELLED_BY_ITS_CALLER}"},
+                        {"type": "text", "text": compact(POSTURE_RESULT)},
+                    ],
+                    "structuredContent": POSTURE_RESULT,
+                    "isError": True,
+                },
+            ),
+            (
+                "never settled",
+                working(),
+                tool_error("deadline exceeded: the goal did not reach a terminal state within 65000 ms"),
+            ),
+        ]
+        arguments = {demo.ROBOT_ARGUMENT: ROBOT, "duration_s": 1.0}
+        for label, end, expected in cases:
+            with self.subTest(label):
+                server = self.serve(Scenario({demo.TOOL_MOVE_TO_READY: [working(), end]}))
+                client = demo.McpClient(server.url, client_capabilities={})
+                result = client.request("tools/call", {"name": demo.TOOL_MOVE_TO_READY, "arguments": arguments})
+                self.assertEqual(result, expected)
+                self.assertEqual(server.tasks, {})
 
     def test_a_confirmation_gated_tool_without_the_tasks_capability_is_refused_naming_the_extension(self):
         steps = [confirmation_required(demo.TOOL_MOVE_TO_READY), working(), posture_done()]
