@@ -83,7 +83,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "ba6a91f0c33647a8ec8283e62cdecf2a914b37dfd54621c4f887829af9c8ea13",
+        sha256: "ee59c7a88e474d597c688eb23927c947ada8d3322c73a5b75d96d2fbe30263cf",
       },
 
       // The catalogue and the inventory become tools that answer within one
@@ -220,7 +220,7 @@
         name: "object_controls",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/object_controls.json5`).
-        sha256: "88e5512c54741c53aeae47bbaa771006a353a8e8d757e6a22899947d2428be25",
+        sha256: "9031eaf7cdf9432b868fd0c4606f85cda6ecb414aca7adc36f999423daac10ea",
       },
 
       // The listing is a tool that answers within one request; the set is
@@ -385,7 +385,7 @@
         name: "scene_view",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_view.json5`).
-        sha256: "1d6aee8abc70a4a25ab8d687e375200c668ab8c2c24cd7095cb1b854a59eb76c",
+        sha256: "8aba03570c8f3526b98f94477779d03e8af9e02c95763e7e14a5ed47267b473b",
       },
 
       // render_view and preview_asset answer with a picture: its frame is
@@ -460,7 +460,7 @@
         name: "simulation_clock",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/simulation_clock.json5`).
-        sha256: "d9e12d771308ac06dc614d344f40e957e58a1526f30268109fea7fb6a7741e01",
+        sha256: "d851555f068f654f11eac02185b2f68f534d47d20f76469a4f40c1ae247c9c51",
       },
 
       // Two services and one action: the step waits for its physics steps
@@ -504,7 +504,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "c361e7a558789501a05a300c2168e7d1e8f5dfd105b050e7f10aa545aa104ae5",
+        sha256: "5fcd6b92c037cf681160cc659a21492e3cb44473dc1c4fc44df069eac7d709bc",
       },
 
       // Three services. A call solves the arms' reach for each target Waldo
