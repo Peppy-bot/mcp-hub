@@ -33,14 +33,14 @@
   // tool of one: test_robot_endpoint_names_no_other_endpoint.py.
   server: {
     title: "Robots",
-    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under members. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. This is the robots' own surface: what a robot cannot do through these tools, it cannot do. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point in the robot frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. The grasp point is midway between the finger pads; so101 reports a fixed point near its jaws instead. The robot frame is fixed to the robot's base: its origin is the point the base stands on, +X points the way the robot faces, +Y to its left and +Z up; it moves with the robot and is not a frame of the room or of a simulated world. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused. No robot move checks the floor, a table, an object or an item a gripper holds. A robot with a collision guard, such as openarm_v2, keeps only its own arms, grippers and body apart. A robot without one, such as so101, checks no collision at all. An arm move succeeds only once the measured arm has settled within the tolerances the call names, at or after the planned end of the motion, and fails with the remaining error once the call's settle timeout runs out; a posture move completes at the planned end of its motion; a gripper move completes once its jaws stand still, or at its settle timeout wherever they stand. An arm can stop short of its goal, against an obstacle or where a robot's collision guard holds it: the result then says how far off it stands and where it ended. Posture result: robot.move_to_ready and robot.move_to_home answer with arm_names, positions and orientations. positions holds 3 values per arm (x, y, z in meters) and orientations 4 per arm (a unit quaternion [x, y, z, w]), in the order of arm_names. They give the grasp point of each arm in the robot frame, measured when the move ended, whatever success says. After a cancel or robot.stop, an arm that was still moving can come to rest away from the pose they give. When the robot has no fresh measured pose of an arm to report, the three arrays are empty and message says why. A posture move sends no command to the grippers, so each gripper goes on as its last gripper command drives it. To stop a robot, call robot.stop; brain.abort ends a brain sequence between its moves. When you find a robot in a state you did not command, call robot.recent_calls: it lists the last state-changing calls of this endpoint with the client that made each, so you can tell whether another client did it. Each move's deadline covers the longest duration and settle timeout a robot admits, 60 s each: 125 s for robot.move_arm and robot.move_arm_joints, 65 s for robot.move_gripper and robot.move_to_ready and robot.move_to_home. A duration_s of 0 means as fast as the joint limits allow, and every robot refuses outright a duration or settle timeout above 60 s. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing and says why in message, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under members. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. A call that the robot refuses, or that fails, gives outcome, failure_kind and message, as the structured content of a tool error, or as the data of the error of a failed task: outcome is refused for a goal the robot refused before it ran, and failed for a goal that ran and failed or a request the robot answered with an error; failure_kind names the cause, one of attempt_failed, timeout, precondition_failed, resource_unavailable and rejected, which every robot gives, or a kind of the tool: unreachable, no plan reaches the target of a move; leader_streaming, a leader such as a leader arm or a teleoperation headset streams to a limb of the call; not_found, brain.identify_item finds no item that matches; and message says why in the robot's words. Such a call gives no result. A move that a cancel or robot.stop ends is cancelled: inside a call it ends with a tool error whose text gives the reason and whose structured content is the result, measured when the move ended; as a task it ends cancelled, and its status message gives both. brain.grab_item, brain.drop_item, brain.place_item and brain.abort can also complete with success false in their result, and message then says why the sequence did not run to its end. This is the robots' own surface: what a robot cannot do through these tools, it cannot do. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point in the robot frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. The grasp point is midway between the finger pads; so101 reports a fixed point near its jaws instead. The robot frame is fixed to the robot's base: its origin is the point the base stands on, +X points the way the robot faces, +Y to its left and +Z up; it moves with the robot and is not a frame of the room or of a simulated world. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused with precondition_failed, and a goal for a limb that a leader streams to is refused with leader_streaming. No robot move checks the floor, a table, an object or an item a gripper holds. A robot with a collision guard, such as openarm_v2, keeps only its own arms, grippers and body apart. A robot without one, such as so101, checks no collision at all. An arm move completes only once the measured arm has settled within the tolerances the call names, at or after the planned end of the motion, and fails with timeout once the call's settle timeout runs out, its message giving the remaining error; a posture move completes at the planned end of its motion; a gripper move completes once its jaws stand still, or at its settle timeout wherever they stand. An arm can stop short of its goal, against an obstacle or where a robot's collision guard holds it: the move then fails with timeout, its message says how far off the arm stands, and the robot.limb_state resource gives where it ended. Posture result: robot.move_to_ready and robot.move_to_home answer with arm_names, positions and orientations. positions holds 3 values per arm (x, y, z in meters) and orientations 4 per arm (a unit quaternion [x, y, z, w]), in the order of arm_names. They give the grasp point of each arm in the robot frame, measured when the move completed or a cancel or robot.stop ended it. After a cancel or robot.stop, an arm that was still moving can come to rest away from the pose they give. When the robot has no fresh measured pose of an arm to report, the three arrays are empty. A posture move sends no command to the grippers, so each gripper goes on as its last gripper command drives it. To stop a robot, call robot.stop; brain.abort ends a brain sequence between its moves. When you find a robot in a state you did not command, call robot.recent_calls: it lists the last state-changing calls of this endpoint with the client that made each, so you can tell whether another client did it. Each move's deadline covers the longest duration and settle timeout a robot admits, 60 s each: 125 s for robot.move_arm and robot.move_arm_joints, 65 s for robot.move_gripper and robot.move_to_ready and robot.move_to_home. A duration_s of 0 means as fast as the joint limits allow, and every robot refuses with rejected a duration or settle timeout above 60 s. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   // The record of the state-changing calls this endpoint takes: every call
   // of a tool that is not read-only, tasks included, the last 200 of them.
   call_record: {
     tool: "robot.recent_calls",
-    description: "List the last calls of this endpoint that could change a robot's state, newest first, up to 200: every mutating tool and every action, with started_at, the client that made the call (its declared name and version, or null), the tool, its arguments as sent (null when larger than 1 kB, with arguments_bytes), outcome (running, completed, failed, cancelled or refused), success, message and duration_ms. Read outcome and success together: a completed call with success false ran to its end and reports a failure. The record holds the calls of MCP clients on this endpoint only; a motion a teleoperation or another node commanded is not in it, so when no entry accounts for a state, no client of this endpoint caused it. Takes no arguments and changes nothing.",
+    description: "List the last calls of this endpoint that could change a robot's state, newest first, up to 200: every mutating tool and every action, with started_at, the client that made the call (its declared name and version, or null), the tool, its arguments as sent (null when larger than 1 kB, with arguments_bytes), outcome (running, completed, failed, cancelled or refused), failure_kind, message and duration_ms. failure_kind is the failure kind the robot gave a refused or failed call, and null when it gave none. message says what ended a call that did not complete: the robot's message, the reason of a cancel, or the words of this endpoint for a call that never reached the robot or did not end there; it is null for a running or completed call. The record holds the calls of MCP clients on this endpoint only; a motion a teleoperation or another node commanded is not in it, so when no entry accounts for a state, no client of this endpoint caused it. Takes no arguments and changes nothing.",
     keep: 200,
   },
 
@@ -91,7 +91,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "ec6f8a8e411588df1b72ba116bcff3ae5451e908209b19fdb9e398318a08b662",
+        sha256: "74abf0e410c682e6c7994b42f257d7d5dfaf6e5c1c1ee58728bde7d664ba45ee",
       },
       actions: [
         {
@@ -120,13 +120,13 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "9c28ae6aa511be2e051e38a1d56d06eb71b1d807dd3f120d8cc9e42a08bd8671",
+        sha256: "e74b5dbddc37ddc2a03ab23b47be9892db440c3d824ca0f7bf0772d1127026c8",
       },
       actions: [
         {
           member: "move_arm",
           tool: "robot.move_arm",
-          description: "Move one arm's grasp point to a pose in the robot frame. arm_name is one of the robot's arms as robot.list reports them; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w]; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. plan_position_tolerance_m and plan_orientation_tolerance_rad bound how far the planned pose may sit from the requested one: 0.001 and 0.01 suit a seven-joint arm such as openarm_v2; a five-joint arm such as so101 reaches a position to about 0.01 and cannot hold an arbitrary orientation, so give it 0.01 and a wide plan_orientation_tolerance_rad, 3.2 or more for any orientation. settle_position_tolerance_m and settle_orientation_tolerance_rad say how close the measured grasp point must come to the pose for the move to succeed, each at least the plan tolerance of its axis: 0.02 and 0.15 suit openarm_v2. settle_timeout_s is how long after the planned end of the motion the grasp point may still stand outside those before the move fails: 2 is usual, 60 the most. Every tolerance is a positive number and every time a number of seconds from 0 to 60; other values are refused. The call answers once the arm has settled or the timeout ran out: success true means the measured grasp point stands within the settle tolerances of the pose; success false with a message such as 'still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end' means it does not, and the arm then holds where it stands either way. After the call, final_position and final_orientation give where the grasp point was when the move ended, from the joints the robot measured then, or from the joints it commanded last when message says so. A pose no plan reaches inside both plan tolerances is refused rather than approximated: call robot.check_arm_move first to learn whether the pose has a plan.",
+          description: "Move one arm's grasp point to a pose in the robot frame. arm_name is one of the robot's arms as robot.list reports them; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w]; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. plan_position_tolerance_m and plan_orientation_tolerance_rad bound how far the planned pose may sit from the requested one: 0.001 and 0.01 suit a seven-joint arm such as openarm_v2; a five-joint arm such as so101 reaches a position to about 0.01 and cannot hold an arbitrary orientation, so give it 0.01 and a wide plan_orientation_tolerance_rad, 3.2 or more for any orientation. settle_position_tolerance_m and settle_orientation_tolerance_rad say how close the measured grasp point must come to the pose for the move to complete, each at least the plan tolerance of its axis: 0.02 and 0.15 suit openarm_v2. settle_timeout_s is how long after the planned end of the motion the grasp point may still stand outside those before the move fails: 2 is usual, 60 the most. Every tolerance is a positive number and every time a number of seconds from 0 to 60; other values are refused with rejected. The call answers once the arm has settled or the timeout ran out: it completes when the measured grasp point stands within the settle tolerances of the pose, and fails with timeout when it does not, with a message such as 'still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end'. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_position and final_orientation, where the grasp point was when the move ended, from the joints the robot measured then. A pose no plan reaches inside both plan tolerances fails with unreachable rather than being approximated: call robot.check_arm_move first to learn whether the pose has a plan.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 125000,
@@ -134,7 +134,7 @@
         {
           member: "move_arm_joints",
           tool: "robot.move_arm_joints",
-          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the arm's fixed joint order: the order of final_joint_positions in the result, and of the arm's joint_positions in the robot.limb_state resource; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. settle_tolerances_rad holds one positive value per joint, in the same order: how close each measured joint must come to its target for the move to succeed, 0.1 each being usual. settle_timeout_s is how long after the planned end of the motion a joint may still stand outside its tolerance before the move fails: 2 is usual, 60 the most. The call answers once the arm has settled or the timeout ran out: success false comes with a message naming the joint still off and by how much, and the arm then holds where it stands either way. After the call, final_joint_positions are the joints the robot measured when the move ended, or the joints it commanded last when message says so. A vector of another length, a value outside the joint limits, or a tolerance that is not positive, is refused. The way to use it: pass back the final_joint_positions of an earlier robot.move_arm_joints of the arm, to return to that configuration.",
+          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the arm's fixed joint order: the order of final_joint_positions in the result, and of the arm's joint_positions in the robot.limb_state resource; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. settle_tolerances_rad holds one positive value per joint, in the same order: how close each measured joint must come to its target for the move to complete, 0.1 each being usual. settle_timeout_s is how long after the planned end of the motion a joint may still stand outside its tolerance before the move fails: 2 is usual, 60 the most. The call answers once the arm has settled or the timeout ran out: it fails with timeout when a joint is still off, with a message naming the joint and by how much. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_joint_positions, the joints the robot measured when the move ended. A vector of another length, a value outside the joint limits, or a tolerance that is not positive, is refused. The way to use it: pass back the final_joint_positions of an earlier robot.move_arm_joints of the arm, to return to that configuration.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 125000,
@@ -142,7 +142,7 @@
         {
           member: "move_gripper",
           tool: "robot.move_gripper",
-          description: "Drive one gripper to an opening. gripper_name is one of the robot's grippers as robot.list reports them; opening is a fraction of full jaw travel, 0 closed and 1 fully open. max_effort caps the grip in the gripper's own effort unit, 0 meaning no cap from you; it can only lower the gripper's own limit, and some grippers, such as the so101's, ignore it. settle_timeout_s is the longest the call waits, from the planned end of the commanded travel on, for the jaws to stand still: 2 is usual, 60 the most, and an openarm_v2's jaws stand still about 1 s after the commanded travel. After the call, the gripper keeps driving toward the opening it was sent to, so it keeps squeezing what it holds, until the next gripper move or a leader that streams to the gripper. The call answers with success true as soon as the jaws stand still, on the opening or stopped short of it by an item or the effort cap, and at the latest at settle_timeout_s, wherever the jaws stand, with a message that says they had not stood still by then: a gripper move never fails on its settle. final_opening is the opening measured when the call answers, and the result reports no force; read final_opening to judge a grasp.",
+          description: "Drive one gripper to an opening. gripper_name is one of the robot's grippers as robot.list reports them; opening is a fraction of full jaw travel, 0 closed and 1 fully open. max_effort caps the grip in the gripper's own effort unit, 0 meaning no cap from you; it can only lower the gripper's own limit, and some grippers, such as the so101's, ignore it. settle_timeout_s is the longest the call waits, from the planned end of the commanded travel on, for the jaws to stand still: 2 is usual, 60 the most, and an openarm_v2's jaws stand still about 1 s after the commanded travel. After the call, the gripper keeps driving toward the opening it was sent to, so it keeps squeezing what it holds, until the next gripper move or a leader that streams to the gripper. The call completes with settled true as soon as the jaws stand still, on the opening or stopped short of it by an item or the effort cap, and at the latest at settle_timeout_s, wherever the jaws stand, with settled false: a gripper move never fails on its settle. final_opening is the opening measured when the call answers, and the result reports no force; read final_opening to judge a grasp.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 65000,
@@ -152,14 +152,14 @@
         {
           member: "stop",
           tool: "robot.stop",
-          description: "Stop the robot: end every planned move in flight on it, whoever started it, the brain's moves included. Each move ends as cancelled with a message that names the stop and reason, which may be empty. After the call, each limb holds where it was commanded to be when the stop came, and no gripper opens, so a held item stays held. It does not stop a leader that streams setpoints to the robot, such as a teleoperation. Answers with stopped, the limbs whose move it ended, empty when nothing was moving; a stop with nothing in flight succeeds. A move sent after the stop runs.",
+          description: "Stop the robot: end every planned move in flight on it, whoever started it, the brain's moves included. Each move ends cancelled, with a reason that names the stop and the reason this call gives, which may be empty. After the call, each limb holds where it was commanded to be when the stop came, and no gripper opens, so a held item stays held. It does not stop a leader that streams setpoints to the robot, such as a teleoperation. Answers with stopped, the limbs whose move it ended, empty when nothing was moving. The stop fails with attempt_failed only when the robot cannot carry it out. A move sent after the stop runs.",
           operation: "mutating",
           deadline_ms: 2000,
         },
         {
           member: "check_arm_move",
           tool: "robot.check_arm_move",
-          description: "Learn whether a robot.move_arm goal with these fields has a plan from where the arm is commanded now, without moving anything. The fields are the planning fields of robot.move_arm, with the same meaning. success true comes with duration_s, the time the move would take; success false comes with the message the move's refusal would give, also when the arm is unknown or is executing a move. The check finds a plan and no more: it does not check collisions with the robot itself or with the room, so a move that passes the check can still stop short. Changes nothing.",
+          description: "Learn whether a robot.move_arm goal with these fields has a plan from where the arm is commanded now, without moving anything. The fields are the planning fields of robot.move_arm, with the same meaning. Answers with reachable, true when a plan exists; duration_s, the time the move would take, 0 when not reachable; and reason, why no plan exists, in the words that a robot.move_arm failure with unreachable gives, empty when reachable. A request that robot.move_arm would refuse is refused with the kind of that refusal: rejected for an unknown arm or a value robot.move_arm does not take, precondition_failed while the arm is executing a move, which the check does not disturb, and leader_streaming while a leader streams to the arm. The check finds a plan and no more: it does not check collisions with the robot itself or with the room, so a move that passes the check can still stop short. Changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -233,7 +233,7 @@
       contract: {
         name: "rgb_camera",
         tag: "v1",
-        sha256: "a4e66999b7ec166569a73d25d430878823a368408e76d4aaa56e58ea89271b4f",
+        sha256: "a81cc9111a3b982a2e32a9fb426ac91516559f6d7715c5a720cbd8bf48459cdd",
       },
       argument: "camera",
       topics: [
@@ -314,7 +314,7 @@
       contract: {
         name: "rgbd_camera",
         tag: "v1",
-        sha256: "61a2cc33ad04a82dd57e2afaf66b18c76ebfa1ca9b23f466825103e4513cef06",
+        sha256: "831c41e8cc4fa095806fa675a30e90d96a2982129ce0015ebef0381f653a6d2e",
       },
       argument: "camera",
       topics: [
@@ -406,7 +406,7 @@
         {
           member: "set_color_exposure",
           tool: "depth_camera.set_exposure",
-          description: "Set the camera's color exposure. mode is auto or manual; value is the manual exposure in the device's unit and range, which camera_profile.get reports, and is ignored in auto mode. A device that runs automatic exposure only refuses mode manual with success false. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
+          description: "Set the camera's color exposure. mode is auto or manual; value is the manual exposure in the device's unit and range, which camera_profile.get reports, and is ignored in auto mode. A device that runs automatic exposure only refuses mode manual. A refused request changes nothing. Answers with current_value, the effective exposure after the call.",
           operation: "mutating",
           deadline_ms: 2000,
         },
@@ -435,21 +435,21 @@
       contract: {
         name: "camera_profile",
         tag: "v1",
-        sha256: "ebe24d01a9d916a91a229ca6b14c59d635902bbf9220f40898af8ee505dd2382",
+        sha256: "54dac80cbe43e61a971a4a3e154162f4261df63d9e0e2349822dbe62c4c7a9f7",
       },
       argument: "camera",
       services: [
         {
           member: "get_camera_profile",
           tool: "camera_profile.get",
-          description: "Report the camera's profile as JSON text in profile_json: the controls it supports, each with its unit, range and default. Read it before setting a control. success false with a message means the camera has no profile to report. Changes nothing.",
+          description: "Report the camera's profile as JSON text in profile_json: the controls it supports, each with its unit, range and default. Read it before setting a control. A camera that is not attached to its device or simulation yet refuses with precondition_failed. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
         {
           member: "reset_camera",
           tool: "camera_profile.reset",
-          description: "Return every control of the camera to its default. success false with a message means the camera refused. Changes the camera's controls and nothing else.",
+          description: "Return every control of the camera to its default. Changes the camera's controls and nothing else.",
           operation: "mutating",
           deadline_ms: 2000,
         },
@@ -463,28 +463,28 @@
       contract: {
         name: "camera_geometry",
         tag: "v1",
-        sha256: "764d0ec0f33a4216e544547bc3b7f292fc48feee871a2e2134e61a6de0842f02",
+        sha256: "e530688c7ff63ef625c5e011a2f294bfb93601e132427f426f963ddf1f087f8f",
       },
       argument: "camera",
       services: [
         {
           member: "get_color_intrinsics",
           tool: "camera_geometry.color_intrinsics",
-          description: "Report the color stream's pinhole intrinsics: width and height in pixels, fx, fy, cx and cy in pixels, and the distortion_model with its distortion coefficients. success false with a message means the camera has none to report. Changes nothing.",
+          description: "Report the color stream's pinhole intrinsics: width and height in pixels, fx, fy, cx and cy in pixels, and the distortion_model with its distortion coefficients. A camera that has not heard from its simulation yet refuses with precondition_failed, and a device without a calibration with rejected. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
         {
           member: "get_depth_intrinsics",
           tool: "camera_geometry.depth_intrinsics",
-          description: "Report the depth stream's pinhole intrinsics as camera_geometry.color_intrinsics does, with depth_model, min_depth_m and max_depth_m in meters, and align_mode, how the depth frame aligns to the color frame. success false with a message means the camera has no depth stream. Changes nothing.",
+          description: "Report the depth stream's pinhole intrinsics as camera_geometry.color_intrinsics does, with depth_model, min_depth_m and max_depth_m in meters, and align_mode, how the depth frame aligns to the color frame. A camera without a depth stream refuses with rejected. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
         {
           member: "get_depth_to_color_extrinsics",
           tool: "camera_geometry.depth_to_color",
-          description: "Report the transform from the depth stream's frame to the color stream's: depth_to_color_position in meters and depth_to_color_orientation as a unit quaternion [x, y, z, w], with align_mode. success false with a message means the camera has no depth stream. Changes nothing.",
+          description: "Report the transform from the depth stream's frame to the color stream's: depth_to_color_position in meters and depth_to_color_orientation as a unit quaternion [x, y, z, w], with align_mode. A camera without a depth stream refuses with rejected. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
@@ -498,13 +498,13 @@
       contract: {
         name: "camera_mounts",
         tag: "v1",
-        sha256: "f4a43adc503290b0ef2929900484a54a4e0e055000533f906e771923a7edd0fb",
+        sha256: "6c6722bc845b0e4a04d6838918bdd8fe39255e5638ae82cd2b1a1c7c35febf51",
       },
       services: [
         {
           member: "get_camera_poses",
           tool: "robot.get_camera_poses",
-          description: "Report where each of the robot's cameras stands in the robot frame now: camera_names in the robot's fixed order, and index-aligned with it positions (3 per camera, meters), orientations (4 per camera, a unit quaternion [x, y, z, w]) and carried_by (the arm that carries the camera, or empty for one fixed to the base), computed from the joints measured at timestamp. A pose is that of the camera's color optical frame, +X to the right of the image, +Y down it, +Z along the view, so a point p that a pixel and its depth give in that frame (deproject the pixel with camera_geometry.color_intrinsics and a sample of depth_camera.latest_depth_samples) stands at R(orientation) * p + position in the robot frame, where robot.move_arm takes it. The values are the robot's design values: exact in a simulation, nominal on a physical robot, whose camera stands within the tolerance of its mount. A robot without cameras answers empty arrays; success false with a message means the robot has not measured its joints yet. Changes nothing.",
+          description: "Report where each of the robot's cameras stands in the robot frame now: camera_names in the robot's fixed order, and index-aligned with it positions (3 per camera, meters), orientations (4 per camera, a unit quaternion [x, y, z, w]) and carried_by (the arm that carries the camera, or empty for one fixed to the base), computed from the joints measured at timestamp. A pose is that of the camera's color optical frame, +X to the right of the image, +Y down it, +Z along the view, so a point p that a pixel and its depth give in that frame (deproject the pixel with camera_geometry.color_intrinsics and a sample of depth_camera.latest_depth_samples) stands at R(orientation) * p + position in the robot frame, where robot.move_arm takes it. The values are the robot's design values: exact in a simulation, nominal on a physical robot, whose camera stands within the tolerance of its mount. A robot without cameras answers empty arrays, and a robot that has not measured its joints yet refuses with precondition_failed. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
@@ -519,13 +519,13 @@
       contract: {
         name: "workspace",
         tag: "v1",
-        sha256: "4b537d8ccdb46c4c2047b7e6c9d2d9632ae2e9615eb8c2d2e2dc2ebdc12bc63d",
+        sha256: "f24ee4d2708a8cdd255beb4e0dd6edd18e6a1f8fbf4d8039b35c3af58cc7fddc",
       },
       services: [
         {
           member: "describe_workspace",
           tool: "robot.describe_workspace",
-          description: "Learn where on a flat, level surface the robot can work, from the robot's design and the field of view of its perception camera, the one depth camera no arm carries, which it finds items with. It knows nothing of the room: it sees no surface and no obstacle, and takes the surface as an empty plane at surface_height, in meters above the robot's base point (a table top, for example). A surface_height that is not a finite number and one more than 1000 meters from the robot's base point are refused. It measures points from 0 to 1.0 m ahead of the robot and up to 0.30 m to either side. A point is reachable when an arm brings its grasp point within 0.01 m of a target 0.04 m above it with the gripper pointing straight down or straight forward, in view when the perception camera sees it, and workable when it is both, or reachable alone for a robot whose view is not checked: one without a perception camera (perception_camera is then empty), or one whose perception camera has no camera geometry linked, as message then says. Answers with workable, true when the workable points cover at least 0.03 square meters; area, the workable part in square meters; rectangle, [x_min, x_max, y_min, y_max] in the robot frame in meters, the largest rectangle the robot can work: put the items for a task inside it; reach and view, the bounds of the points an arm reaches and of those the camera sees, in the same form; perception_camera, that camera's name, empty for a robot without one; and message, one line that says why. A rectangle or bound that no point fills is absent. success false with a message means the request was refused or the robot cannot read its perception camera's geometry now. Changes nothing.",
+          description: "Learn where on a flat, level surface the robot can work, from the robot's design and the field of view of its perception camera, the one depth camera no arm carries, which it finds items with. It knows nothing of the room: it sees no surface and no obstacle, and takes the surface as an empty plane at surface_height, in meters above the robot's base point (a table top, for example). A surface_height that is not a finite number and one more than 1000 meters from the robot's base point are refused with rejected. It measures points from 0 to 1.0 m ahead of the robot and up to 0.30 m to either side. A point is reachable when an arm brings its grasp point within 0.01 m of a target 0.04 m above it with the gripper pointing straight down or straight forward, in view when the perception camera sees it, and workable when it is both, or reachable alone for a robot whose view is not checked: one without a perception camera (perception_camera is then empty), or one whose perception camera has no camera geometry linked. Answers with workable, true when the workable points cover at least 0.03 square meters; area, the workable part in square meters; rectangle, [x_min, x_max, y_min, y_max] in the robot frame in meters, the largest rectangle the robot can work: put the items for a task inside it; reach and view, the bounds of the points an arm reaches and of those the camera sees, in the same form; and perception_camera, that camera's name, empty for a robot without one. A rectangle or bound that no point fills is absent. A robot that cannot read its perception camera's geometry now refuses with precondition_failed. Changes nothing.",
           operation: "read_only",
           // An answer reads the perception camera's geometry, up to 2 s per
           // read, and solves the arms' inverse kinematics over the grid.
@@ -534,7 +534,7 @@
         {
           member: "check_positions",
           tool: "robot.check_positions",
-          description: "Learn whether the robot can work each of the given points, from the robot's design and the field of view of its perception camera, as robot.describe_workspace does. It knows nothing of the room: it checks no obstacle and nothing that could hide a point. positions holds 3 values per point, x, y and z in meters in the robot frame, each the target the grasp point would reach: give an item's position as brain.scan_items reports it. An empty list, one whose length is not a multiple of 3, and a coordinate more than 1000 meters from the robot's base point are refused. Answers with all_workable, whether the robot can work every point; perception_camera; and results, one per point in the request's order: position as asked; workable, reachable and in_view, as robot.describe_workspace defines them; arm, the arm that reaches it, by the name the limb tools take, empty when none does; short_by, how far in meters the closest arm's grasp point stops short of it whichever way the gripper points, 0 when an arm reaches it, and at most 0.01 with reachable false when the arms come that close but none reaches it with its gripper pointing down or forward; view, seen, outside_field, out_of_depth, or no_camera for a robot whose view is not checked; and message, one line that says why. success false with a message means the request was refused or the robot cannot read its perception camera's geometry now. Changes nothing.",
+          description: "Learn whether the robot can work each of the given points, from the robot's design and the field of view of its perception camera, as robot.describe_workspace does. It knows nothing of the room: it checks no obstacle and nothing that could hide a point. positions holds 3 values per point, x, y and z in meters in the robot frame, each the target the grasp point would reach: give an item's position as brain.scan_items reports it. An empty list, one whose length is not a multiple of 3, and a coordinate more than 1000 meters from the robot's base point are refused with rejected. Answers with all_workable, whether the robot can work every point; perception_camera; and results, one per point in the request's order: position as asked; workable, reachable and in_view, as robot.describe_workspace defines them; arm, the arm that reaches it, by the name the limb tools take, empty when none does; short_by, how far in meters the closest arm's grasp point stops short of it whichever way the gripper points, 0 when an arm reaches it, and at most 0.01 with reachable false when the arms come that close but none reaches it with its gripper pointing down or forward; view, seen, outside_field, out_of_depth, or no_camera for a robot whose view is not checked; and message, one line that says why. A robot that cannot read its perception camera's geometry now refuses with precondition_failed. Changes nothing.",
           operation: "read_only",
           deadline_ms: 15000,
         },
@@ -548,20 +548,20 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "66ebc89364b2544909ea9b8f79bad95a094fe67a058ee3dcfab3252e4c842ab0",
+        sha256: "5588735dcffe12aa60e781dc6b15d1318f6a7b7dc762714be219bfa70fd02382",
       },
       actions: [
         {
           member: "scan_items",
           tool: "brain.scan_items",
-          description: "Look at the scene through the robot's brain and report every item it can act on, minting an item_id for each. This is the robot's own answer to \"what do you see\": what it reports here is what it can identify and grab, so ask it rather than reading a camera frame, which is a picture for a person. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 robot-frame coordinates in meters per item, confidences from 0 to 1, and regions, 4 entries per item (x0, y0, x1, y1 in pixels, x to the right and y down, four zeros for an item this look did not see) of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. An empty scene is a success with empty arrays. Scanning again keeps the id of an item the robot recognizes. Starts no motion.",
+          description: "Look at the scene through the robot's brain and report every item it can act on, minting an item_id for each. This is the robot's own answer to \"what do you see\": what it reports here is what it can identify and grab, so ask it rather than reading a camera frame, which is a picture for a person. timeout_s bounds the scan in seconds, 0 for the robot's default. Returns index-aligned arrays: item_ids, labels in the robot's own vocabulary (two items of one kind share a label and have distinct ids), positions as a flat list of 3 robot-frame coordinates in meters per item, confidences from 0 to 1, and regions, 4 entries per item (x0, y0, x1, y1 in pixels, x to the right and y down, four zeros for an item this look did not see) of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. An empty scene completes the scan with empty arrays. A scan is refused with precondition_failed while another scan or search runs, and with resource_unavailable when no perception source is available, and it fails with timeout when its bound passes before it has an answer. Scanning again keeps the id of an item the robot recognizes. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
         {
           member: "identify_item",
           tool: "brain.identify_item",
-          description: "Find one item through the robot's brain and mint an item_id for it. This is the robot's own answer to \"is there a banana\" or \"where is the mug\": ask it rather than judging from a camera frame, since only an item it identifies here can be grabbed. description is the item's name in a few plain words, such as \"apple\" or \"red mug\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on. To choose between several items of the same kind, call brain.scan_items and pick the item by its position. timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a robot-frame position in meters, an orientation only when the robot resolved one, confidence from 0 to 1, and region, the item's x0, y0, x1, y1 in pixels of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. Finding nothing is a failure whose message says so. Starts no motion.",
+          description: "Find one item through the robot's brain and mint an item_id for it. This is the robot's own answer to \"is there a banana\" or \"where is the mug\": ask it rather than judging from a camera frame, since only an item it identifies here can be grabbed. description is the item's name in a few plain words, such as \"apple\" or \"red mug\": no article, no sentence, no position (\"the mug on the left\" becomes \"red mug\"); empty for the most prominent item the robot can act on. To choose between several items of the same kind, call brain.scan_items and pick the item by its position. timeout_s bounds the search in seconds, 0 for the robot's default. Returns item_id, a label in the robot's own vocabulary, a robot-frame position in meters, an orientation only when the robot resolved one, confidence from 0 to 1, and region, the item's x0, y0, x1, y1 in pixels of the picture depth_camera.look gives for the camera named in camera, an image of image_width by image_height captured at frame_timestamp. Its refusals and its timeout are those of brain.scan_items, and a search that finds no item that matches fails with not_found. Starts no motion.",
           operation: "long_running",
           deadline_ms: 30000,
         },
@@ -627,13 +627,13 @@
       contract: {
         name: "brain_model",
         tag: "v1",
-        sha256: "59418320965737db1f7367ac222481effa8675f700c6a11ed04549e0f8a2a2f6",
+        sha256: "984cc147726028e642871e8ce55155e704551b75434c20fa88da9539d5e536be",
       },
       actions: [
         {
           member: "switch_model",
           tool: "brain.switch_model",
-          description: "Make model the active model of one role of the robot's brain while the brain runs. role is \"perception\", the model brain.scan_items and brain.identify_item use, or \"manipulation\", the model brain.grab_item, brain.drop_item and brain.place_item use; model is one of the names brain.list_models gives for that role. After the call, every goal of that role that starts uses the new model and brain.get_model reports it; a goal that was running finishes on the model it started with. Refused while a goal of that role runs, while another switch of that role runs, and for a role or a model the brain does not take; failed when the brain cannot reach the model. A refused or failed switch leaves the role on its model and returns role and model empty. The brain checks that it reaches the model and that the model answers, not how well the model finds items. Starts no motion.",
+          description: "Make model the active model of one role of the robot's brain while the brain runs. role is \"perception\", the model brain.scan_items and brain.identify_item use, or \"manipulation\", the model brain.grab_item, brain.drop_item and brain.place_item use; model is one of the names brain.list_models gives for that role. After the call, every goal of that role that starts uses the new model and brain.get_model reports it; a goal that was running finishes on the model it started with. Refused with precondition_failed while a goal of that role runs or another switch of that role runs, and with rejected for a role or a model the brain does not take; it fails with resource_unavailable when the brain cannot reach the model, and with attempt_failed when the model cannot serve the role. A refused, failed or cancelled switch leaves the role on its model. The brain checks that it reaches the model and that the model answers, not how well the model finds items. Starts no motion.",
           operation: "long_running",
           // A switch may reach a hosted model once before it answers.
           deadline_ms: 60000,
@@ -643,7 +643,7 @@
         {
           member: "get_model",
           tool: "brain.get_model",
-          description: "Report the model each role of the robot's brain runs now: roles and models, index-aligned, one entry per role. \"none\" is a role with no model, whose goals the brain refuses. Changes nothing.",
+          description: "Report the model each role of the robot's brain runs now: roles and models, index-aligned, one entry per role. \"none\" is a role with no model, whose goals the brain refuses with precondition_failed. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },
@@ -663,13 +663,13 @@
       contract: {
         name: "episode_recording",
         tag: "v1",
-        sha256: "d646ad5c6e9d18d2db516d7a801b086c37819be14006512ef0081a3b7012f66b",
+        sha256: "365937a334aea9b08e13d224decbe4b24296e68b684eb5e7bd5887a053a6e85f",
       },
       actions: [
         {
           member: "record_episode",
           tool: "recorder.record_episode",
-          description: "Record one episode of the robot into its open dataset session, under task as the episode's task description; feedback reports frames_recorded and disk_free_bytes as it runs, and cancelling the task ends the episode and saves it. Returns episode_index, frames_recorded and whether the episode was discarded.",
+          description: "Record one episode of the robot into its open dataset session, under task as the episode's task description; feedback reports frames_recorded and disk_free_bytes as it runs. The task never completes: cancelling it ends the episode and saves it, and the recorder ends the episode itself, saved, at its maximum episode length, on low disk space, when a source goes silent or stale, when it cannot keep its frame rate and when it shuts down. Each of these ends the task cancelled, and its status message gives a reason that names the cause, and the result: episode_index, frames_recorded and whether the episode was discarded. The recorder refuses an episode with precondition_failed while another episode records or a source is not ready, and fails it with attempt_failed when it cannot write or save the episode, whose frames are then dropped.",
           operation: "long_running",
           // Advertised to the client: recording accompanies motion.
           safety_sensitive: true,

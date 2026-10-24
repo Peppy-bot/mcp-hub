@@ -96,8 +96,9 @@ a join or a removal changes the list.
 
 `robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
 only, tasks included, newest first, with the client that made each, its arguments and how it ended,
-so a client that finds a robot in a state it did not command can tell whether another client of
-the endpoint did it. A motion a teleoperation or another node commanded is not in it.
+with the failure kind and the message of a call that a robot refused or that failed, so a client
+that finds a robot in a state it did not command can tell whether another client of the endpoint
+did it. A motion a teleoperation or another node commanded is not in it.
 
 Every contract is pinned by sha256 to the document this exposure was written against. The
 cameras' brightness and contrast stay private. The server's `instructions` tell a model:
@@ -106,8 +107,11 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 - how to address the limbs, and which units and robot frame apply;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
-- that an arm move with success true means the measured arm settled within the tolerances the call
-  names, and that a gripper move never fails on its settle;
+- how a call that a robot refuses, or that fails, ends: with `outcome`, `failure_kind` and
+  `message`, the kinds of every robot and the kinds of the tools (`unreachable`,
+  `leader_streaming`, `not_found`), and how a cancelled move gives its reason and its result;
+- that an arm move completes only once the measured arm settled within the tolerances the call
+  names, and fails with `timeout` otherwise, and that a gripper move never fails on its settle;
 - what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
 
 A client can read this endpoint alone, on the physical robots or for one task, so no text of the
@@ -146,16 +150,16 @@ peppy stack join openarm:alpha --with v2,cameras                                
 
 The endpoint, the tools, the resources, and every command below are identical under all of them.
 Only Waldo models the cameras' response, so under MuJoCo and Isaac Sim the frames, `camera.info`
-and the geometry tools work and the setters refuse with a message, as the `instructions` tell a
-model to expect. On hardware the `uvc_camera_linux` and `zed_camera` nodes describe no profile or
-geometry, so the listing leaves those tools out of such a robot's `tools` and a call on them is
-refused. The `simulation_mcp` launch also serves the two other endpoints of a simulation stack, one
+and the geometry tools work and the setters refuse, with a failure kind and a message, as the
+`instructions` tell a model to expect. On hardware the `uvc_camera_linux` and `zed_camera` nodes
+describe no profile or geometry, so the listing leaves those tools out of such a robot's `tools`
+and a call on them is refused. The `simulation_mcp` launch also serves the two other endpoints of a simulation stack, one
 per family, as the [repository README](../README.md#repository-structure) describes. The simulated
 world's endpoint, [`simulation:v1`](../simulation/simulation.json5), is on port 8902. It has no
 counterpart on the real robots, and a client moving there drops that entry. The framework's
 endpoint, [`framework_controls:v1`](../framework/framework_controls.json5), is on port 8903, and
 the `robot_control` option of `simulation_mcp` deploys it with this endpoint. Its `stack.join`
-adds a robot to the stack, and this endpoint lists the robot when the call ends with success. Its
+adds a robot to the stack, and this endpoint lists the robot when the call completes. Its
 `stack.remove` removes a robot, and this endpoint stops listing it. A client moving to the real
 robots keeps that entry where the launcher of the real robots deploys the framework's endpoint. No
 launcher of the launchers hub deploys it on the real robots.
@@ -191,9 +195,14 @@ gripper the listing gives it, and returns home, stopping at the first move that 
 `--endpoint <url>` points the script at another endpoint. Ctrl-C cancels the move in flight
 through `tasks/cancel` and waits for the robot to settle.
 
-Exit codes: 0 the move completed and the robot reported success; 1 the robot did not do it (a
-refused goal, a robot that is not listed, a failed move, or a completed move reporting no
-success); 2 the endpoint could not be reached or refused the request; 130 the move was cancelled.
+A move that the robot refuses, or that fails, ends its task `failed`, and the error of the task
+carries the robot's failure in its data: `outcome` (`refused` or `failed`), `failure_kind` and
+`message`. The script prints the three, or the endpoint's own words for a task that failed without
+a failure kind, such as a goal that the robot abandoned.
+
+Exit codes: 0 the move completed; 1 the robot did not do it (a refused goal, a failed move, or a
+robot that is not listed); 2 the endpoint could not be reached or refused the request; 130 the move
+was cancelled.
 
 ## The environment
 
@@ -215,8 +224,9 @@ since it imports nothing outside the standard library.
 
 `test_robot_control_demo.py` holds the script to that shape against a stand-in for the endpoint
 that answers as the built-in server does: the same HTTP refusals, header requirements, task
-shapes, error codes and statuses, a listing of two robots, and the refusal of a robot that is not
-listed. Its tasks advance one step per poll, so no test waits on a clock, and it needs no peppy,
+shapes, error codes and statuses, the same failure kinds in a failed task and in the tool error of
+a call, the same reason and result of a cancelled goal, a listing of two robots, and the refusal
+of a robot that is not listed. Its tasks advance one step per poll, so no test waits on a clock, and it needs no peppy,
 no daemon, and no robot:
 
 ```sh
