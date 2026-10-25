@@ -23,9 +23,14 @@ of the names `robot_control_demo.py list` reports.
     robot_control_demo.py move-to-home --robot alpha --duration-s 4
     robot_control_demo.py demo --robot alpha
 
-Exit codes: 0 the move completed and the robot reported success; 1 the robot
-did not do it (a refused goal, a failed move, or a completed move reporting
-no success); 2 the endpoint could not be reached or refused the request;
+A move that the robot refuses, or that fails, ends its task `failed`, and the
+error of the task carries the robot's failure in its data: `outcome`
+(`refused` or `failed`), `failure_kind` and `message`. The script prints the
+three, or the endpoint's own words for a task that failed without a failure
+kind, such as a goal that the robot abandoned.
+
+Exit codes: 0 the move completed; 1 the robot did not do it (a refused goal
+or a failed move); 2 the endpoint could not be reached or refused the request;
 130 the move was cancelled (Ctrl-C cancels the move in flight and waits for
 the robot to settle).
 """
@@ -37,6 +42,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 
 DEFAULT_ENDPOINT = "http://127.0.0.1:8900/robot_control/v1/mcp"
 
@@ -279,20 +285,46 @@ def report_outcome(tool, task, out):
     code."""
     status = task.get("status")
     if status == "completed":
-        outcome = task.get("result", {}).get("structuredContent", {})
-        message = outcome.get("message", "")
-        if outcome.get("success"):
-            print(f"{tool}: completed: {message}", file=out)
-            print(json.dumps(outcome, indent=2), file=out)
-            return EXIT_OK
-        print(f"{tool}: completed without success: {message}", file=out)
-        print(json.dumps(outcome, indent=2), file=out)
-        return EXIT_NOT_DONE
+        print(f"{tool}: completed", file=out)
+        print(json.dumps(task.get("result", {}).get("structuredContent", {}), indent=2), file=out)
+        return EXIT_OK
     if status == "failed":
-        print(f"{tool}: failed: {task.get('error', {}).get('message', '')}", file=out)
+        print(f"{tool}: {failure_report(task.get('error', {}))}", file=out)
         return EXIT_NOT_DONE
     print(f"{tool}: cancelled", file=out)
     return EXIT_CANCELLED
+
+
+@dataclass(frozen=True)
+class ProviderFailure:
+    """The failure a robot gave a goal it refused or that failed: `outcome`,
+    refused or failed, `failure_kind` and the robot's `message`."""
+
+    outcome: str
+    failure_kind: str
+    message: str
+
+    @classmethod
+    def of_task_error(cls, error):
+        """The failure that the error of a failed task carries in its data,
+        or None for a task that failed without one, such as a goal that its
+        robot abandoned."""
+        data = error.get("data")
+        if not isinstance(data, dict) or "failure_kind" not in data:
+            return None
+        return cls(data.get("outcome", "failed"), data["failure_kind"], data.get("message", ""))
+
+    def __str__(self):
+        return f"{self.outcome} ({self.failure_kind}): {self.message}"
+
+
+def failure_report(error):
+    """What the error of a failed task says: the robot's failure when it
+    carries one, else the endpoint's own words."""
+    failure = ProviderFailure.of_task_error(error)
+    if failure is None:
+        return f"failed: {error.get('message', '')}"
+    return str(failure)
 
 
 # --- Subcommands -------------------------------------------------------------
@@ -459,13 +491,13 @@ def build_parser():
         "--settle-position-tolerance-m",
         type=float,
         default=SETTLE_POSITION_TOLERANCE_M,
-        help="how close the measured grasp point must come to the position for the move to succeed",
+        help="how close the measured grasp point must come to the position for the move to complete",
     )
     arm.add_argument(
         "--settle-orientation-tolerance-rad",
         type=float,
         default=SETTLE_ORIENTATION_TOLERANCE_RAD,
-        help="how close the measured orientation must come to the requested one for the move to succeed",
+        help="how close the measured orientation must come to the requested one for the move to complete",
     )
     arm.add_argument("--settle-timeout-s", type=float, default=SETTLE_TIMEOUT_S, help=settle_timeout_help)
     arm.set_defaults(run=command_move_arm)
