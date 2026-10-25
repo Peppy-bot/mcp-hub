@@ -16,7 +16,7 @@ Exposures are grouped by what they publish:
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
 simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and its reset as one document; a simulation launch option only
-framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, through an interface of the peppy daemon, as one document
+framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, the fleet of the stack and its halt, through two interfaces of the peppy daemon, as one document
 ```
 
 The exposures of `robot/`, `simulation/` and `framework/` are three families, grouped by where a
@@ -27,22 +27,15 @@ always tell where a call goes:
 | --- | --- | --- | --- |
 | `robot/` | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | the robot itself: every robot of the stack by name, who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | the same |
 | `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams and the holds that keep a sensor at its own rate, its reset to the world it started as, and the record of the calls that changed it | absent |
-| `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, and the record of the calls that changed it | the same functions; the launcher's scope decides what a client may change |
+| `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, the fleet of the stack, the halt of the stack and its clearance, and the record of the calls that changed the stack or its halt | the same functions; the launcher's scope decides what a client may change |
 
-A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A
-model reads three preambles: the robots' says it is the robots' own surface and names no other
-endpoint, the simulated world's says it sets the world up and is never a way to complete a task, and
-the framework's says it controls the stack of nodes, not the world and not the motion of a robot. The
-bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the three
-endpoints:
+A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A model reads three preambles: the robots' says it is the robots' own surface and names no other endpoint, the simulated world's says it sets the world up and is never a way to complete a task, and the framework's says it controls the stack of nodes, not the world and not the motion of a robot, and that a halt is not a motion. The bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the three endpoints:
 
 - the robots', `http://127.0.0.1:8900/robot_control/v1/mcp`;
 - the simulated world's, `http://127.0.0.1:8902/simulation/v1/mcp`;
 - the framework's, `http://127.0.0.1:8903/framework_controls/v1/mcp`.
 
-A client that moves to the physical robots drops its `simulation` entry. It keeps its
-`framework_controls` entry where the launcher of the physical robots deploys the framework's
-endpoint. No launcher of the launchers hub deploys it on the physical robots.
+A client that moves to the physical robots drops its `simulation` entry and keeps its `framework_controls` entry: each launcher of the launchers hub that serves the robots' endpoint deploys the framework's endpoint beside it, so a client can halt every stack. The launcher of the physical robots leaves the `stack` target vacant, so there the endpoint serves the `fleet` tools alone.
 
 The robots' document declares itself a per-robot surface (`robots: { list, describe }`): every
 target is a set the stack's robots fill, the routing argument is `robot`, which every tool but the
@@ -64,12 +57,7 @@ A target names exactly one source, `contract` or `daemon`:
   interface goes with the peppy release that serves that tag. A daemon target sits on a fixed
   surface: a document with a daemon target declares no `robots`.
 
-The launcher scopes each daemon target. The instance that serves the target gives the scope under
-`daemon_scopes`, keyed by the target name, or an adjustment of the launcher gives it with
-`set_daemon_scopes`. A scope belongs to the stack, so the adjustments of a robot copy give none.
-The scope limits what a client may change, and the server narrows the published schemas with it.
-A launch refuses a daemon target with no scope, and a scope that does not parse into the type of
-its interface.
+The launcher scopes each daemon target. The instance that serves the target gives the scope under `daemon_scopes`, keyed by the target name, or an adjustment of the launcher gives it with `set_daemon_scopes`. A scope belongs to the stack, so the adjustments of a robot copy give none. The scope limits what a client may change, and the server narrows the published schemas with it. A launch refuses a daemon target with no scope, and a scope that does not parse into the type of its interface. A launcher leaves a daemon target unserved with the vacant scope `{ vacant: "<why>" }`, which needs a reason: the server then serves no tool of that target.
 
 The members, the public names, the descriptions and every policy field are the same for the two
 kinds of target. A `framework/` document names daemon targets only, and only a `framework/`
@@ -171,17 +159,7 @@ The description of a covered setter says four things, in this order:
 
 A text states a physical fact only when a test of the code behind the tool pins it.
 
-[`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the
-description of a covered setter has no sentence that begins with `After the call,`. The capital
-letter and the comma are part of the rule. The words must begin a sentence: "the effective value
-after the call" inside a sentence does not count. The covered targets are the ones in its
-`COVERED_TARGETS`: every target of `simulation/simulation.json5`, the `postures` and
-`limb_motion` targets of `robot/robot_control.json5`, and the `stack` target of
-`framework/framework_controls.json5`. Its `UNCOVERED_TARGETS` names every other target of every
-exposure document, each with the reason. The test fails for a target that neither list names, and
-for a setter of a covered target that its `COVERED_SETTERS` does not name. So a target or a setter
-joins the rule, or stays out of it, only when its author says so. The test checks that the sentence
-is there, not that it is true.
+[`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the description of a covered setter has no sentence that begins with `After the call,`. The capital letter and the comma are part of the rule. The words must begin a sentence: "the effective value after the call" inside a sentence does not count. The covered targets are the ones in its `COVERED_TARGETS`: every target of `simulation/simulation.json5`, the `postures` and `limb_motion` targets of `robot/robot_control.json5`, and the `stack` and `fleet` targets of `framework/framework_controls.json5`. Its `UNCOVERED_TARGETS` names every other target of every exposure document, each with the reason. The test fails for a target that neither list names, and for a setter of a covered target that its `COVERED_SETTERS` does not name. So a target or a setter joins the rule, or stays out of it, only when its author says so. The test checks that the sentence is there, not that it is true.
 
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
@@ -284,29 +262,20 @@ in one of its descriptions fails, naming the part that is missing.
 
 ## The framework's stack
 
-[`framework/framework_controls.json5`](framework/framework_controls.json5)
-(`framework_controls:v1`) is the document of the `framework/` family. Its one target, `stack`,
-names the daemon interface `stack_copies:v1`, and its tools add robots to the stack and remove
-them:
+[`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) is the document of the `framework/` family. Its target `stack` names the daemon interface `stack_copies:v1`, and its tools add robots to the stack and remove them. Its target `fleet` names the daemon interface `fleet:v1`, and its tools report the fleet of the stack, halt the stack and clear the halt:
 
 | Tool | Interface member | Policy |
 | --- | --- | --- |
 | `stack.list` | `stack_copies:v1` `list` | read only, 5 s |
 | `stack.join` | `stack_copies:v1` `join` | task, 660 s progress window |
 | `stack.remove` | `stack_copies:v1` `remove` | task, 660 s progress window |
+| `fleet.list` | `fleet:v1` `list` | read only, 5 s |
+| `fleet.halt` | `fleet:v1` `halt` | mutating, 5 s |
+| `fleet.clear_halt` | `fleet:v1` `clear_halt` | mutating, 5 s |
 
-`stack.list` reports the robot options that a client can add, with the description and the
-features of each, the machines of the stack, the robots of these options on the stack,
-`max_copies`, the most robots of these options that the stack holds, and `change`, the addition or
-removal of one of these robots that runs now, from any client. A robot that is being added is in
-the robots of the stack only once its addition has succeeded. `stack.join` adds a robot of an
-option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel
-of a call stops the change of the stack at the step it reached, and the stack ends the change as a
-failure at that step ends it. A call that closes, by a lost connection too, is cancelled, and a task
-outlives its connection. The endpoint cancels a change that sends no progress for one progress
-window, 660 s, and the call or the task fails. `stack.list` reports the change under `change` until
-it ends.
-`stack.recent_calls` is the endpoint's call record.
+`stack.list` reports the robot options that a client can add, with the description, the features and the kind (`simulated` or `physical`) of each, the machines of the stack, the robots of these options on the stack, whether the software of each runs, the launcher of the stack, `max_copies`, the most robots of these options that the stack holds, and `change`, the addition or removal of one of these robots that runs now, from any client. A robot that is being added is in the robots of the stack only once its addition has succeeded. `stack.join` adds a robot of an option under a name, and `stack.remove` removes one, as `peppy stack remove NAME` does. A cancel of a call stops the change of the stack at the step it reached, and the stack ends the change as a failure at that step ends it. A call that closes, by a lost connection too, is cancelled, and a task outlives its connection. The endpoint cancels a change that sends no progress for one progress window, 660 s, and the call or the task fails. `stack.list` reports the change under `change` until it ends. A lease of another client refuses `stack.join` under the name of the robot that it leases, and `stack.remove` of that robot, with the failure kind `leased`. `stack.recent_calls` is the endpoint's call record: the calls that change the stack or its halt, `fleet.halt` and `fleet.clear_halt` included.
+
+`fleet.list` reports the fleet listing: the launcher of the stack, whether the stack is halted, each robot with its kind, its clock, whether its software runs, its robot commander, its instances and their contracts, and each lease. `fleet.halt` halts the stack, with no wait for the clients: the daemon writes the halt to disk and ends every lease, the transferred ones too, with no give-back. Until `fleet.clear_halt`, the daemon refuses every lease and every move check of a call of a member that moves a robot. Each lease holder, each MCP server and `peppy node call` cancel each goal that they sent on such a member, and send no new command. A member that only stops a motion always goes through. The halt does not reach the robot commanders, the hand teleoperation or the setup calls of the simulation. `fleet.clear_halt` starts nothing again. A second halt, and a clear without a halt, succeed and change nothing. The halt stays after a restart of the daemon. A halt is not a motion, so the framework family rule holds: the endpoint controls the stack of nodes, not the world and not the motion of a robot. The leases and the halt are not a safety function: the emergency stop of the robots stays in their certified layers. The document selects `list`, `halt` and `clear_halt` of `fleet:v1` alone: the other members, the contract documents, the leases, the move check and the changes of the fleet, are for programs. [`test_exposure_families.py`](test_exposure_families.py) fails a document that selects another member of `fleet:v1`.
 
 A feature is a choice that the launcher's scope offers on a robot option: it selects one option of
 one own axis of the robot option, that option brings at least one node, and the scope gives the
@@ -326,16 +295,9 @@ for each feature, the axis and the option that the scope gives the feature. So a
 listing of a robot that the command line added shows its features only, not the other words of its
 join.
 
-The launcher's scope gives the options, their descriptions, their features and `max_copies`, so the
-document names no robot model, no option and no feature. The robots' endpoint drives a robot that
-`stack.join` adds, under its name. A simulated robot stands in the simulated world when
-`stack.join` completes, and `workspace.stand_at` on the simulated world's endpoint then stands it
-at a work surface.
+The launcher's scope of the `stack` target gives the options, their descriptions, their features and `max_copies`, so the document names no robot model, no option and no feature. The scope of the `fleet` target names the members that its client may call. The robots' endpoint drives a robot that `stack.join` adds, under its name. A simulated robot stands in the simulated world when `stack.join` completes, and `workspace.stand_at` on the simulated world's endpoint then stands it at a work surface.
 
-The launchers hub serves the document through the `robot_control` option of its `simulation_mcp`
-launcher, at `http://127.0.0.1:8903/framework_controls/v1/mcp`, beside the robots' endpoint, under
-every simulation engine. `--with robot_control=none` switches off both endpoints. The other
-launchers of the launchers hub do not deploy it.
+The launchers hub serves the document through the `robot_control` option of each launcher with robots, at `http://127.0.0.1:8903/framework_controls/v1/mcp`, beside the robots' endpoint, so a client can halt every stack that serves the robots' endpoint. Its `simulation_mcp` launcher scopes the `stack` target with its robot options, under every simulation engine, and `--with robot_control=none` switches off both endpoints there. Its other launchers give the `stack` target the vacant scope: their robots join from the command line, so their endpoint serves the `fleet` tools alone.
 
 A model reading this endpoint must never mistake it for the robots' or the simulated world's, so
 every document under `framework/` says what it is, and
