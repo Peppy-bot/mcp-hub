@@ -116,7 +116,9 @@
           tool: "recorder.record_episode",
           description: "Record one teleoperation episode into the open session; cancelling the task ends the episode and saves it.",
           operation: "long_running",
-          // Advertised to the client: this one moves the robot.
+          // Advertised to the client: a person moves the robot during the
+          // episode. The member has no mark moves_robot: the recorder sends
+          // the robot no command.
           safety_sensitive: true,
           // The task parks in `input_required` until the client confirms
           // through `tasks/update`. No goal is sent before that, and only
