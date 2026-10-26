@@ -109,7 +109,7 @@ def test_the_checkout_has_robot_documents_to_check() -> None:
 
 def test_the_checkout_has_other_endpoint_tools_to_look_for() -> None:
     tools = other_endpoint_tools(REPOSITORY_ROOT)
-    assert {"scene.get_robots_list", "workspace.stand_at", "stack.join"} <= tools, sorted(tools)
+    assert {"scene.get_robots_list", "workspace.stand_at", "stack.join", "fleet.halt"} <= tools, sorted(tools)
 
 
 @pytest.mark.parametrize("path", robot_documents(REPOSITORY_ROOT), ids=document_name)
