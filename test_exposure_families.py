@@ -12,7 +12,9 @@ goes. Two rules of `exposure_families` hold this, read from every
   "stack";
 - a ``framework/`` document names daemon interfaces only, and only a
   ``framework/`` document names one: a ``robot/``, ``simulation/`` or
-  ``recording/`` document names contracts only.
+  ``recording/`` document names contracts only;
+- an exposure selects ``list``, ``halt`` and ``clear_halt`` of the daemon
+  interface ``fleet`` alone: its other members are for programs.
 
 `test_no_simulation_ground_truth.py` applies the wording of ``SIMULATION``.
 
@@ -25,8 +27,16 @@ from pathlib import Path
 
 import pytest
 
-from exposure_families import FRAMEWORK, TargetError, TargetKind, TargetSource, target_kind_violations, target_sources
-from exposure_json5 import REPOSITORY_ROOT, document_name, exposure_documents, parse_json5
+from exposure_families import (
+    FRAMEWORK,
+    TargetError,
+    TargetKind,
+    TargetSource,
+    fleet_member_violations,
+    target_kind_violations,
+    target_sources,
+)
+from exposure_json5 import REPOSITORY_ROOT, document_name, exposure_documents, parse_json5, read_json5
 
 
 def test_the_checkout_has_framework_documents_to_check() -> None:
@@ -43,6 +53,24 @@ def test_framework_documents_say_what_they_are(path: Path) -> None:
 def test_every_target_names_the_kind_its_family_holds(path: Path) -> None:
     violations = target_kind_violations(path, REPOSITORY_ROOT)
     assert not violations, f"{document_name(path)}: " + "; ".join(violations)
+
+
+@pytest.mark.parametrize("path", exposure_documents(REPOSITORY_ROOT), ids=document_name)
+def test_every_exposure_selects_only_the_fleet_members_for_exposures(path: Path) -> None:
+    violations = fleet_member_violations(read_json5(path))
+    assert not violations, f"{document_name(path)}: " + "; ".join(violations)
+
+
+def test_the_framework_document_selects_the_fleet_listing_and_the_halt() -> None:
+    document = read_json5(REPOSITORY_ROOT / "framework" / "framework_controls.json5")
+    assert target_sources(document)["fleet"] == TargetSource(TargetKind.DAEMON, "fleet")
+    fleet = document["targets"]["fleet"]
+    assert [(entry["member"], entry["tool"]) for entry in fleet["services"]] == [
+        ("list", "fleet.list"),
+        ("halt", "fleet.halt"),
+        ("clear_halt", "fleet.clear_halt"),
+    ]
+    assert "actions" not in fleet and "topics" not in fleet
 
 
 _COMPLIANT = """// A framework exposure that follows every rule.
@@ -193,3 +221,31 @@ def test_each_target_is_read_by_the_kind_of_its_source() -> None:
 def test_a_target_that_does_not_name_exactly_one_source_is_refused(target: str, message: str) -> None:
     with pytest.raises(TargetError, match=f"target `stack` {message}"):
         target_sources(parse_json5(f"{{ targets: {{ stack: {target} }} }}"))
+
+
+_FLEET_TARGET = """{
+  targets: {
+    stack: { daemon: { name: "stack_copies", tag: "v1" }, services: [{ member: "list", tool: "stack.list" }] },
+    fleet: {
+      daemon: { name: "fleet", tag: "v1" },
+      services: [
+        { member: "list", tool: "fleet.list" },
+        { member: "take", tool: "fleet.take" },
+        { member: "halt", tool: "fleet.halt" },
+      ],
+      actions: [{ member: "lease", tool: "fleet.lease" }],
+    },
+    arms: { contract: { name: "fleet", tag: "v1" }, services: [{ member: "take", tool: "arms.take" }] },
+  },
+}"""
+
+
+def test_a_fleet_member_for_programs_is_named_by_its_target_and_member() -> None:
+    # Not the members for exposures, the other daemon interface, or a
+    # contract that has the name of the interface.
+    assert fleet_member_violations(parse_json5(_FLEET_TARGET)) == [
+        "target `fleet` selects `take` of the daemon interface `fleet`: an exposure selects list, halt and "
+        "clear_halt alone, and the other members are for programs",
+        "target `fleet` selects `lease` of the daemon interface `fleet`: an exposure selects list, halt and "
+        "clear_halt alone, and the other members are for programs",
+    ]
