@@ -64,7 +64,7 @@ COVERED_TARGETS = {
         "clock",
         "workspace",
         "sensor_streams",
-        "reset",
+        "simulation_world",
     ),
     ROBOT_DOCUMENT: ("postures", "limb_motion", "brain_model"),
     FRAMEWORK_DOCUMENT: ("stack", "fleet"),
@@ -120,9 +120,11 @@ COVERED_SETTERS = {
             "clock.set_paused",
             "clock.step",
             "workspace.stand_at",
+            "workspace.name_location",
             "sensors.hold",
             "sensors.release",
-            "simulation.reset",
+            "simulation_world.start_apply",
+            "simulation_world.build",
         }
     ),
     ROBOT_DOCUMENT: frozenset(
