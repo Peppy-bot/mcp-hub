@@ -159,7 +159,7 @@ def test_the_framework_word_is_matched_whole_and_case_insensitively() -> None:
     assert FRAMEWORK.has_a_description_word("THE STACK of nodes")
     assert not FRAMEWORK.has_a_description_word("a stacked tray")
     assert not FRAMEWORK.has_a_description_word("two stacks of plates")
-    assert not FRAMEWORK.has_a_description_word("the interface robot_membership")
+    assert not FRAMEWORK.has_a_description_word("the field stack_name")
 
 
 def test_a_contract_target_under_framework_is_caught(tmp_path: Path) -> None:
