@@ -111,7 +111,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "4a559c640a7c676c09728c4b94e30c071a25d81cfa14ec02e087e88da5b42199",
+        sha256: "f7ea0bec8160278eec78a468f7e197e820e759617cde2ecc8eeb68b48a13f469",
       },
       actions: [
         {
@@ -140,7 +140,7 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "b7bf24fe4a058f51af40b9a2ba1dfbfb39e561d5de194b894116420545243f3a",
+        sha256: "a0198f6057678096fd755fa6a050a4c2c117258888ed0c8766611a5124284f1e",
       },
       actions: [
         {
@@ -539,7 +539,7 @@
       contract: {
         name: "workspace",
         tag: "v1",
-        sha256: "f24ee4d2708a8cdd255beb4e0dd6edd18e6a1f8fbf4d8039b35c3af58cc7fddc",
+        sha256: "97a9a24c9c9e6b797622cf7a47b78b6597f258539f667423f9921ad206a3fb12",
       },
       services: [
         {
@@ -568,7 +568,7 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "d2b904cbf7a96ac31c7b12a71a183c3090faf4d9ca6ceede6bfc264e9d043670",
+        sha256: "853f0bdfcddd8a0d41de06509d920b32f051fc3112eb52c296d0eef1e7e37e15",
       },
       actions: [
         {
@@ -592,7 +592,7 @@
       contract: {
         name: "item_manipulation",
         tag: "v1",
-        sha256: "02cbc7c9794a042c25c165cea60ead72587bd3145e555a287bcd7f9c2d3aa3fe",
+        sha256: "45b492747c1c9eb36d15ff9786b957a0e8b78a24e3f376ab8766de2b96ed94b5",
       },
       actions: [
         {

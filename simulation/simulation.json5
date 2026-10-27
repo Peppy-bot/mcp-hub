@@ -681,7 +681,7 @@
         name: "simulation_world",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/simulation_world.json5`).
-        sha256: "54f5522cae53a826d3bf4531add08448f50e8015cb121f4cd5158fe304a8df77",
+        sha256: "68aa1238136e1f317c5162afefdb4a354c993b459ba77f00a24ed0f8a182fb04",
       },
 
       // Three services (get reads the simulation's record, start_apply names
