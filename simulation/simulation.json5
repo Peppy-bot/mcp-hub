@@ -258,7 +258,7 @@
         name: "scene_lighting",
         tag: "v2",
         // Pinned like `scene` above (`sha256sum simulation/scene_lighting.json5`).
-        sha256: "e415df7d5b47dc761936e0c66f802c278a7ccab1915fda2c2a4fcd953e42e36e",
+        sha256: "72675c03fec7746b426890f505f0cc23c5ff14d88abac126935841ad100f3c94",
       },
 
       // Each service becomes a tool that answers within one request. The
@@ -341,7 +341,7 @@
         name: "scene_daylight",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_daylight.json5`).
-        sha256: "70d3f808504b4c999945d0798a3587ae5bd9f56dd543c7aabf0941b9e1f8c467",
+        sha256: "1cbbaa345355dc3e67a54439b5f24d99881b038f78cd79b054dd39c5eee85276",
       },
 
       // Services, the setters `mutating`; `restrict` narrows the clock
@@ -358,7 +358,7 @@
         {
           member: "set_daylight_time",
           tool: "daylight.set_daylight_time",
-          description: "Set the local date and hour of the simulated scene's daylight: date as YYYY-MM-DD (Gregorian, from 1900 to 2100), or an empty string to keep the current date; time as HH:MM or HH:MM:SS, local to the scene's place. After the call, the date and the hour are current_date and current_time, the sun, the moon and the sky stand and shine as they do then at the scene's place, every view the simulation renders shows them, the robots' cameras included, and the clock runs on from that hour at its rate. A date or an hour that is not one, or out of the range, is refused with rejected, and the daylight stays as it was. To get a night with a full moon, set a date near a full moon and an hour after sunset: daylight.get_daylight then reports the moon's phase.",
+          description: "Set the local date, the hour or both of the simulated scene's daylight: date as YYYY-MM-DD (Gregorian, from 1900 to 2100), or an empty string to keep the current date; time as HH:MM or HH:MM:SS, local to the scene's place, or an empty string to keep the current hour. After the call, the date and the hour are current_date and current_time, the sun, the moon and the sky stand and shine as they do then at the scene's place, every view the simulation renders shows them, the robots' cameras included, and the clock runs on from that hour at its rate. A date or an hour that is not one, or out of the range, and a request with both empty, are refused with rejected, and the daylight stays as it was. To get a night with a full moon, set a date near a full moon and an hour after sunset: daylight.get_daylight then reports the moon's phase.",
           operation: "mutating",
           deadline_ms: 5000,
         },
