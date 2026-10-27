@@ -20,6 +20,11 @@
       v1: {
         path: "simulation/simulation.json5"
       }
+    },
+    workflow_controls: {
+      v1: {
+        path: "workflow/workflow_controls.json5"
+      }
     }
   }
 }

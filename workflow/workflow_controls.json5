@@ -1,0 +1,119 @@
+// The workflows of a stack as one MCP surface: the robots a workflow can
+// bind, the check of a workflow, its runs with their confirmations,
+// suspensions, resumes and aborts, and the state and the journal of each
+// run. Its one target names workflow_director:v1, which the node
+// workflow_director implements. A workflow (workflow/v1) and a run (run/v1)
+// cross as JSON5 text; the library workflow_documents of public-peppy-libs
+// defines them and the JSON texts of the results.
+//
+// The endpoint moves a robot only through a run: the director binds the
+// robots of a run, takes their leases and calls their skills under them.
+// The document selects every member of the contract but replay, which reads
+// a journal for a program, locations, which teaches the skills of a robot,
+// and the topic run_events, whose events the progress of run, resume and
+// abort gives.
+//
+// The launchers hub serves this document through the `workflow_control`
+// fragment, on port 8904, beside the director it links as `director`. The
+// title, the opening of the instructions and every description say that
+// the calls go to the workflows.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "workflow_controls", tag: "v1" },
+
+  server: {
+    title: "Robot workflows (workflow runs)",
+    instructions: "This endpoint runs workflows on the robots, not the world, and moves a robot only through a run. A workflow is a JSON5 document (workflow/v1) that names roles and the contracts of their skills, never a robot: workflow.check checks it against the robots of the stack, and workflow.run runs it with each role bound to a robot. workflow.robots reports the robots a workflow can bind, with the contracts each one implements that the director lets runs call, and the document of each of those contracts. A run binds each role to a robot, by name or with \"auto\" (the first fitting robot in name order), takes the lease of each robot it binds, checks the assumptions of the workflow, runs the initialization of each role, then its lane, and releases each lease before it ends. A run never binds a robot that another client leases, a robot with a robot commander of its own, or a robot that another run binds. Each run has an id, r<N>, which the first progress of workflow.run gives. The progress of workflow.run, workflow.resume and workflow.abort gives each event of the run, as a JSON message with run, role, event, step, failure_kind, message and details: run_starts, to_confirm (the assumptions a person confirms with workflow.confirm), differences (how the stack differs from the lock of a bundle), initialization_starts, actions_start, step_starts, step_ends, incident, lane_suspends, lane_resumes, lane_ends, run_suspends and run_ends, and progress at least every 5 s. Ending rule: workflow.run and workflow.resume complete only when the run completed, with the run and its result; they end cancelled for an aborted run, and fail with run_degraded, run_failed, run_refused (a check before the initialization refused it, the message names the check), run_halted (a halt of the stack ended it), run_interrupted (its leases ended, a move check refused a call with no halt, or the director stopped during the run) or run_suspended. Incident rule: in an attended run, an incident (a failed step that fails its lane, a lost robot, an alert of a physical robot) suspends its lane: the lane runs its safe state, and the lease of its robot opens so a person can take the robot over; when no lane runs, the run is suspended, workflow.run fails with run_suspended, and the run waits for workflow.resume or workflow.abort. Cancel rule: a cancel of workflow.run or workflow.resume, and a closed connection, abort the run. A halt of the stack stops every run at once and sends no more commands to its robots. workflow.runs lists the runs the director keeps, and workflow.status and workflow.journal give the state and the journal of one.",
+  },
+
+  call_record: {
+    tool: "workflow.recent_calls",
+    description: "List the last calls of this endpoint that could change a workflow run, newest first, up to 200: every mutating tool and every action, with started_at, the client that made the call (its declared name and version, or null), the tool, its arguments as sent (null when larger than 1 kB, with arguments_bytes), outcome (running, completed, failed, cancelled or refused), failure_kind, message and duration_ms. A run started by another client, such as a program, is not in it; workflow.runs lists every run. Takes no arguments and changes nothing.",
+    keep: 200,
+  },
+
+  targets: {
+    // The director of the stack, linked by the launcher.
+    director: {
+      contract: {
+        name: "workflow_director",
+        tag: "v1",
+        sha256: "d9f93f556a1135e6babaa2f40b809193a4b56c7dd42946385b04af8640a5d8b7",
+      },
+      services: [
+        {
+          member: "robots",
+          tool: "workflow.robots",
+          description: "Report the robots a workflow can bind, and the contracts runs may call. halted is true while the stack is halted. robots lists each robot of the stack: name, the name a workflow run binds; kind, simulated or physical; model, the model id the robot reports, empty until it answers; robot_commander, the commander that drives the robot outside the leases, empty when it has none; software, running or stopped; lease_holder and lease_name, the client that leases the robot and the name of its lease, empty with no lease; lease_open, true while its holder lets another client take it over; and contracts, each contract the robot implements that the director lets runs call, with name, tag, sha256 and instances, the parts of the robot that implement it (a step names one with instance when there are several). documents gives the document of each of those contracts, with its name, tag and sha256: the members, fields and marks a workflow writes against. Refused with resource_unavailable before the director has read the fleet. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 10000,
+        },
+        {
+          member: "check",
+          tool: "workflow.check",
+          description: "Check a workflow by every rule of the director: workflow is the JSON5 text of the document. Without roles, each contract is checked against every robot of the stack that implements it; with roles, a JSON5 object from each role to a robot name, the binding is checked too. passed is true when errors is empty. errors gives each error with at, the step as <role>.<id> or the field by its path, and message; a workflow that does not parse gives one error with an empty at. Refused with rejected for roles that do not parse or that name \"auto\". Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 30000,
+        },
+        {
+          member: "runs",
+          tool: "workflow.runs",
+          description: "List the workflow runs the director keeps, newest first, those from before a restart of the director included: run, its id; workflow and revision; state, one of preparing, confirming, running, suspended, ending, completed, degraded, failed, refused, aborted, halted and interrupted; started_by, the label its caller gave it; and robots, each role with its robot, whether the run holds its lease (leased) and whether that lease is open. Takes no arguments and changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "status",
+          tool: "workflow.status",
+          description: "Report the state of one workflow run, run its id: state as workflow.runs gives it, and details, JSON of its status: the assumptions to confirm, the suspension of a suspended run, and the run result of a run that ended. Refused with rejected for a run the director does not keep. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 5000,
+        },
+        {
+          member: "journal",
+          tool: "workflow.journal",
+          description: "Give the journal of one workflow run, run its id, as JSON Lines: its request, the inputs of its plan, each call with how it ended, each command and each event, and its end. Refused with rejected for a run the director does not keep. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 10000,
+        },
+        {
+          member: "confirm",
+          tool: "workflow.confirm",
+          description: "Confirm an assumption of a workflow run that waits for its confirmations: run is its id and assumption the name that its to_confirm progress gives. After the call, the assumption is confirmed, and the run starts its initialization once each assumption to confirm is. Refused with rejected for a run the director does not keep or an assumption the workflow does not have, and with precondition_failed for an assumption with a check, one confirmed already, or a run that does not wait for confirmations.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+        {
+          member: "suspend",
+          tool: "workflow.suspend",
+          description: "Ask a running workflow run to suspend: run is its id. After the call, the director cancels each running goal of the run and runs the safe state of each running lane, and the progress of the run reports each suspension; workflow.run then fails with run_suspended, and the run waits for workflow.resume or workflow.abort. Refused with rejected for a run the director does not keep, and with precondition_failed for a run that does not run.",
+          operation: "mutating",
+          deadline_ms: 5000,
+        },
+      ],
+      actions: [
+        {
+          member: "run",
+          tool: "workflow.run",
+          description: "Run a workflow on the robots of the stack, and follow it until it ends or suspends. Give workflow, the JSON5 text of the document, or bundle, the files of a workflow bundle, each with path (relative to the bundle directory) and content. Bind the roles with roles, a JSON5 object from each role to a robot name or \"auto\", for an attended run, or with run_document, the JSON5 text of a run/v1 document; give one of them, or neither for every role on \"auto\". started_by labels the run in workflow.runs, and caller_data, JSON5 text, stays in its journal and its result. The progress gives each event of the run; its first event, run_starts, names the run. After the call, when it completed, each lane of the run completed and each lease of the run is released; the result gives run and result, the JSON run result. See the ending rule, the incident rule and the cancel rule. Refused with rejected, before a run starts, for a request that does not parse, that gives both roles and run_document, or that gives neither or both of workflow and bundle.",
+          operation: "long_running",
+          progress_timeout_ms: 20000,
+        },
+        {
+          member: "resume",
+          tool: "workflow.resume",
+          description: "Resume a suspended workflow run, run its id, and follow it until it ends or suspends. It closes the open lease of each robot of the suspended lanes, checks the done_when of each step that the suspension ended, the invariant of each enclosing step and the reach checks of their roles, then runs each suspended step again. After the call, when it completed, the run completed and its leases are released, with run and result. A refused resume fails with run_suspended, its last progress naming the false check, and opens those leases again. See the ending rule and the cancel rule. Refused with rejected for a run the director does not keep, and with precondition_failed for a run that is not suspended.",
+          operation: "long_running",
+          progress_timeout_ms: 20000,
+        },
+        {
+          member: "abort",
+          tool: "workflow.abort",
+          description: "Abort a workflow run, run its id: it closes each open lease of the run, cancels each running goal, and runs the safe state of each running lane and none of a suspended lane. After the call, when it completed, the run has ended and its leases are released; the result gives run and result, the run result. For a run that has ended, it completes at once with its result. Refused with rejected for a run the director does not keep.",
+          operation: "long_running",
+          progress_timeout_ms: 20000,
+        },
+      ],
+    },
+  },
+}

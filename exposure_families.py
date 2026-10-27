@@ -5,7 +5,8 @@ is the first directory of its path in the repository:
 
 - `robot/`: the robot itself, its moves, limbs, cameras and brain;
 - `simulation/`: the simulated world, its scene, objects, light and clock;
-- `framework/`: the peppy framework, the stack of nodes that runs the robots.
+- `framework/`: the peppy framework, the stack of nodes that runs the robots;
+- `workflow/`: the workflows that the director runs on the robots.
 
 A target names exactly one source. `contract` names a contract of the
 contracts hub, which a node implements. `daemon` names an interface that is
@@ -20,14 +21,15 @@ fleet listing, the halt of the stack and its clearance. The other members, the
 contract documents, the leases, the move check and the changes of the fleet,
 are for programs. `robot_leases_member_violations` checks this rule.
 
-The documents of `simulation/` and of `framework/` say what they are, so a
-model can always tell where a call goes. A `Family` holds the wording of one
-of them: the suffix of the server title, the sentence that opens the
-instructions, and the words of which every description holds one. `SIMULATION`
-and `FRAMEWORK` are the two families. `test_no_simulation_ground_truth.py`
-applies the wording of `SIMULATION`, and `test_exposure_families.py` applies
-the wording of `FRAMEWORK`, the rule of the target kinds and the rule of the
-members of `robot_leases`.
+The documents of `simulation/`, `framework/` and `workflow/` say what they
+are, so a model can always tell where a call goes. A `Family` holds the
+wording of one of them: the suffix of the server title, the sentence that
+opens the instructions, and the words of which every description holds one.
+`SIMULATION`, `FRAMEWORK` and `WORKFLOW` are the three families.
+`test_no_simulation_ground_truth.py` applies the wording of `SIMULATION`, and
+`test_exposure_families.py` applies the wording of `FRAMEWORK` and
+`WORKFLOW`, the rule of the target kinds and the rule of the members of
+`robot_leases`.
 
 `texts` gives each text of a document that a model reads, and `tool_names`
 the name of each tool of a document, for the rules on what a text names.
@@ -215,6 +217,16 @@ FRAMEWORK = Family(
         "the stack of nodes, not the world and not the motion of a robot."
     ),
     description_words=("stack",),
+)
+
+
+# The workflows of the stack: the director runs them on the robots, and the
+# endpoint moves a robot only through a run.
+WORKFLOW = Family(
+    directory="workflow",
+    title_suffix="(workflow runs)",
+    instructions_opening="This endpoint runs workflows on the robots, not the world, and moves a robot only through a run.",
+    description_words=("workflow", "workflows"),
 )
 
 

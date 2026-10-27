@@ -4,7 +4,7 @@ A repository of Peppy **MCP exposures** (`peppy_schema: "mcp_exposure/v1"`).
 
 An exposure selects members of the contracts in the [contracts hub](https://github.com/Peppy-bot/contracts-hub), or of the interfaces of the peppy daemon, and publishes them to [Model Context Protocol](https://modelcontextprotocol.io) clients: topics as resources, a camera topic also as a picture tool that answers with its latest frame as an image, services as tools, and actions as tools that run their goal as an MCP task for a client that declares the tasks extension and inside the call for any other. Each member gets a stable public name, prose written for a model to read, and operational policies (freshness, update rate, deadlines, result size, confirmation). Anything the document does not name is not reachable through the endpoint.
 
-The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each contract target to a running implementer of its contract through `links`, gives each daemon target its scope through `daemon_scopes` (see [Contract targets and daemon targets](#contract-targets-and-daemon-targets)), and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on with its moves, and `framework_controls:v1` in `mcp/fragments/framework_controls.json5`. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
+The document is the whole artifact. A launcher lists exposures under `source: { exposures: ["<name>:<tag>", ...] }`, binds each contract target to a running implementer of its contract through `links`, gives each daemon target its scope through `daemon_scopes` (see [Contract targets and daemon targets](#contract-targets-and-daemon-targets)), and the server built into `peppy` serves them: one process per deployment, each exposure at `http://127.0.0.1:<port>/<name>/<tag>/mcp`. The [launchers hub](https://github.com/Peppy-bot/launchers-hub) deploys `robot_control:v1` in `mcp/fragments/robot_control.json5`, one server for the stack that every robot is listed on with its moves, `framework_controls:v1` in `mcp/fragments/framework_controls.json5`, and `workflow_controls:v1` in `mcp/fragments/workflow_control.json5`. See the [MCP exposure guide](https://docs.peppy.bot/advanced_guides/mcp/) for the document format and the [launch files guide](https://docs.peppy.bot/guides/launch_files/) for the deployment.
 
 `peppy` configures this repository by default, so a launcher on any machine can list what it publishes.
 
@@ -15,25 +15,30 @@ Exposures are grouped by what they publish:
 ```text
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
-simulation/   the simulated world's scene, its objects' controls, lighting, daylight and weather, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and the record of its setup with the build of a world and the judges that check it, as one document; a simulation launch option only
+simulation/   the simulated world's scene, its objects' controls, lighting, daylight and weather, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and its worlds: the live world as a world document, the check and the apply of one, a workflow run in one, and the judges that check it, as one document; a simulation launch option only
 framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, the fleet of the stack and its halt, through two interfaces of the peppy daemon, as one document
+workflow/     the workflows of the stack: the robots a workflow can bind, its check, its runs with their confirmations, suspensions, resumes and aborts, and the state and the journal of each run, as one document
 ```
 
-The exposures of `robot/`, `simulation/` and `framework/` are three families, grouped by where a
+The exposures of `robot/`, `simulation/`, `framework/` and `workflow/` are four families, grouped by where a
 call goes. A simulation stack publishes one endpoint per family, so the user and the model can
 always tell where a call goes:
 
 | Family | Document | A call goes to | On the physical robots |
 | --- | --- | --- | --- |
 | `robot/` | [`robot/robot_control.json5`](robot/robot_control.json5) (`robot_control:v1`) | the robot itself: every robot of the stack by name, who it is, its moves and the stop that ends them, its limb state, its cameras with their controls and mounts, where its design lets it work, its brain and its recorder, and the record of the calls that changed a robot's state | the same |
-| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams and the holds that keep a sensor at its own rate, the record of its setup with the build of a world and the judges that check it, and the record of the calls that changed it | absent |
+| `simulation/` | [`simulation/simulation.json5`](simulation/simulation.json5) (`simulation:v1`) | the simulated world: the scene and what stands in it, the landmarks and the state of an object, the controls of its objects, its light sources, its materials, a picture of it from any viewpoint and what a region of such a picture shows in it, its clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams and the holds that keep a sensor at its own rate, its worlds with their apply, the workflow runs in them and the judges that check them, and the record of the calls that changed it | absent |
 | `framework/` | [`framework/framework_controls.json5`](framework/framework_controls.json5) (`framework_controls:v1`) | the peppy framework: the stack of nodes that runs the robots, the robots a client adds to it and removes from it, the fleet of the stack, the halt of the stack and its clearance, and the record of the calls that changed the stack or its halt | the same functions; the launcher's scope decides what a client may change |
+| `workflow/` | [`workflow/workflow_controls.json5`](workflow/workflow_controls.json5) (`workflow_controls:v1`) | the workflow director: the robots a workflow can bind, the check of a workflow, its runs with their confirmations, suspensions, resumes and aborts, the state and the journal of each run, and the record of the calls that changed a run | the same |
 
-A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A model reads three preambles: the robots' says it is the robots' own surface and names no other endpoint, the simulated world's says it sets the world up and is never a way to complete a task, and the framework's says it controls the stack of nodes, not the world and not the motion of a robot, and that a halt is not a motion. The bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the three endpoints:
+A document is one catalog, one `instructions` block and one endpoint, so a family is a document. A model reads four preambles: the robots' says it is the robots' own surface and names no other endpoint, the simulated world's says it sets the world up and is never a way to complete a task, the framework's says it controls the stack of nodes, not the world and not the motion of a robot, and that a halt is not a motion, and the workflows' says it runs workflows on the robots, not the world, and moves a robot only through a run. The bare launch of `simulation_mcp`, the simulation launcher of the launchers hub, publishes the four endpoints:
 
 - the robots', `http://127.0.0.1:8900/robot_control/v1/mcp`;
 - the simulated world's, `http://127.0.0.1:8902/simulation/v1/mcp`;
-- the framework's, `http://127.0.0.1:8903/framework_controls/v1/mcp`.
+- the framework's, `http://127.0.0.1:8903/framework_controls/v1/mcp`;
+- the workflows', `http://127.0.0.1:8904/workflow_controls/v1/mcp`, beside the workflow director.
+
+`--with world_control=none` leaves the simulated world's and the workflows' out. The `workflow_control` option of `so101_simulation` and `physical` adds the workflows' endpoint beside the workflow director.
 
 A client that moves to the physical robots drops its `simulation` entry and keeps its `framework_controls` entry: each launcher of the launchers hub that serves the robots' endpoint deploys the framework's endpoint beside it, so a client can halt every stack. The launcher of the physical robots leaves the `stack` target vacant, so there the endpoint serves the `fleet` tools alone.
 
@@ -61,8 +66,8 @@ The launcher scopes each daemon target. The instance that serves the target give
 
 The members, the public names, the descriptions and every policy field are the same for the two
 kinds of target. A `framework/` document names daemon targets only, and only a `framework/`
-document names a daemon target: a `robot/`, `simulation/` or `recording/` document names contract
-targets only. [`test_exposure_families.py`](test_exposure_families.py) fails the pull request that
+document names a daemon target: a `robot/`, `simulation/`, `workflow/` or `recording/` document names
+contract targets only. [`test_exposure_families.py`](test_exposure_families.py) fails the pull request that
 breaks this rule, and names each target of the wrong kind.
 
 ## Adding an exposure
@@ -208,23 +213,22 @@ by its stance, measures where a robot can work in it (the surfaces its arms reac
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
 on one surface) and names the places of the task, `sim_sensor_streams` sets the rate at which it
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
-while it does), and `simulation_world` keeps the record of its setup, rebuilds it from a world
-document and judges a built world. None has a physical counterpart. A model legitimately drives the
-first nine to set the world up and check it, a client application holds the sensors that it shows
-or records, and the applier of worlds, the application that saves and rebuilds them, calls
-`simulation_world`. A robot's own answer to where it can work, from its design alone, is the robots'
-`workspace` target, and a robot's task finds its items through the robot's own perception. Exposures
-on them live under `simulation/`: today one document,
+while it does), and `world_applier` applies its worlds, runs workflow runs in them and judges them.
+None has a physical counterpart. A model legitimately drives the first nine to set the world up and
+check it, a client application holds the sensors that it shows or records, and the application that
+saves and rebuilds worlds calls `world_applier`. A robot's own answer to where it can work, from its
+design alone, is the robots' `workspace` target, and a robot's task finds its items through the
+robot's own perception. Exposures on them live under `simulation/`: today one document,
 [`simulation/simulation.json5`](simulation/simulation.json5), holding the ten contracts as its
 `scene`, `controls`, `lighting`, `daylight`, `materials`, `view`, `clock`, `workspace`,
-`sensor_streams` and `simulation_world` targets. Only a simulation launch option serves it: the
-`world_control` axis of the [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s
-`simulation_mcp` launcher, deployed by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a
-process of its own beside the robots' endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It
-binds the simulation alone, so it needs nothing from a robot copy and outlives it. Waldo is the one
-simulation implementing the controls, lighting, daylight, materials, view, clock, workspace, sensor
-streams and simulation world contracts, so the launcher requires it beside that option. No
-real-robot fragment lists the document.
+`sensor_streams` and `world` targets. Only a simulation launch option serves it: the `world_control`
+axis of the [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher,
+deployed by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the
+robots' endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it
+needs nothing from a robot copy and outlives it. Waldo is the one simulation implementing the
+controls, lighting, daylight, materials, view, clock, workspace and sensor streams contracts, and
+the simulation world contract that the applier of worlds builds on, so the launcher requires it
+beside that option. No real-robot fragment lists the document.
 
 `scene.get_object`, the `get_object` service of `scene_manipulation`, gives one object at one
 instant: its landmarks in the world frame and its state, such as whether it broke, where its
@@ -258,10 +262,34 @@ document under `simulation/` says what it is, and the same test enforces the wor
 
 The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
 `scene_lighting`, `scene_daylight`, `scene_materials`, `scene_view`, `simulation_clock`,
-`scene_workspace`, `sim_sensor_streams` or `simulation_world` from any other directory (its
+`scene_workspace`, `sim_sensor_streams` or `world_applier` from any other directory (its
 `SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
+
+## The workflows
+
+[`workflow/workflow_controls.json5`](workflow/workflow_controls.json5) (`workflow_controls:v1`) is the document of the `workflow/` family. Its target `director` names the contract `workflow_director:v1`, which the node `workflow_director` implements:
+
+| Tool | Contract member | Policy |
+| --- | --- | --- |
+| `workflow.robots` | `robots` | read only, 10 s |
+| `workflow.check` | `check` | read only, 30 s |
+| `workflow.runs` | `runs` | read only, 5 s |
+| `workflow.status` | `status` | read only, 5 s |
+| `workflow.journal` | `journal` | read only, 10 s |
+| `workflow.confirm` | `confirm` | mutating, 5 s |
+| `workflow.suspend` | `suspend` | mutating, 5 s |
+| `workflow.run` | `run` | task, 20 s progress window |
+| `workflow.resume` | `resume` | task, 20 s progress window |
+| `workflow.abort` | `abort` | task, 20 s progress window |
+
+A run reports progress at each of its events and at least every 5 s, so a window of 20 s is four missed reports. The document selects every member of the contract but `replay`, which reads a journal for a program, `locations`, which teaches the skills of a robot, and the topic `run_events`, whose events the progress of `workflow.run`, `workflow.resume` and `workflow.abort` gives. Every document under `workflow/` says what it is, and [`test_exposure_families.py`](test_exposure_families.py) enforces the wording:
+
+- the server `title` ends with `(workflow runs)`;
+- the server `instructions` open with the exact sentence
+  `This endpoint runs workflows on the robots, not the world, and moves a robot only through a run.`;
+- every `description` contains the word `workflow` or `workflows` (a whole word, any case).
 
 ## The framework's stack
 
@@ -328,10 +356,11 @@ clamped on the edge of its top), and `workspace.describe` and `workspace.check` 
 robot can work it. So the texts of a `simulation/` document describe worlds without models and
 robots in general terms, by their stance. The texts of a `framework/` document name no robot model
 either: the launcher's scope names the robots that a stack can add, with a description of each, so
-one document serves every launcher.
-[`test_no_robot_models_in_simulation_or_framework.py`](test_no_robot_models_in_simulation_or_framework.py)
-fails a `simulation/` or `framework/` document whose title, instructions or any description names
-a robot model, by its id or its label, whatever the case, or a field that lists robots
+one document serves every launcher. Nor do the texts of a `workflow/` document: a workflow names
+roles and their contracts, never a robot.
+[`test_no_robot_models_in_model_free_families.py`](test_no_robot_models_in_model_free_families.py)
+fails a `simulation/`, `framework/` or `workflow/` document whose title, instructions or any
+description names a robot model, by its id or its label, whatever the case, or a field that lists robots
 (`workable_by`). mcp-hub does not read the simulation's catalogue, so the test holds the ids and
 the labels of the robot models the hubs simulate (its one `ROBOT_MODELS` list): the change that
 brings a new model into the simulation's catalogue adds it there.
@@ -347,7 +376,7 @@ the simulated world's instructions say that a robot's name there is its name on 
 endpoint, how its world frame maps to the robot frame, and that it never completes a task.
 [`test_robot_endpoint_names_no_other_endpoint.py`](test_robot_endpoint_names_no_other_endpoint.py)
 fails a `robot/` document whose title, instructions or any description names a tool of a
-`simulation/` or `framework/` document of the checkout, or says "endpoint" other than as "this
+`simulation/`, `framework/` or `workflow/` document of the checkout, or says "endpoint" other than as "this
 endpoint" or "this one endpoint", whatever the case.
 
 ## Continuous integration
