@@ -117,7 +117,7 @@ _FRAMEWORK_DOCUMENT = """// A framework exposure that names no robot model.
   },
   targets: {
     stack: {
-      daemon: { name: "stack_copies", tag: "v1" },
+      daemon: { name: "robot_membership", tag: "v1" },
       actions: [
         { member: "join", tool: "stack.join",
           description: "Add a robot of an option to the stack.",

@@ -14,7 +14,7 @@ goes. Two rules of `exposure_families` hold this, read from every
   ``framework/`` document names one: a ``robot/``, ``simulation/`` or
   ``recording/`` document names contracts only;
 - an exposure selects ``list``, ``halt`` and ``clear_halt`` of the daemon
-  interface ``fleet`` alone: its other members are for programs.
+  interface ``robot_leases`` alone: its other members are for programs.
 
 `test_no_simulation_ground_truth.py` applies the wording of ``SIMULATION``.
 
@@ -32,7 +32,7 @@ from exposure_families import (
     TargetError,
     TargetKind,
     TargetSource,
-    fleet_member_violations,
+    robot_leases_member_violations,
     target_kind_violations,
     target_sources,
 )
@@ -56,14 +56,14 @@ def test_every_target_names_the_kind_its_family_holds(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", exposure_documents(REPOSITORY_ROOT), ids=document_name)
-def test_every_exposure_selects_only_the_fleet_members_for_exposures(path: Path) -> None:
-    violations = fleet_member_violations(read_json5(path))
+def test_every_exposure_selects_only_the_robot_leases_members_for_exposures(path: Path) -> None:
+    violations = robot_leases_member_violations(read_json5(path))
     assert not violations, f"{document_name(path)}: " + "; ".join(violations)
 
 
 def test_the_framework_document_selects_the_fleet_listing_and_the_halt() -> None:
     document = read_json5(REPOSITORY_ROOT / "framework" / "framework_controls.json5")
-    assert target_sources(document)["fleet"] == TargetSource(TargetKind.DAEMON, "fleet")
+    assert target_sources(document)["fleet"] == TargetSource(TargetKind.DAEMON, "robot_leases")
     fleet = document["targets"]["fleet"]
     assert [(entry["member"], entry["tool"]) for entry in fleet["services"]] == [
         ("list", "fleet.list"),
@@ -88,7 +88,7 @@ _COMPLIANT = """// A framework exposure that follows every rule.
   },
   targets: {
     stack: {
-      daemon: { name: "stack_copies", tag: "v1" },
+      daemon: { name: "robot_membership", tag: "v1" },
       services: [
         { member: "list", tool: "stack.list", description: "Report what this Stack can add and remove.",
           operation: "read_only", deadline_ms: 5000 },
@@ -106,7 +106,7 @@ _TITLE = "Robot stack (peppy framework)"
 _OPENING = "This endpoint controls the peppy framework that runs the robots: the stack of nodes, not the world and not the motion of a robot. "
 _LIST_DESCRIPTION = "Report what this Stack can add and remove."
 _JOIN_DESCRIPTION = "Add a robot to the stack. After the call, its software runs."
-_DAEMON_SOURCE = 'daemon: { name: "stack_copies", tag: "v1" }'
+_DAEMON_SOURCE = 'daemon: { name: "robot_membership", tag: "v1" }'
 
 
 def test_a_framework_document_that_follows_every_rule_passes(tmp_path: Path) -> None:
@@ -159,7 +159,7 @@ def test_the_framework_word_is_matched_whole_and_case_insensitively() -> None:
     assert FRAMEWORK.has_a_description_word("THE STACK of nodes")
     assert not FRAMEWORK.has_a_description_word("a stacked tray")
     assert not FRAMEWORK.has_a_description_word("two stacks of plates")
-    assert not FRAMEWORK.has_a_description_word("the interface stack_copies")
+    assert not FRAMEWORK.has_a_description_word("the interface robot_membership")
 
 
 def test_a_contract_target_under_framework_is_caught(tmp_path: Path) -> None:
@@ -177,7 +177,7 @@ def test_a_daemon_target_outside_framework_is_caught(tmp_path: Path, directory: 
     path.write_text(_COMPLIANT, encoding="utf-8")
     assert exposure_documents(tmp_path) == [path]
     assert target_kind_violations(path, tmp_path) == [
-        "target `stack` names the daemon interface `stack_copies`: only a document under framework/ names a "
+        "target `stack` names the daemon interface `robot_membership`: only a document under framework/ names a "
         "daemon interface"
     ]
 
@@ -198,12 +198,12 @@ def test_each_target_is_read_by_the_kind_of_its_source() -> None:
     document = """{
       targets: {
         arms: { "contract": { name: "postures", tag: "v1", sha256: "ab" } },
-        stack: { 'daemon': { "name": 'stack_copies', tag: "v1" } },
+        stack: { 'daemon': { "name": 'robot_membership', tag: "v1" } },
       },
     }"""
     assert target_sources(parse_json5(document)) == {
         "arms": TargetSource(TargetKind.CONTRACT, "postures"),
-        "stack": TargetSource(TargetKind.DAEMON, "stack_copies"),
+        "stack": TargetSource(TargetKind.DAEMON, "robot_membership"),
     }
 
 
@@ -212,7 +212,7 @@ def test_each_target_is_read_by_the_kind_of_its_source() -> None:
     [
         ("{ services: [] }", "names neither a contract nor a daemon interface"),
         (
-            '{ contract: { name: "postures", tag: "v1" }, daemon: { name: "stack_copies", tag: "v1" } }',
+            '{ contract: { name: "postures", tag: "v1" }, daemon: { name: "robot_membership", tag: "v1" } }',
             "names both a contract and a daemon interface",
         ),
     ],
@@ -223,11 +223,11 @@ def test_a_target_that_does_not_name_exactly_one_source_is_refused(target: str, 
         target_sources(parse_json5(f"{{ targets: {{ stack: {target} }} }}"))
 
 
-_FLEET_TARGET = """{
+_ROBOT_LEASES_TARGET = """{
   targets: {
-    stack: { daemon: { name: "stack_copies", tag: "v1" }, services: [{ member: "list", tool: "stack.list" }] },
+    stack: { daemon: { name: "robot_membership", tag: "v1" }, services: [{ member: "list", tool: "stack.list" }] },
     fleet: {
-      daemon: { name: "fleet", tag: "v1" },
+      daemon: { name: "robot_leases", tag: "v1" },
       services: [
         { member: "list", tool: "fleet.list" },
         { member: "take", tool: "fleet.take" },
@@ -235,17 +235,17 @@ _FLEET_TARGET = """{
       ],
       actions: [{ member: "lease", tool: "fleet.lease" }],
     },
-    arms: { contract: { name: "fleet", tag: "v1" }, services: [{ member: "take", tool: "arms.take" }] },
+    arms: { contract: { name: "robot_leases", tag: "v1" }, services: [{ member: "take", tool: "arms.take" }] },
   },
 }"""
 
 
-def test_a_fleet_member_for_programs_is_named_by_its_target_and_member() -> None:
+def test_a_robot_leases_member_for_programs_is_named_by_its_target_and_member() -> None:
     # Not the members for exposures, the other daemon interface, or a
     # contract that has the name of the interface.
-    assert fleet_member_violations(parse_json5(_FLEET_TARGET)) == [
-        "target `fleet` selects `take` of the daemon interface `fleet`: an exposure selects list, halt and "
+    assert robot_leases_member_violations(parse_json5(_ROBOT_LEASES_TARGET)) == [
+        "target `fleet` selects `take` of the daemon interface `robot_leases`: an exposure selects list, halt and "
         "clear_halt alone, and the other members are for programs",
-        "target `fleet` selects `lease` of the daemon interface `fleet`: an exposure selects list, halt and "
+        "target `fleet` selects `lease` of the daemon interface `robot_leases`: an exposure selects list, halt and "
         "clear_halt alone, and the other members are for programs",
     ]
