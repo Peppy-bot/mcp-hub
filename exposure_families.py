@@ -15,10 +15,10 @@ document names one. So a call to the framework never reaches the endpoint of
 the robots or of the simulated world, and a call to a node never reaches the
 endpoint of the framework. `target_kind_violations` checks this rule.
 
-An exposure selects three members of the daemon interface `fleet`: the fleet
-listing, the halt of the stack and its clearance. The other members, the
+An exposure selects three members of the daemon interface `robot_leases`: the
+fleet listing, the halt of the stack and its clearance. The other members, the
 contract documents, the leases, the move check and the changes of the fleet,
-are for programs. `fleet_member_violations` checks this rule.
+are for programs. `robot_leases_member_violations` checks this rule.
 
 The documents of `simulation/` and of `framework/` say what they are, so a
 model can always tell where a call goes. A `Family` holds the wording of one
@@ -27,7 +27,7 @@ instructions, and the words of which every description holds one. `SIMULATION`
 and `FRAMEWORK` are the two families. `test_no_simulation_ground_truth.py`
 applies the wording of `SIMULATION`, and `test_exposure_families.py` applies
 the wording of `FRAMEWORK`, the rule of the target kinds and the rule of the
-fleet members.
+members of `robot_leases`.
 
 `texts` gives each text of a document that a model reads, and `tool_names`
 the name of each tool of a document, for the rules on what a text names.
@@ -235,24 +235,26 @@ def target_kind_violations(path: Path, root: Path) -> list[str]:
     ]
 
 
-# The daemon interface of the fleet of a stack, and the members of it that an
-# exposure selects: the fleet listing, the halt and its clearance.
-FLEET_INTERFACE = "fleet"
-FLEET_MEMBERS_FOR_EXPOSURES = ("list", "halt", "clear_halt")
+# The daemon interface of the leases of the robots and the halt of a stack, and
+# the members of it that an exposure selects: the fleet listing, the halt and
+# its clearance.
+ROBOT_LEASES_INTERFACE = "robot_leases"
+ROBOT_LEASES_MEMBERS_FOR_EXPOSURES = ("list", "halt", "clear_halt")
 
 
-def fleet_member_violations(document: dict) -> list[str]:
+def robot_leases_member_violations(document: dict) -> list[str]:
     """Each entry of `document` that selects a member of the daemon
-    interface `FLEET_INTERFACE` other than `FLEET_MEMBERS_FOR_EXPOSURES`,
-    named by its target and its member. An empty list is the rule holding."""
-    fleet = TargetSource(TargetKind.DAEMON, FLEET_INTERFACE)
-    allowed = ", ".join(FLEET_MEMBERS_FOR_EXPOSURES[:-1]) + f" and {FLEET_MEMBERS_FOR_EXPOSURES[-1]}"
+    interface `ROBOT_LEASES_INTERFACE` other than
+    `ROBOT_LEASES_MEMBERS_FOR_EXPOSURES`, named by its target and its member.
+    An empty list is the rule holding."""
+    robot_leases = TargetSource(TargetKind.DAEMON, ROBOT_LEASES_INTERFACE)
+    allowed = ", ".join(ROBOT_LEASES_MEMBERS_FOR_EXPOSURES[:-1]) + f" and {ROBOT_LEASES_MEMBERS_FOR_EXPOSURES[-1]}"
     return [
-        f"target `{name}` selects `{entry.get('member')}` of the daemon interface `{FLEET_INTERFACE}`: "
+        f"target `{name}` selects `{entry.get('member')}` of the daemon interface `{ROBOT_LEASES_INTERFACE}`: "
         f"an exposure selects {allowed} alone, and the other members are for programs"
         for name, source in target_sources(document).items()
-        if source == fleet
+        if source == robot_leases
         for kind in ("topics", "services", "actions")
         for entry in document["targets"][name].get(kind, [])
-        if entry.get("member") not in FLEET_MEMBERS_FOR_EXPOSURES
+        if entry.get("member") not in ROBOT_LEASES_MEMBERS_FOR_EXPOSURES
     ]

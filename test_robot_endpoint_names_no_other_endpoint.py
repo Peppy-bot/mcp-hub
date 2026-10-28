@@ -178,7 +178,7 @@ _FRAMEWORK_DOCUMENT = """// A framework exposure, whose tools the robots' texts 
   },
   targets: {
     stack: {
-      daemon: { name: "stack_copies", tag: "v1" },
+      daemon: { name: "robot_membership", tag: "v1" },
       services: [
         { member: "list", tool: "stack.list",
           description: "Report what this stack can add and remove.",
