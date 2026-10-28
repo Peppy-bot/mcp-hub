@@ -15,7 +15,7 @@ Exposures are grouped by what they publish:
 ```text
 robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
-simulation/   the simulated world's scene, its objects' controls, lighting, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and the record of its setup with the build of a world and the judges that check it, as one document; a simulation launch option only
+simulation/   the simulated world's scene, its objects' controls, lighting, daylight and weather, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and the record of its setup with the build of a world and the judges that check it, as one document; a simulation launch option only
 framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, the fleet of the stack and its halt, through two interfaces of the peppy daemon, as one document
 ```
 
@@ -199,8 +199,9 @@ another.
 
 `scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses, the
 landmarks and the state of one object, the robots and their bases), `object_controls` (what an
-object lets a caller set, a desk's height), `scene_lighting` and `scene_materials` edit the
-simulated world, `scene_view` pictures it from any viewpoint, finds in it what a region of such a
+object lets a caller set, a desk's height), `scene_lighting` (the lamps and the environment map),
+`scene_daylight` (the date, the hour, the clock rate and the weather that the sun, the moon and the
+sky light it with) and `scene_materials` edit the simulated world, `scene_view` pictures it from any viewpoint, finds in it what a region of such a
 picture shows, and shows the catalogue's preview of an asset, `simulation_clock` holds its time (the
 time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
 by its stance, measures where a robot can work in it (the surfaces its arms reach and its perception
@@ -209,21 +210,21 @@ on one surface) and names the places of the task, `sim_sensor_streams` sets the 
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
 while it does), and `simulation_world` keeps the record of its setup, rebuilds it from a world
 document and judges a built world. None has a physical counterpart. A model legitimately drives the
-first eight to set the world up and check it, a client application holds the sensors that it shows
+first nine to set the world up and check it, a client application holds the sensors that it shows
 or records, and the applier of worlds, the application that saves and rebuilds them, calls
 `simulation_world`. A robot's own answer to where it can work, from its design alone, is the robots'
 `workspace` target, and a robot's task finds its items through the robot's own perception. Exposures
 on them live under `simulation/`: today one document,
-[`simulation/simulation.json5`](simulation/simulation.json5), holding the nine contracts as its
-`scene`, `controls`, `lighting`, `materials`, `view`, `clock`, `workspace`, `sensor_streams` and
-`simulation_world` targets. Only a simulation launch option serves it: the `world_control` axis of
-the [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher,
-deployed by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the
-robots' endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it
-needs nothing from a robot copy and outlives it. Waldo is the one simulation implementing the
-controls, lighting, materials, view, clock, workspace, sensor streams and simulation world
-contracts, so the launcher requires it beside that option. No real-robot fragment lists the
-document.
+[`simulation/simulation.json5`](simulation/simulation.json5), holding the ten contracts as its
+`scene`, `controls`, `lighting`, `daylight`, `materials`, `view`, `clock`, `workspace`,
+`sensor_streams` and `simulation_world` targets. Only a simulation launch option serves it: the
+`world_control` axis of the [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s
+`simulation_mcp` launcher, deployed by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a
+process of its own beside the robots' endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It
+binds the simulation alone, so it needs nothing from a robot copy and outlives it. Waldo is the one
+simulation implementing the controls, lighting, daylight, materials, view, clock, workspace, sensor
+streams and simulation world contracts, so the launcher requires it beside that option. No
+real-robot fragment lists the document.
 
 `scene.get_object`, the `get_object` service of `scene_manipulation`, gives one object at one
 instant: its landmarks in the world frame and its state, such as whether it broke, where its
@@ -256,8 +257,8 @@ document under `simulation/` says what it is, and the same test enforces the wor
   `simulated` (a whole word, any case).
 
 The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
-`scene_lighting`, `scene_materials`, `scene_view`, `simulation_clock`, `scene_workspace`,
-`sim_sensor_streams` or `simulation_world` from any other directory (its
+`scene_lighting`, `scene_daylight`, `scene_materials`, `scene_view`, `simulation_clock`,
+`scene_workspace`, `sim_sensor_streams` or `simulation_world` from any other directory (its
 `SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.

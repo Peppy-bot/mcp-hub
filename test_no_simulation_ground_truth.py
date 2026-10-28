@@ -20,17 +20,18 @@ refused the same way: a relay drives it, never a model, and the relay's own
 ``rgb_camera`` / ``rgbd_camera`` surface is what an exposure publishes.
 
 What only a simulation gives reaches an endpoint under a wording rule.
-``scene_manipulation``, ``object_controls``, ``scene_lighting`` and
-``scene_materials`` edit the simulated world, ``scene_view`` pictures it from
+``scene_manipulation``, ``object_controls``, ``scene_lighting``,
+``scene_daylight`` and ``scene_materials`` edit the simulated world,
+``scene_view`` pictures it from
 any viewpoint and shows the catalogue's preview of an asset,
 ``simulation_clock`` holds its time, ``scene_workspace`` measures where a
 robot can work in it, ``sim_sensor_streams`` sets the rate at which it
 renders each robot's cameras, and ``simulation_world`` keeps the record of
 its setup, rebuilds it from a world document and judges it. None has a
-physical counterpart. A model legitimately drives the first eight, as it
+physical counterpart. A model legitimately drives the first nine, as it
 does the cameras the simulation renders, and the applier of worlds drives
 ``simulation_world``. An exposure targeting
-one of the nine lives under ``simulation/``, and every document there says
+one of the ten lives under ``simulation/``, and every document there says
 what it is, by the wording of ``SIMULATION`` in ``exposure_families``: the
 server title ends with "(simulation only)", the instructions open with its
 sentence, and every ``description`` of every topic, service and action
@@ -70,17 +71,18 @@ INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
 # Everything an exposure may not target.
 FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 
-# Contracts only a simulation gives: those that configure the simulated world,
-# its pictures (a view from a free viewpoint, an asset's preview), its clock,
-# its measure of where a robot can work in it, the rate of its robots' sensor
-# streams, and its worlds (simulation_world). A model drives the first eight
-# and the applier of worlds drives simulation_world, so an exposure may target
-# them, from under `simulation/` only.
+# Contracts only a simulation gives: those that configure the simulated world
+# (its daylight included), its pictures (a view from a free viewpoint, an
+# asset's preview), its clock, its measure of where a robot can work in it, the
+# rate of its robots' sensor streams, and its worlds (simulation_world). A model
+# drives the first nine and the applier of worlds drives simulation_world, so
+# an exposure may target them, from under `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
         "object_controls",
         "scene_lighting",
+        "scene_daylight",
         "scene_materials",
         "scene_view",
         "simulation_clock",
