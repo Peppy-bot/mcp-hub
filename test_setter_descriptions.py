@@ -78,6 +78,7 @@ NO_SETTER = "it has no setter"
 UNCOVERED_TARGETS = {
     ROBOT_DOCUMENT: {
         "identity": NO_SETTER,
+        "guide": NO_SETTER,
         "limb_state": NO_SETTER,
         "collision": NO_SETTER,
         "camera": "its setters set a camera's device controls",

@@ -22,11 +22,12 @@ it does not answer, or a camera it does not have is refused, and the refusal nam
 When the robots run in a simulation their names here are their names in the simulated world's
 `scene.get_robots_list`.
 
-Every other tool takes `robot`. The robot's identity, moves and state:
+Every other tool takes `robot`. The robot's identity, guide, moves and state:
 
 | Tool or resource            | Contract member                     | Policy                          |
 | --------------------------- | ----------------------------------- | ------------------------------- |
 | `robot.get_identity`        | `robot_identity:v1` `get_identity`  | read only, 2 s                  |
+| `robot.get_guide`           | `robot_guide:v1` `get_guide`        | read only, 2 s                  |
 | `robot.get_limb_names`      | `limb_state:v1` `get_limb_names`    | read only, 2 s                  |
 | `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 65 s                      |
 | `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 65 s                      |
