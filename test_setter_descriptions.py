@@ -22,10 +22,11 @@ count.
 
 Each target of each exposure document is in one of two explicit lists, so
 its author decides whether the rule covers it. COVERED_TARGETS holds every
-target of the simulated world's document, the posture and limb moves of the
-robots' document, and the stack and the fleet of the framework's document. A
-target that names a daemon interface is read as a target that names a
-contract: its setters are the entries of its services and actions too.
+target of the simulated world's document, the posture and limb moves, the
+motion planner and the brain's model of the robots' document, and the stack
+and the fleet of the framework's document. A target that names a daemon
+interface is read as a target that names a contract: its setters are the
+entries of its services and actions too.
 UNCOVERED_TARGETS
 holds every other target, with the reason. A target in no list fails here, and so does a target in both lists.
 A target left out because it has no setter fails here when it gets one. The
@@ -69,7 +70,7 @@ COVERED_TARGETS = {
         "world",
         "sweep",
     ),
-    ROBOT_DOCUMENT: ("postures", "limb_motion", "brain_model"),
+    ROBOT_DOCUMENT: ("postures", "limb_motion", "planner", "brain_model"),
     FRAMEWORK_DOCUMENT: ("stack", "fleet"),
     WORKFLOW_DOCUMENT: ("director",),
 }
@@ -153,6 +154,8 @@ COVERED_SETTERS = {
             "robot.execute_joint_path",
             "robot.move_gripper",
             "robot.stop",
+            "planner.plan_joint_path",
+            "planner.clear_occupancy_map",
             "brain.switch_model",
         }
     ),
