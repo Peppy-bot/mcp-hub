@@ -80,6 +80,26 @@
       ],
     },
 
+    // The robot's guide: the park poses its launcher measured for its model,
+    // which no other contract gives, so a client that drives robots of many
+    // models reads them from each robot and keeps no list of models.
+    guide: {
+      contract: {
+        name: "robot_guide",
+        tag: "v1",
+        sha256: "448516f79c6ede4aa08c7c5a25435581d8403ccf4cf993027aa42da33e3de310",
+      },
+      services: [
+        {
+          member: "get_guide",
+          tool: "robot.get_guide",
+          description: "Report the robot's guide: the park pose of each arm that has one, as the robot's launcher measured it for its model. park_arm_names, park_joints_per_arm and park_joint_positions give the joints of each park pose in radians, in the arm's joint order, each arm's vector concatenated in park_arm_names order. An arm at its park pose stands up, above the surface it works on and out of the view of the perception camera, so its next move down to the surface comes from above, over what stands on it; move an arm to its park pose with robot.move_arm_joints. An arm with no park pose is absent from the arrays, and a robot whose launcher gave none answers empty arrays. Changes nothing.",
+          operation: "read_only",
+          deadline_ms: 2000,
+        },
+      ],
+    },
+
     // Whole-robot moves: the backbone's. An action becomes a tool. For a
     // client that declares the MCP tasks extension the call returns a task
     // handle, `tasks/get` reports its progress and `tasks/cancel` forwards
