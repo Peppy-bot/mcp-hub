@@ -33,7 +33,7 @@
         // contracts hub). With it, a launch that resolves other bytes for
         // `rgb_camera:v1` refuses instead of publishing schemas this file
         // never saw.
-        sha256: "a81cc9111a3b982a2e32a9fb426ac91516559f6d7715c5a720cbd8bf48459cdd",
+        sha256: "eca74020e764f49febb6bf9897690d0b2f13398604b766b7495acd5bf6775597",
       },
 
       // A topic becomes a resource: the latest policy-approved snapshot,

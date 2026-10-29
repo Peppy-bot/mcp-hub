@@ -88,7 +88,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "afd4423f690aaa195c70a54e5bad030b4042f0ff73f7cf794c9e616fc34263bf",
+        sha256: "e7a3687e226bbb688755291c1dcf0704fb44454363f024d05b2a95010cd2529e",
       },
 
       // The catalogue and the inventory become tools that answer within one
@@ -225,7 +225,7 @@
         name: "object_controls",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/object_controls.json5`).
-        sha256: "9031eaf7cdf9432b868fd0c4606f85cda6ecb414aca7adc36f999423daac10ea",
+        sha256: "f370dc7c8bf408ad1212a3f4284818a53631e7d23ca5a811598c3dabd4d18d5f",
       },
 
       // The listing is a tool that answers within one request; the set is
@@ -258,7 +258,7 @@
         name: "scene_lighting",
         tag: "v2",
         // Pinned like `scene` above (`sha256sum simulation/scene_lighting.json5`).
-        sha256: "72675c03fec7746b426890f505f0cc23c5ff14d88abac126935841ad100f3c94",
+        sha256: "e0209d7a8e94e8f98ce3a08e79e387086b1922d395b29d7728c42da033e76716",
       },
 
       // Each service becomes a tool that answers within one request. The
@@ -341,7 +341,7 @@
         name: "scene_daylight",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_daylight.json5`).
-        sha256: "1cbbaa345355dc3e67a54439b5f24d99881b038f78cd79b054dd39c5eee85276",
+        sha256: "d491e0dbd764c7e2184f1eddaf84b21c7fed0252e2df781433a1f6921d1518de",
       },
 
       // Services, the setters `mutating`; `restrict` narrows the clock
@@ -396,7 +396,7 @@
         name: "scene_materials",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_materials.json5`).
-        sha256: "eab80912a9dc94ddf6450a64ef4c2784cc8cba8a7d0e786fc29f334abcc4c157",
+        sha256: "f0b6ffd5ff19407a11f69e06b01656f0821283d9daffe47e13136f66c4172e3a",
       },
 
       // Services again, the setters `mutating`; `restrict` narrows the
@@ -444,7 +444,7 @@
         name: "scene_view",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_view.json5`).
-        sha256: "8aba03570c8f3526b98f94477779d03e8af9e02c95763e7e14a5ed47267b473b",
+        sha256: "701a772e701f9087cccd5d7093f1987998baf1705b3d6f5ee95907cc7fcb371d",
       },
 
       // render_view and preview_asset answer with a picture: its frame is
@@ -519,7 +519,7 @@
         name: "simulation_clock",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/simulation_clock.json5`).
-        sha256: "f3a112c20b8cc19983b839c7db2d3b24cc453cd7231d753c820236859365ad91",
+        sha256: "81c3633a62880c5aef2d0ecb76872adb84da3a840f4129fa6311071100c31ce4",
       },
 
       // Two services and one action: the step waits for its physics steps
@@ -563,7 +563,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "c70ac70fecac383f4ae78958c4803bf701da3751bdd2996c39a70ed380eb0de3",
+        sha256: "04dfd88727e487644f129ac7e92128fe0807e38e4806847aa920dfc278b3fed3",
       },
 
       // Three services that measure, one that names a location. A measuring
@@ -640,7 +640,7 @@
         name: "sim_sensor_streams",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/sim_sensor_streams.json5`).
-        sha256: "d20efcad44b3a4969329067b57184b5e47b0f594a50abf1e0963a4aaf2f0b95f",
+        sha256: "c13c55499589fde713e88b073696ae682af751fa9bc9df5dad0f1e55845c9905",
       },
 
       // Three services, each answered from the engine's state at once.
@@ -681,7 +681,7 @@
         name: "simulation_world",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/simulation_world.json5`).
-        sha256: "54f5522cae53a826d3bf4531add08448f50e8015cb121f4cd5158fe304a8df77",
+        sha256: "264a0d01c68ec162eb0c9837d0e0ae07fb37646e919c33ffe570e2073c4e423b",
       },
 
       // Three services (get reads the simulation's record, start_apply names
