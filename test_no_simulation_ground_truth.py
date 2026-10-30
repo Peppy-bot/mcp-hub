@@ -26,11 +26,11 @@ What only a simulation gives reaches an endpoint under a wording rule.
 any viewpoint and shows the catalogue's preview of an asset,
 ``simulation_clock`` holds its time, ``scene_workspace`` measures where a
 robot can work in it, ``sim_sensor_streams`` sets the rate at which it
-renders each robot's cameras, and ``simulation_world`` keeps the record of
-its setup, rebuilds it from a world document and judges it. None has a
-physical counterpart. A model legitimately drives the first nine, as it
-does the cameras the simulation renders, and the applier of worlds drives
-``simulation_world``. An exposure targeting
+renders each robot's cameras, and ``world_applier`` applies its worlds,
+runs workflows in them and judges them. None has a physical counterpart. A
+model legitimately drives the first nine, as it does the cameras the
+simulation renders, and the application that saves and rebuilds worlds
+drives ``world_applier``. An exposure targeting
 one of the ten lives under ``simulation/``, and every document there says
 what it is, by the wording of ``SIMULATION`` in ``exposure_families``: the
 server title ends with "(simulation only)", the instructions open with its
@@ -63,10 +63,12 @@ from exposure_json5 import REPOSITORY_ROOT, Json5Error, document_name, exposure_
 # the contracts hub gains another such contract.
 GROUND_TRUTH_CONTRACTS = frozenset({"object_state", "contact_state", "sensor_readout"})
 
-# Contracts internal to the simulation stack: a relay drives them on a model's
-# behalf, and their members name an engine's rendered cameras, which no model
-# addresses.
-INTERNAL_CONTRACTS = frozenset({"sim_camera_control"})
+# Contracts internal to the simulation stack: a relay drives sim_camera_control
+# on a model's behalf, and its members name an engine's rendered cameras, which
+# no model addresses; the applier of worlds drives simulation_world (the setup
+# claim, the apply announcement, the build and the judges of a simulation) on a
+# client's behalf, through world_applier.
+INTERNAL_CONTRACTS = frozenset({"sim_camera_control", "simulation_world"})
 
 # Everything an exposure may not target.
 FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
@@ -74,9 +76,10 @@ FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 # Contracts only a simulation gives: those that configure the simulated world
 # (its daylight included), its pictures (a view from a free viewpoint, an
 # asset's preview), its clock, its measure of where a robot can work in it, the
-# rate of its robots' sensor streams, and its worlds (simulation_world). A model
-# drives the first nine and the applier of worlds drives simulation_world, so
-# an exposure may target them, from under `simulation/` only.
+# rate of its robots' sensor streams, and its worlds (world_applier). A model
+# drives the first nine and the application that saves and rebuilds worlds
+# drives world_applier, so an exposure may target them, from under
+# `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
@@ -88,7 +91,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "simulation_clock",
         "scene_workspace",
         "sim_sensor_streams",
-        "simulation_world",
+        "world_applier",
     }
 )
 

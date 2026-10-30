@@ -36,14 +36,14 @@ from pathlib import Path
 
 import pytest
 
-from exposure_families import FRAMEWORK, SIMULATION, documents_under, texts, tool_names
+from exposure_families import FRAMEWORK, SIMULATION, WORKFLOW, documents_under, texts, tool_names
 from exposure_json5 import REPOSITORY_ROOT, document_name, read_json5
 
 # The directory of the robots' documents.
 ROBOT_DIRECTORY = "robot"
 
 # The families of the endpoints that a stack publishes beside the robots'.
-OTHER_ENDPOINTS = (SIMULATION, FRAMEWORK)
+OTHER_ENDPOINTS = (SIMULATION, FRAMEWORK, WORKFLOW)
 
 # "endpoint" where it names this endpoint, which `named_endpoints` passes.
 _THIS_ENDPOINT = re.compile(r"\bthis (?:one )?endpoint\b", re.IGNORECASE)

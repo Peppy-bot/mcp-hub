@@ -1,5 +1,5 @@
-"""The simulated world's endpoint and the framework's endpoint name no robot
-model.
+"""The simulated world's endpoint, the framework's endpoint and the workflow
+endpoint name no robot model.
 
 A world never names a robot model and never depends on one: a world and its
 work surfaces say nothing of which robots can work there,
@@ -7,8 +7,10 @@ work surfaces say nothing of which robots can work there,
 ``workspace.describe`` and ``workspace.check`` measure whether that robot can
 work it. The framework's endpoint adds the robots that the launcher's scope
 names, with the description the scope gives each, so one document serves
-every launcher. So every document under ``simulation/`` and under
-``framework/`` (``MODEL_FREE_FAMILIES``) describes robots in general terms
+every launcher. A workflow names roles, never a robot, and the workflow
+endpoint runs a workflow on any robot that implements its contracts. So every
+document under ``simulation/``, ``framework/`` and ``workflow/``
+(``MODEL_FREE_FAMILIES``) describes robots in general terms
 ("a standing robot", "a mounted robot", "a robot option"): its server title,
 its instructions and every description of a topic, a service, an action, a
 picture tool or the call record name no robot model and no field that lists
@@ -31,7 +33,7 @@ from pathlib import Path
 
 import pytest
 
-from exposure_families import FRAMEWORK, SIMULATION, Family, texts
+from exposure_families import FRAMEWORK, SIMULATION, WORKFLOW, Family, texts
 from exposure_json5 import REPOSITORY_ROOT, document_name, read_json5
 
 # The robot models the hubs simulate, each by its id and its label.
@@ -45,7 +47,7 @@ ROBOT_MODELS = (
 ROBOT_LISTING_FIELDS = ("workable_by", "workableBy")
 
 # The families whose documents name no robot model.
-MODEL_FREE_FAMILIES = (SIMULATION, FRAMEWORK)
+MODEL_FREE_FAMILIES = (SIMULATION, FRAMEWORK, WORKFLOW)
 
 # Every name the texts may not hold, in lower case.
 _FORBIDDEN = tuple(
@@ -128,8 +130,29 @@ _FRAMEWORK_DOCUMENT = """// A framework exposure that names no robot model.
 }
 """
 
+_WORKFLOW_DOCUMENT = """// A workflow exposure that names no robot model.
+{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "robot_workflows", tag: "v1" },
+  server: {
+    title: "Robot workflows (workflow runs)",
+    instructions: "This endpoint runs workflows on the robots, not the world, and moves a robot only through a run. A run binds each role to a robot.",
+  },
+  targets: {
+    director: {
+      contract: { name: "workflow_director", tag: "v1" },
+      actions: [
+        { member: "run", tool: "workflow.run",
+          description: "Run a workflow on the robots of the stack.",
+          operation: "long_running", progress_timeout_ms: 20000 },
+      ],
+    },
+  },
+}
+"""
+
 # The document of each model-free family that the tests below edit.
-_DOCUMENTS = {SIMULATION: _SIMULATION_DOCUMENT, FRAMEWORK: _FRAMEWORK_DOCUMENT}
+_DOCUMENTS = {SIMULATION: _SIMULATION_DOCUMENT, FRAMEWORK: _FRAMEWORK_DOCUMENT, WORKFLOW: _WORKFLOW_DOCUMENT}
 
 
 @pytest.mark.parametrize("family", MODEL_FREE_FAMILIES, ids=lambda family: family.directory)
@@ -179,6 +202,13 @@ def test_a_document_that_names_no_model_passes(tmp_path: Path, family: Family) -
             "openarm_v2",
         ),
         (FRAMEWORK, "Robot stack (peppy framework)", "OpenArm v1 stack (peppy framework)", "title", "openarm v1"),
+        (
+            WORKFLOW,
+            "Run a workflow on the robots of the stack.",
+            "Run a workflow on the so101 robots of the stack.",
+            "description",
+            "so101",
+        ),
     ],
     ids=[
         "simulation model id in a description",
@@ -188,6 +218,7 @@ def test_a_document_that_names_no_model_passes(tmp_path: Path, family: Family) -
         "framework model label in a description",
         "framework model id in the instructions",
         "framework title",
+        "workflow model id in a description",
     ],
 )
 def test_a_text_that_names_a_model_is_caught(

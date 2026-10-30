@@ -51,6 +51,7 @@ _AFTER_THE_CALL_SENTENCE = re.compile(r"(?:^|[.!?]\s+)" + re.escape(AFTER_THE_CA
 SIMULATION_DOCUMENT = "simulation/simulation.json5"
 ROBOT_DOCUMENT = "robot/robot_control.json5"
 FRAMEWORK_DOCUMENT = "framework/framework_controls.json5"
+WORKFLOW_DOCUMENT = "workflow/workflow_controls.json5"
 RECORDING_DOCUMENT = "recording/camera_and_recording.json5"
 
 # The targets whose setters the rule covers, per exposure document.
@@ -65,10 +66,11 @@ COVERED_TARGETS = {
         "clock",
         "workspace",
         "sensor_streams",
-        "simulation_world",
+        "world",
     ),
     ROBOT_DOCUMENT: ("postures", "limb_motion", "brain_model"),
     FRAMEWORK_DOCUMENT: ("stack", "fleet"),
+    WORKFLOW_DOCUMENT: ("director",),
 }
 
 # The reason of a target that has no setter.
@@ -129,8 +131,11 @@ COVERED_SETTERS = {
             "workspace.name_location",
             "sensors.hold",
             "sensors.release",
-            "simulation_world.start_apply",
-            "simulation_world.build",
+            "world.get",
+            "world.check",
+            "world.apply",
+            "world.run",
+            "world.judge",
         }
     ),
     ROBOT_DOCUMENT: frozenset(
@@ -145,6 +150,9 @@ COVERED_SETTERS = {
         }
     ),
     FRAMEWORK_DOCUMENT: frozenset({"stack.join", "stack.remove", "fleet.halt", "fleet.clear_halt"}),
+    WORKFLOW_DOCUMENT: frozenset(
+        {"workflow.confirm", "workflow.suspend", "workflow.run", "workflow.resume", "workflow.abort"}
+    ),
 }
 
 

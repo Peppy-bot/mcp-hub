@@ -1,4 +1,5 @@
-"""The framework family, and the kind of target that each family holds.
+"""The framework and workflow families, and the kind of target that each
+family holds.
 
 A call to the framework, to the simulated world and to the robot each goes
 to its own endpoint, so the user and the model can always tell where a call
@@ -10,6 +11,10 @@ goes. Two rules of `exposure_families` hold this, read from every
   instructions open with its sentence, and every ``description`` of every
   topic, service and action, and of the call record, contains the word
   "stack";
+- every document under ``workflow/`` says what it is, by the wording of
+  ``WORKFLOW``: the server title ends with "(workflow runs)", the
+  instructions open with its sentence, and every description contains the
+  word "workflow" or "workflows";
 - a ``framework/`` document names daemon interfaces only, and only a
   ``framework/`` document names one: a ``robot/``, ``simulation/`` or
   ``recording/`` document names contracts only;
@@ -29,6 +34,8 @@ import pytest
 
 from exposure_families import (
     FRAMEWORK,
+    WORKFLOW,
+    Family,
     TargetError,
     TargetKind,
     TargetSource,
@@ -39,13 +46,18 @@ from exposure_families import (
 from exposure_json5 import REPOSITORY_ROOT, document_name, exposure_documents, parse_json5, read_json5
 
 
-def test_the_checkout_has_framework_documents_to_check() -> None:
-    assert FRAMEWORK.documents(REPOSITORY_ROOT), "no exposure under framework/: the walk is broken"
+@pytest.mark.parametrize("family", (FRAMEWORK, WORKFLOW), ids=lambda family: family.directory)
+def test_the_checkout_has_documents_of_the_family_to_check(family: Family) -> None:
+    assert family.documents(REPOSITORY_ROOT), f"no exposure under {family.directory}/: the walk is broken"
 
 
-@pytest.mark.parametrize("path", FRAMEWORK.documents(REPOSITORY_ROOT), ids=document_name)
-def test_framework_documents_say_what_they_are(path: Path) -> None:
-    violations = FRAMEWORK.wording_violations(path)
+@pytest.mark.parametrize(
+    ("family", "path"),
+    [(family, path) for family in (FRAMEWORK, WORKFLOW) for path in family.documents(REPOSITORY_ROOT)],
+    ids=lambda value: document_name(value) if isinstance(value, Path) else value.directory,
+)
+def test_framework_and_workflow_documents_say_what_they_are(family: Family, path: Path) -> None:
+    violations = family.wording_violations(path)
     assert not violations, f"{document_name(path)}: " + "; ".join(violations)
 
 
