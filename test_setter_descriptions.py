@@ -83,6 +83,8 @@ UNCOVERED_TARGETS = {
         "guide": NO_SETTER,
         "limb_state": NO_SETTER,
         "collision": NO_SETTER,
+        "motor_health": NO_SETTER,
+        "alerts": NO_SETTER,
         "camera": "its setters set a camera's device controls",
         "depth_camera": "its setters set a camera's device controls",
         "camera_profile": "its setter resets a camera's device controls",

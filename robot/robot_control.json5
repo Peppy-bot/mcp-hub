@@ -1,7 +1,8 @@
 // Every robot of a stack as one MCP surface: who each robot is, its posture,
 // arm and gripper moves and the stop that ends them, its limbs' live state,
-// its collision readout, its cameras with their frames, controls, geometry
-// and mounts, where its design lets it work, its brain and its recorder,
+// its collision readout, the health and alerts of its motor-bearing
+// components, its cameras with their frames, controls, geometry and
+// mounts, where its design lets it work, its brain and its recorder,
 // each addressed by the robot's name on one endpoint, and the record of the
 // calls that changed a robot's state.
 //
@@ -15,7 +16,8 @@
 // robots fill, a join adding its robot's instances and a removal taking
 // them out while the server runs, and every tool takes `robot`, the name
 // robot.list reports. A target with an `argument` is filled any number of
-// times per robot, once per camera, and a call on it names the camera too.
+// times per robot, once per camera or per motor-bearing component, and a
+// call or a resource on it names that member too.
 //
 // A launcher deploys it once per stack under
 // `source: { exposures: ["robot_control:v1"] }` with no `links`: the
@@ -33,7 +35,7 @@
   // tool of one: test_robot_endpoint_names_no_other_endpoint.py.
   server: {
     title: "Robots",
-    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under members. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. A call that the robot refuses, or that fails, gives outcome, failure_kind and message, as the structured content of a tool error, or as the data of the error of a failed task: outcome is refused for a goal the robot refused before it ran, and failed for a goal that ran and failed or a request the robot answered with an error; failure_kind names the cause, one of attempt_failed, timeout, precondition_failed, resource_unavailable and rejected, which every robot gives, or a kind of the tool: unreachable, no plan reaches the target of a move; leader_streaming, a leader such as a leader arm or a teleoperation headset streams to a limb of the call; not_found, brain.identify_item finds no item that matches; and message says why in the robot's words. Such a call gives no result. A move that a cancel or robot.stop ends is cancelled: inside a call it ends with a tool error whose text gives the reason and whose structured content is the result, measured when the move ended; as a task it ends cancelled, and its status message gives both. brain.grab_item, brain.drop_item, brain.place_item and brain.abort can also complete with success false in their result, and message then says why the sequence did not run to its end. This is the robots' own surface: what a robot cannot do through these tools, it cannot do. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point in the robot frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. The grasp point is midway between the finger pads; so101 reports a fixed point near its jaws instead. The robot frame is fixed to the robot's base: its origin is the point the base stands on, +X points the way the robot faces, +Y to its left and +Z up; it moves with the robot and is not a frame of the room or of a simulated world. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused with precondition_failed, and a goal for a limb that a leader streams to is refused with leader_streaming. No robot move checks the floor, a table, an object or an item a gripper holds. A robot with a collision guard, such as openarm_v2, keeps only its own arms, grippers and body apart. A robot without one, such as so101, checks no collision at all. An arm move completes only once the measured arm has settled within the tolerances the call names, at or after the planned end of the motion, and fails with timeout once the call's settle timeout runs out, its message giving the remaining error; a posture move completes at the planned end of its motion; a gripper move completes once its jaws stand still, or at its settle timeout wherever they stand. An arm can stop short of its goal, against an obstacle or where a robot's collision guard holds it: the move then fails with timeout, its message says how far off the arm stands, and the robot.limb_state resource gives where it ended. Posture result: robot.move_to_ready and robot.move_to_home answer with arm_names, positions and orientations. positions holds 3 values per arm (x, y, z in meters) and orientations 4 per arm (a unit quaternion [x, y, z, w]), in the order of arm_names. They give the grasp point of each arm in the robot frame, measured when the move completed or a cancel or robot.stop ended it. After a cancel or robot.stop, an arm that was still moving can come to rest away from the pose they give. When the robot has no fresh measured pose of an arm to report, the three arrays are empty. A posture move sends no command to the grippers, so each gripper goes on as its last gripper command drives it. To stop a robot, call robot.stop; brain.abort ends a brain sequence between its moves. When you find a robot in a state you did not command, call robot.recent_calls: it lists the last state-changing calls of this endpoint with the client that made each, so you can tell whether another client did it. Each move's deadline covers the longest duration and settle timeout a robot admits, 60 s each: 125 s for robot.move_arm and robot.move_arm_joints, 65 s for robot.move_gripper and robot.move_to_ready and robot.move_to_home. A duration_s of 0 means as fast as the joint limits allow, and every robot refuses with rejected a duration or settle timeout above 60 s. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
+    instructions: "Every robot of the stack, drivable by name on this one endpoint, whatever its model. Call robot.list first: for each robot present it reports the tools that robot answers under tools, including its brain's and its recorder's where it has them; the resources it publishes under resources, each read at peppy://resource/<name>; its camera names and its motor-bearing components under members; its model and the machine hosting it under identity; and its arm and gripper names, with the joints behind each arm, under limbs. Every other tool takes robot, one of the names robot.list reports, and a camera tool takes camera too, one of the names the listing gives that robot under camera or depth_camera in members. A robot's motor health and alerts are resources, one of each per motor-bearing component, listed under its resources with the component's name in them. A call naming a robot that is not there, a tool that robot does not answer, or a camera it does not have is refused, and the refusal names what is there. A call that the robot refuses, or that fails, gives outcome, failure_kind and message, as the structured content of a tool error, or as the data of the error of a failed task: outcome is refused for a goal the robot refused before it ran, and failed for a goal that ran and failed or a request the robot answered with an error; failure_kind names the cause, one of attempt_failed, timeout, precondition_failed, resource_unavailable and rejected, which every robot gives, or a kind of the tool: unreachable, no plan reaches the target of a move; leader_streaming, a leader such as a leader arm or a teleoperation headset streams to a limb of the call; not_found, brain.identify_item finds no item that matches; and message says why in the robot's words. Such a call gives no result. A move that a cancel or robot.stop ends is cancelled: inside a call it ends with a tool error whose text gives the reason and whose structured content is the result, measured when the move ended; as a task it ends cancelled, and its status message gives both. brain.grab_item, brain.drop_item, brain.place_item and brain.abort can also complete with success false in their result, and message then says why the sequence did not run to its end. This is the robots' own surface: what a robot cannot do through these tools, it cannot do. Every limb tool takes the arm and gripper names the listing reports under limbs. Distances are meters, durations seconds, angles radians. A pose is the gripper's grasp point in the robot frame: position [x, y, z] and orientation as a unit quaternion [x, y, z, w]. The grasp point is midway between the finger pads; so101 reports a fixed point near its jaws instead. The robot frame is fixed to the robot's base: its origin is the point the base stands on, +X points the way the robot faces, +Y to its left and +Z up; it moves with the robot and is not a frame of the room or of a simulated world. Call robot.move_to_ready before any robot.move_arm; the rest posture is not a place to plan Cartesian moves from. One motion per limb at a time: a goal for a limb that is still moving is refused with precondition_failed, and a goal for a limb that a leader streams to is refused with leader_streaming. No robot move checks the floor, a table, an object or an item a gripper holds. A robot with a collision guard, such as openarm_v2, keeps only its own arms, grippers and body apart. A robot without one, such as so101, checks no collision at all. An arm move completes only once the measured arm has settled within the tolerances the call names, at or after the planned end of the motion, and fails with timeout once the call's settle timeout runs out, its message giving the remaining error; a posture move completes at the planned end of its motion; a gripper move completes once its jaws stand still, or at its settle timeout wherever they stand. An arm can stop short of its goal, against an obstacle or where a robot's collision guard holds it: the move then fails with timeout, its message says how far off the arm stands, and the robot.limb_state resource gives where it ended. Posture result: robot.move_to_ready and robot.move_to_home answer with arm_names, positions and orientations. positions holds 3 values per arm (x, y, z in meters) and orientations 4 per arm (a unit quaternion [x, y, z, w]), in the order of arm_names. They give the grasp point of each arm in the robot frame, measured when the move completed or a cancel or robot.stop ended it. After a cancel or robot.stop, an arm that was still moving can come to rest away from the pose they give. When the robot has no fresh measured pose of an arm to report, the three arrays are empty. A posture move sends no command to the grippers, so each gripper goes on as its last gripper command drives it. To stop a robot, call robot.stop; brain.abort ends a brain sequence between its moves. When you find a robot in a state you did not command, call robot.recent_calls: it lists the last state-changing calls of this endpoint with the client that made each, so you can tell whether another client did it. Each move's deadline covers the longest duration and settle timeout a robot admits, 60 s each: 125 s for robot.move_arm and robot.move_arm_joints, 65 s for robot.move_gripper and robot.move_to_ready and robot.move_to_home. A duration_s of 0 means as fast as the joint limits allow, and every robot refuses with rejected a duration or settle timeout above 60 s. On a robot with a brain, brain.grab_item, brain.place_item and brain.drop_item run whole sequences on its arms through the same backbone the direct moves use; prefer them when the robot has a brain and use the direct moves for a single deliberate motion, since a backbone refuses a second motion on a limb that is moving whichever surface asked. The camera setters drive the device's controls in its own units and ranges, which camera_profile.get reports where the camera implements it; a control the device does not support is refused, a refused request changes nothing, and every setter answers with the effective value after the call, so read the response rather than assuming the request took.",
   },
 
   // The record of the state-changing calls this endpoint takes: every call
@@ -47,7 +49,7 @@
   robots: {
     list: {
       tool: "robot.list",
-      description: "List every robot of the stack. Each entry carries robot, its name, which every other tool takes; tools, the tools that robot answers, each called with its name; resources, the resources it publishes, each read at peppy://resource/<name>; members, the camera names its camera tools take, under camera for color cameras and depth_camera for cameras that carry depth; identity, its model and the machine hosting it; limbs, its arm and gripper names with the joints behind each arm; and notes, anything that could not be read for it. Takes no arguments and changes nothing.",
+      description: "List every robot of the stack. Each entry carries robot, its name, which every other tool takes; tools, the tools that robot answers, each called with its name; resources, the resources it publishes, each read at peppy://resource/<name>; members, the camera names its camera tools take, under camera for color cameras and depth_camera for cameras that carry depth, and under motor_health and alerts the motor-bearing components whose health and alerts it publishes as resources; identity, its model and the machine hosting it; limbs, its arm and gripper names with the joints behind each arm; and notes, anything that could not be read for it. Takes no arguments and changes nothing.",
     },
     describe: {
       identity: { target: "identity", service: "get_identity" },
@@ -239,6 +241,62 @@
           // mandatory; a readout is small, and one that is not is a fault
           // to refuse.
           max_result_bytes: 4096,
+          on_oversize: "reject",
+        },
+      ],
+    },
+
+    // A motor-bearing component of the robot, an arm or gripper driver,
+    // named by `component` in every resource, as the launcher wrote its
+    // instance (left_arm_inst, follower_inst): its per-motor health as a
+    // resource per robot and component, on the robots whose drivers report
+    // it.
+    motor_health: {
+      contract: {
+        name: "motor_health",
+        tag: "v1",
+        sha256: "da7274b6cf78dfaf8ca6cdd52d54a2ceb79cf8626605fb22f223b8ddf35e866d",
+      },
+      argument: "component",
+      topics: [
+        {
+          member: "motor_health",
+          resource: "motor_health.latest_report",
+          description: "The component's latest motor health report: level per motor, the severity the component judged from the readings that follow, 0 nominal, 1 warning, 2 critical, 3 fault, 4 not reporting, and index-aligned with it effort_fraction_rated and effort_fraction_rated_sustained, the live and the filtered effort as fractions of the motor's continuous rating, the filtered one being what level judges, effort_fraction_peak, the live effort as a fraction of the motor's effective peak, 1.0 its own trip point, and driver_temp_c and winding_temp_c in degrees Celsius, in the component's fixed motor order, at timestamp. A reading array is empty for a component without that sensing. A report that stops arriving reads as stale after 1.5 s: the component went quiet, which says nothing of the motors' health. alerts.active of the same component names in words the motor each condition is about.",
+          // The reports repeat at least every 500 ms; three missed periods
+          // mean the component went quiet.
+          freshness: { max_age_ms: 1500 },
+          update: { max_hz: 5 },
+          // Every array has one entry per motor, so the runtime size policy
+          // is mandatory; a seven-motor arm's report is about 1 KiB, and one
+          // larger than this is a fault to refuse.
+          max_result_bytes: 4096,
+          on_oversize: "reject",
+        },
+      ],
+    },
+
+    // The operator alerts the same components hold active: a resource per
+    // robot and component.
+    alerts: {
+      contract: {
+        name: "alert",
+        tag: "v1",
+        sha256: "71702fabcdb3acab3d056634541adf27bbc5975edbcf52b7b6cab534dfd40f7a",
+      },
+      argument: "component",
+      topics: [
+        {
+          member: "alerts",
+          resource: "alerts.active",
+          description: "The whole set of alerts the component holds active, published whenever it changes and at least every 2 s: for each, source, what it is about in operator words, such as a motor; kind, the component's name for the condition; severity, 1 warning, 2 critical, 3 fault; and message, the measurement that drove it, at timestamp. Empty when the component holds none. A set that stops arriving reads as stale after 6 s: the component went quiet and its conditions are unknown, not cleared.",
+          // The sets repeat at least every 2000 ms; three missed periods
+          // mean the component went quiet.
+          freshness: { max_age_ms: 6000 },
+          update: { max_hz: 5 },
+          // The entries carry operator text, so the runtime size policy is
+          // mandatory; a driver holds at most one alert per motor.
+          max_result_bytes: 8192,
           on_oversize: "reject",
         },
       ],
