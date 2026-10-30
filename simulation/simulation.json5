@@ -688,7 +688,7 @@
         name: "world_applier",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/world_applier.json5`).
-        sha256: "934b8b299a6a087354571040c9de8367d703aba4029cbc8609002c7d6f5d8543",
+        sha256: "39a88822e0825e3de18116186f39221c0b6cd7ef87de4ec41e8142f0ecf004b6",
       },
       actions: [
         {
