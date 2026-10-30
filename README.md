@@ -213,15 +213,17 @@ by its stance, measures where a robot can work in it (the surfaces its arms reac
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
 on one surface) and names the places of the task, `sim_sensor_streams` sets the rate at which it
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
-while it does), and `world_applier` applies its worlds, runs workflow runs in them and judges them.
-None has a physical counterpart. A model legitimately drives the first nine to set the world up and
-check it, a client application holds the sensors that it shows or records, and the application that
-saves and rebuilds worlds calls `world_applier`. A robot's own answer to where it can work, from its
+while it does), `world_applier` applies its worlds, expands its world patterns, runs workflow runs in
+them and judges them, and `sweep_runner` runs one workflow revision in many worlds of its world
+patterns. None has a physical counterpart. A model legitimately drives the first nine to set the
+world up and check it, a client application holds the sensors that it shows or records, the
+application that saves and rebuilds worlds calls `world_applier`, and a test engineer who validates a
+workflow calls `sweep_runner`. A robot's own answer to where it can work, from its
 design alone, is the robots' `workspace` target, and a robot's task finds its items through the
 robot's own perception. Exposures on them live under `simulation/`: today one document,
-[`simulation/simulation.json5`](simulation/simulation.json5), holding the ten contracts as its
+[`simulation/simulation.json5`](simulation/simulation.json5), holding the eleven contracts as its
 `scene`, `controls`, `lighting`, `daylight`, `materials`, `view`, `clock`, `workspace`,
-`sensor_streams` and `world` targets. Only a simulation launch option serves it: the `world_control`
+`sensor_streams`, `world` and `sweep` targets. Only a simulation launch option serves it: the `world_control`
 axis of the [launchers hub](https://github.com/Peppy-bot/launchers-hub)'s `simulation_mcp` launcher,
 deployed by the file, at `http://127.0.0.1:8902/simulation/v1/mcp`, a process of its own beside the
 robots' endpoint `http://127.0.0.1:8900/robot_control/v1/mcp`. It binds the simulation alone, so it
@@ -262,8 +264,8 @@ document under `simulation/` says what it is, and the same test enforces the wor
 
 The test also fails an exposure that targets `scene_manipulation`, `object_controls`,
 `scene_lighting`, `scene_daylight`, `scene_materials`, `scene_view`, `simulation_clock`,
-`scene_workspace`, `sim_sensor_streams` or `world_applier` from any other directory (its
-`SIMULATION_ONLY_CONTRACTS`). A pull
+`scene_workspace`, `sim_sensor_streams`, `world_applier` or `sweep_runner` from any other directory
+(its `SIMULATION_ONLY_CONTRACTS`). A pull
 request that adds a `simulation/` document without the suffix, the opening sentence, or the word
 in one of its descriptions fails, naming the part that is missing.
 
@@ -280,11 +282,15 @@ in one of its descriptions fails, naming the part that is missing.
 | `workflow.journal` | `journal` | read only, 10 s |
 | `workflow.confirm` | `confirm` | mutating, 5 s |
 | `workflow.suspend` | `suspend` | mutating, 5 s |
+| `workflow.judge_checks` | `judge_checks` | mutating, 5 s |
+| `workflow.judge_ending` | `judge_ending` | mutating, 5 s |
 | `workflow.run` | `run` | task, 20 s progress window |
 | `workflow.resume` | `resume` | task, 20 s progress window |
 | `workflow.abort` | `abort` | task, 20 s progress window |
+| `workflow.trial` | `trial` | task, 20 s progress window |
+| `workflow.next_run` | `next_run` | task, 20 s progress window |
 
-A run reports progress at each of its events and at least every 5 s, so a window of 20 s is four missed reports. The document selects every member of the contract but `replay`, which reads a journal for a program, `locations`, which teaches the skills of a robot, and the topic `run_events`, whose events the progress of `workflow.run`, `workflow.resume` and `workflow.abort` gives. Every document under `workflow/` says what it is, and [`test_exposure_families.py`](test_exposure_families.py) enforces the wording:
+A run and a trial report progress at each of their events and at least every 5 s, so a window of 20 s is four missed reports. The document selects every member of the contract but `replay`, which reads a journal for a program, `locations`, which teaches the skills of a robot, `forget_robot`, which an operator calls after a change of the body of a robot, and the topic `run_events`, whose events the progress of `workflow.run`, `workflow.resume` and `workflow.abort` gives. Every document under `workflow/` says what it is, and [`test_exposure_families.py`](test_exposure_families.py) enforces the wording:
 
 - the server `title` ends with `(workflow runs)`;
 - the server `instructions` open with the exact sentence
