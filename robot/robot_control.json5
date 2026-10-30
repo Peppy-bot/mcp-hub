@@ -67,7 +67,7 @@
         // was written against (`sha256sum robot/robot_identity.json5` in
         // the contracts hub). A launch that resolves other bytes refuses,
         // naming the contract. Every pin below is the same kind.
-        sha256: "ebdd513c16af87a3ef326ba57f0e88cb5be2890a1634e23329621c159cbe9983",
+        sha256: "c208a984b856b262aa55e99951c295f424eb5fad4c28507c67e00bd89b22e2ef",
       },
       services: [
         {
@@ -87,7 +87,7 @@
       contract: {
         name: "robot_guide",
         tag: "v1",
-        sha256: "448516f79c6ede4aa08c7c5a25435581d8403ccf4cf993027aa42da33e3de310",
+        sha256: "ed7378a4827aa5febf986b02a5bfdc5c7bc0306bf998b7628fe1f2b8bb3ee151",
       },
       services: [
         {
@@ -111,7 +111,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "4a559c640a7c676c09728c4b94e30c071a25d81cfa14ec02e087e88da5b42199",
+        sha256: "083ded4f5906576c83a8a5bfd4c6249e930f996971075df01532835d88e6f0c6",
       },
       actions: [
         {
@@ -140,7 +140,7 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "b7bf24fe4a058f51af40b9a2ba1dfbfb39e561d5de194b894116420545243f3a",
+        sha256: "fcc75b212578b2d5c9261240646e31c628e18e901ce3d4103788c890d14c9a9d",
       },
       actions: [
         {
@@ -193,7 +193,7 @@
       contract: {
         name: "limb_state",
         tag: "v1",
-        sha256: "7656784765bac6e1e5c8fd72fc9bc2ce69433a144b199477451fbe9139c5dd91",
+        sha256: "0b2f8d33c4000899ac79e6b4f5be29bbc44e91e4bec2a66048bff1efaa881e53",
       },
       topics: [
         {
@@ -226,7 +226,7 @@
       contract: {
         name: "collision_status",
         tag: "v1",
-        sha256: "f5d94310b69f2039c51b188fa842da0d4a19eb0440b66d89d548173fea0633cd",
+        sha256: "1af91309efa7fe591d4aa34a66d41c9ac846127054db9414cb64b245d09166cd",
       },
       topics: [
         {
@@ -253,7 +253,7 @@
       contract: {
         name: "rgb_camera",
         tag: "v1",
-        sha256: "a81cc9111a3b982a2e32a9fb426ac91516559f6d7715c5a720cbd8bf48459cdd",
+        sha256: "eca74020e764f49febb6bf9897690d0b2f13398604b766b7495acd5bf6775597",
       },
       argument: "camera",
       topics: [
@@ -334,7 +334,7 @@
       contract: {
         name: "rgbd_camera",
         tag: "v1",
-        sha256: "831c41e8cc4fa095806fa675a30e90d96a2982129ce0015ebef0381f653a6d2e",
+        sha256: "3068d37022ba3bccdf0a9b9aee3135e99136c7b74f1657eb2a71346948a62399",
       },
       argument: "camera",
       topics: [
@@ -455,7 +455,7 @@
       contract: {
         name: "camera_profile",
         tag: "v1",
-        sha256: "54dac80cbe43e61a971a4a3e154162f4261df63d9e0e2349822dbe62c4c7a9f7",
+        sha256: "651e2c3703a2997fb94937b7589c4c81ca2e33281b72965550d79572737735f4",
       },
       argument: "camera",
       services: [
@@ -483,7 +483,7 @@
       contract: {
         name: "camera_geometry",
         tag: "v1",
-        sha256: "e530688c7ff63ef625c5e011a2f294bfb93601e132427f426f963ddf1f087f8f",
+        sha256: "a0229875c29cfe62039bfa76cd5caf63ab2ed48c49adf33941ae39e5726ffef1",
       },
       argument: "camera",
       services: [
@@ -518,7 +518,7 @@
       contract: {
         name: "camera_mounts",
         tag: "v1",
-        sha256: "6c6722bc845b0e4a04d6838918bdd8fe39255e5638ae82cd2b1a1c7c35febf51",
+        sha256: "a38e62767b6796f74594a93f66adf49f742b25de5cb43d8a8af00edbdfe206ba",
       },
       services: [
         {
@@ -539,7 +539,7 @@
       contract: {
         name: "workspace",
         tag: "v1",
-        sha256: "f24ee4d2708a8cdd255beb4e0dd6edd18e6a1f8fbf4d8039b35c3af58cc7fddc",
+        sha256: "e25c9536e5c4a28cf1bc4f7ebacb5d4eac60ffdb10be1213e518ed25e8fdbf3c",
       },
       services: [
         {
@@ -568,7 +568,7 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "d2b904cbf7a96ac31c7b12a71a183c3090faf4d9ca6ceede6bfc264e9d043670",
+        sha256: "057f999a4b30e4799a82eb9b64aa11413e2843360faaa0c9422766f3d371ed8b",
       },
       actions: [
         {
@@ -592,7 +592,7 @@
       contract: {
         name: "item_manipulation",
         tag: "v1",
-        sha256: "02cbc7c9794a042c25c165cea60ead72587bd3145e555a287bcd7f9c2d3aa3fe",
+        sha256: "bc0fc05fa6c8b9032235d9a083c7b06978e3d839549192cce98a53214e0206c5",
       },
       actions: [
         {
@@ -647,7 +647,7 @@
       contract: {
         name: "brain_model",
         tag: "v1",
-        sha256: "6c6195ae6c7f9376ab6fe0eb9cb0bf3aca3617e9ed34d38e71345548f73fb3fc",
+        sha256: "ca4fbfbe72c67855b0524c40ae457bde07af2f666515a3efcb2b9df569276b0e",
       },
       actions: [
         {
@@ -683,7 +683,7 @@
       contract: {
         name: "episode_recording",
         tag: "v1",
-        sha256: "5116a236920738e5a4c4cf8f7235eb12b797c3edcb7033dddbff33bbde603f78",
+        sha256: "8703ed57f952f68f0ae64c991e3ff8d5af6abfec5ad95b6553f627c69b16a9f1",
       },
       actions: [
         {
