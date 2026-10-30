@@ -569,7 +569,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "04dfd88727e487644f129ac7e92128fe0807e38e4806847aa920dfc278b3fed3",
+        sha256: "8c4377788bb0f6a1a368fb249a3b8ab65ca49b95ab878dbee954c89d6c3c5bc8",
       },
 
       // Three services that measure, one that names a location. A measuring
@@ -612,7 +612,7 @@
         {
           member: "name_location",
           tool: "workspace.name_location",
-          description: "Keep a place of the task under a name in the simulated world, for the simulation's record of its setup: name is lowercase letters, digits and underscores, and the place is one of four: object and landmark (an object by the name scene.get_objects_list gives and a landmark by the name its asset declares), surface (the label of a work surface the loaded scene declares), at (a named pose of the loaded scene) or region (a named region of the loaded scene); a field left out or sent empty names nothing. After the call, the simulation's record of its setup holds the location under the name, and a later call with the same name replaces it. It is refused with rejected, and nothing changes, for a name of another form, for a request that names none of the four or more than one, for an object, landmark, surface, pose or region the simulated world does not hold, and for an object that a feeder spawned, which is no part of the setup. It moves nothing.",
+          description: "Keep a place of the task under a name in the simulated world, for the simulation's record of its setup: name is lowercase letters, digits and underscores, and the place is one of four: object and landmark (an object by the name scene.get_objects_list gives and a landmark by the name its asset declares), surface (the label of a work surface the loaded scene declares), at (a named pose of the loaded scene) or region (a region of the simulated world, from the regions of the world that world.apply built); a field left out or sent empty names nothing. After the call, the simulation's record of its setup holds the location under the name, and a later call with the same name replaces it. It is refused with rejected, and nothing changes, for a name of another form, for a request that names none of the four or more than one, for an object, landmark, surface, pose or region the simulated world does not hold, and for an object that a feeder spawned, which is no part of the setup. It moves nothing.",
           operation: "mutating",
           deadline_ms: 5000,
         },
