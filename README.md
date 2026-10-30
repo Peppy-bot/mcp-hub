@@ -13,7 +13,7 @@ The document is the whole artifact. A launcher lists exposures under `source: { 
 Exposures are grouped by what they publish:
 
 ```text
-robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
+robot/        every robot of the stack on one endpoint, each call naming its robot: who it is, its posture, arm and gripper moves as action-backed tools, its limb state, the health and alerts of its motor-bearing components, its cameras and their depth as resources and tools, where its design lets it work, its brain and its recorder, with a Python client
 recording/    a camera plus an episode recorder whose confirmation-gated recording needs the tasks extension
 simulation/   the simulated world's scene, its objects' controls, lighting, daylight and weather, materials, views, clock, the stand of a robot at a work surface and where a robot can work in it, the rate of its robots' sensor streams, and its worlds: the live world as a world document, the check and the apply of one, a workflow run in one, and the judges that check it, as one document; a simulation launch option only
 framework/    the peppy framework's stack of nodes: the robots a client adds to the stack and removes from it, the fleet of the stack and its halt, through two interfaces of the peppy daemon, as one document
