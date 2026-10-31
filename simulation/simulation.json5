@@ -502,9 +502,11 @@
         {
           member: "spin_sheet",
           tool: "scene.spin_sheet",
-          description: "See a robot model of the simulation's catalogue turn: the WebP picture of its spin sheet as the catalogue holds it, the model standing alone at its start pose over a transparent background, seen from views viewpoints around the vertical axis through its base, 360 / views degrees apart, the first one in the direction of the viewpoint of scene.preview_asset, each next one turned counterclockwise as seen from above. asset_id is robot/<model>, model being a model id as scene.get_robots_list reports it. Answers with views, view_width and view_height, the size of one view in pixels; the views stand in one row from left to right, so the picture is width (views x view_width) by height (view_height) pixels. It shows the model, not the simulated world. The first call for a model fetches its sheet from the asset store. An asset_id that is no robot model of the catalogue, or a model the catalogue holds no spin sheet for, is refused with rejected. Changes nothing.",
+          description: "See a robot model of the simulation's catalogue turn, in a user interface: the WebP file of its spin sheet as the catalogue holds it, the model standing alone at its start pose over a transparent background, seen from views viewpoints around the vertical axis through its base, 360 / views degrees apart, the first one in the direction of the viewpoint of scene.preview_asset, each next one turned counterclockwise as seen from above. asset_id is robot/<model>, model being a model id as scene.get_robots_list reports it. Answers with views, view_width and view_height, the size of one view in pixels; the views stand in one row from left to right, so the sheet is width (views x view_width) by height (view_height) pixels. The sheet is data for a program, not a picture for a model: it comes as an embedded resource of type application/octet-stream, and a model sees a robot model with scene.preview_asset. It shows the model, not the simulated world. The first call for a model fetches its sheet from the asset store. An asset_id that is no robot model of the catalogue, or a model the catalogue holds no spin sheet for, is refused with rejected. Changes nothing.",
           operation: "read_only",
           deadline_ms: 20000,
+          // A `raw` frame comes as an embedded resource, not as an image
+          // block, so a client gives no sheet to its model as a picture.
           representation: {
             image: "raw",
             fields: {
