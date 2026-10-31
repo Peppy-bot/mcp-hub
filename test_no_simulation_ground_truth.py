@@ -23,7 +23,8 @@ What only a simulation gives reaches an endpoint under a wording rule.
 ``scene_manipulation``, ``object_controls``, ``scene_lighting``,
 ``scene_daylight`` and ``scene_materials`` edit the simulated world,
 ``scene_view`` pictures it from
-any viewpoint and shows the catalogue's preview of an asset,
+any viewpoint and shows the catalogue's preview of an asset and the spin
+sheet of a robot model,
 ``simulation_clock`` holds its time, ``scene_workspace`` measures where a
 robot can work in it, ``sim_sensor_streams`` sets the rate at which it
 renders each robot's cameras, and ``world_applier`` applies its worlds,
