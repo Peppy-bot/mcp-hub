@@ -67,6 +67,7 @@ COVERED_TARGETS = {
         "workspace",
         "sensor_streams",
         "world",
+        "sweep",
     ),
     ROBOT_DOCUMENT: ("postures", "limb_motion", "brain_model"),
     FRAMEWORK_DOCUMENT: ("stack", "fleet"),
@@ -135,9 +136,12 @@ COVERED_SETTERS = {
             "sensors.release",
             "world.get",
             "world.check",
+            "world.expand",
             "world.apply",
             "world.run",
             "world.judge",
+            "sweep.start",
+            "sweep.abort",
         }
     ),
     ROBOT_DOCUMENT: frozenset(
@@ -153,7 +157,17 @@ COVERED_SETTERS = {
     ),
     FRAMEWORK_DOCUMENT: frozenset({"stack.join", "stack.remove", "fleet.halt", "fleet.clear_halt"}),
     WORKFLOW_DOCUMENT: frozenset(
-        {"workflow.confirm", "workflow.suspend", "workflow.run", "workflow.resume", "workflow.abort"}
+        {
+            "workflow.confirm",
+            "workflow.suspend",
+            "workflow.judge_checks",
+            "workflow.judge_ending",
+            "workflow.run",
+            "workflow.resume",
+            "workflow.abort",
+            "workflow.trial",
+            "workflow.next_run",
+        }
     ),
 }
 

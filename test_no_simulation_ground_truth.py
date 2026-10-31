@@ -76,10 +76,10 @@ FORBIDDEN_CONTRACTS = GROUND_TRUTH_CONTRACTS | INTERNAL_CONTRACTS
 # Contracts only a simulation gives: those that configure the simulated world
 # (its daylight included), its pictures (a view from a free viewpoint, an
 # asset's preview), its clock, its measure of where a robot can work in it, the
-# rate of its robots' sensor streams, and its worlds (world_applier). A model
-# drives the first nine and the application that saves and rebuilds worlds
-# drives world_applier, so an exposure may target them, from under
-# `simulation/` only.
+# rate of its robots' sensor streams, its worlds (world_applier) and its
+# sweeps (sweep_runner). A model drives the first nine, the application that
+# saves and rebuilds worlds drives world_applier, and a test engineer drives
+# sweep_runner, so an exposure may target them, from under `simulation/` only.
 SIMULATION_ONLY_CONTRACTS = frozenset(
     {
         "scene_manipulation",
@@ -92,6 +92,7 @@ SIMULATION_ONLY_CONTRACTS = frozenset(
         "scene_workspace",
         "sim_sensor_streams",
         "world_applier",
+        "sweep_runner",
     }
 )
 
