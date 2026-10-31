@@ -40,7 +40,7 @@
       contract: {
         name: "workflow_director",
         tag: "v1",
-        sha256: "feeea03bb5371cd40fdc597261206fe7acde3596d39c394fc40fbb95a90ee8e7",
+        sha256: "93adb41397e11463ef5bb029dd759ed2e1d1d37bc3ecc28b7cd61d647d2b1c4c",
       },
       services: [
         {

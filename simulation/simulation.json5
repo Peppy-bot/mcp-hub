@@ -688,7 +688,7 @@
         name: "world_applier",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/world_applier.json5`).
-        sha256: "39a88822e0825e3de18116186f39221c0b6cd7ef87de4ec41e8142f0ecf004b6",
+        sha256: "e771a1924eac6df2b570d15a861b76015c631c01a6c018b78fb8f1eb555c2ae8",
       },
       actions: [
         {
@@ -745,7 +745,7 @@
         name: "sweep_runner",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/sweep_runner.json5`).
-        sha256: "89c691b5193b2b6b0add989df93a6c0fc8aa8a9be96ce6a4e4c753abeff21d03",
+        sha256: "50310c13e7b54662f37bdb1b93cfc41e9ced0e5dca3717091ce50e0ec7cdfc8d",
       },
       services: [
         {
