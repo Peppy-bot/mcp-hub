@@ -15,8 +15,9 @@ A model starts with the listing:
 It lists every robot present. Each entry carries `robot`, the name every other tool takes;
 `tools`, the tools that robot answers, including its brain's and its recorder's where it has them;
 `resources`, the resources it publishes, each read at `peppy://resource/<name>`; `members`, its
-camera names under `camera` (color) and `depth_camera` (carrying depth); `identity`, its model and
-the machine hosting it; `limbs`, its arm and gripper names with the joints behind each arm; and
+camera names under `camera` (color) and `depth_camera` (carrying depth), and its motor-bearing
+components under `motor_health` and `alerts`; `identity`, its model and the machine hosting it;
+`limbs`, its arm and gripper names with the joints behind each arm; and
 `notes`, anything that could not be read for it. A call naming a robot that is not there, a tool
 it does not answer, or a camera it does not have is refused, and the refusal names what is there.
 When the robots run in a simulation their names here are their names in the simulated world's
@@ -84,6 +85,20 @@ gives the message without its frame as JSON, and the frame as a blob. A picture 
 the frame as an image, which is what a model sees, so the two pictures are tools too and the
 samples stay a resource.
 
+The motor-bearing components of a robot, an OpenArm's arm and gripper drivers or an SO-101's
+follower, are named in the resource, as the listing gives them under `members`:
+
+| Resource                     | Contract          | Policy                                            |
+| ---------------------------- | ----------------- | ------------------------------------------------- |
+| `motor_health.latest_report` | `motor_health:v1` | resource per component, 5 Hz at most, 1.5 s fresh |
+| `alerts.active`              | `alert:v1`        | resource per component, 5 Hz at most, 6 s fresh   |
+
+`alpha/left_arm_inst/motor_health.latest_report` is the left arm driver's report, `level` per
+motor and the readings behind it, and `alpha/left_arm_inst/alerts.active` the set of alerts it
+holds, each naming its motor in words. A component that goes quiet reads as stale 1.5 s after its
+last report and 6 s after its last alert set. A simulated robot has no motors to report on and
+lists no component.
+
 A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.grab_item`,
 `brain.place_item`, `brain.drop_item`, `brain.abort` and `brain.switch_model` as tasks and
 `brain.get_state`, `brain.get_model` and `brain.list_models` as tools (`item_perception:v1`,
@@ -92,8 +107,8 @@ A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.g
 report each item's region in the picture `depth_camera.look` gives for the camera they name, with
 the frame's size and capture time. Resources are published per
 robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
-`alpha/chest/depth_camera.latest_depth_samples`, and the server sends `resources/list_changed` when
-a join or a removal changes the list.
+`alpha/chest/depth_camera.latest_depth_samples`, `alpha/left_arm_inst/alerts.active`, and the
+server sends `resources/list_changed` when a join or a removal changes the list.
 
 `robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
 only, tasks included, newest first, with the client that made each, its arguments and how it ended,
@@ -106,6 +121,8 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 
 - to list first, and that what a robot cannot do through these tools, it cannot do;
 - how to address the limbs, and which units and robot frame apply;
+- that a robot's motor health and alerts are resources, one of each per component named under
+  `members`;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no robot move checks the floor, a table, an object or a held item;
 - how a call that a robot refuses, or that fails, ends: with `outcome`, `failure_kind` and
@@ -130,8 +147,9 @@ The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the expos
 `robot_control` axis of every launcher with robots, deployed by `simulation_mcp` and selected with
 `--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`.
 Every robot beside it is listed with its identity, its limb state and where its design lets it
-work, on an OpenArm with its collision readout and its camera mounts too, with the backbone's
-moves, and with its brain and recorder whenever they run; its camera rig adds the cameras,
+work, on an OpenArm with its collision readout and its camera mounts too, on the physical robots
+with their drivers' motor health and alerts, with the backbone's moves, and with its brain and
+recorder whenever they run; its camera rig adds the cameras,
 `cameras` on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no
 camera. The server reads
 one clock, the simulation's beside a simulation and wall time on the physical robots, so a stack

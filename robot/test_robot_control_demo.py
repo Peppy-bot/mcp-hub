@@ -54,10 +54,19 @@ ROBOTS = [
         ],
         "resources": [
             "alpha/chest/depth_camera.latest_depth_picture", "alpha/chest/depth_camera.latest_depth_samples",
-            "alpha/chest/depth_camera.latest_frame", "alpha/robot.limb_state",
+            "alpha/chest/depth_camera.latest_frame",
+            "alpha/left_arm_inst/alerts.active", "alpha/left_arm_inst/motor_health.latest_report",
+            "alpha/left_gripper_inst/alerts.active", "alpha/left_gripper_inst/motor_health.latest_report",
+            "alpha/right_arm_inst/alerts.active", "alpha/right_arm_inst/motor_health.latest_report",
+            "alpha/right_gripper_inst/alerts.active", "alpha/right_gripper_inst/motor_health.latest_report",
+            "alpha/robot.limb_state",
             "alpha/wrist_left/camera.latest_frame", "alpha/wrist_right/camera.latest_frame",
         ],
-        "members": {"camera": ["wrist_left", "wrist_right"], "depth_camera": ["chest"]},
+        "members": {
+            "motor_health": ["left_arm_inst", "right_arm_inst", "left_gripper_inst", "right_gripper_inst"],
+            "alerts": ["left_arm_inst", "right_arm_inst", "left_gripper_inst", "right_gripper_inst"],
+            "camera": ["wrist_left", "wrist_right"], "depth_camera": ["chest"],
+        },
         "notes": [],
         "identity": {"robot": "alpha", "model": "openarm_v2", "core_node": "cn-lab"},
         "limbs": {
@@ -869,6 +878,8 @@ class ScriptTests(StandInCase):
         self.assertEqual(code, demo.EXIT_OK, err)
         self.assertIn("alpha: model openarm_v2 on cn-lab", out)
         self.assertIn("arms left_arm, right_arm; grippers left_gripper, right_gripper", out)
+        self.assertIn("motor_health: left_arm_inst, right_arm_inst, left_gripper_inst, right_gripper_inst", out)
+        self.assertIn("alerts: left_arm_inst, right_arm_inst, left_gripper_inst, right_gripper_inst", out)
         self.assertIn("camera: wrist_left, wrist_right", out)
         self.assertIn("depth_camera: chest", out)
         self.assertIn("  tools " + ", ".join(ROBOTS[0]["tools"]), out)
