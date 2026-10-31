@@ -745,7 +745,7 @@
         name: "sweep_runner",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/sweep_runner.json5`).
-        sha256: "79834cd1a61385e13aaf6f71d48b9977cfea6603088464369fbf6605186804e2",
+        sha256: "89c691b5193b2b6b0add989df93a6c0fc8aa8a9be96ce6a4e4c753abeff21d03",
       },
       services: [
         {
