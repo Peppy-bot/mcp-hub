@@ -688,7 +688,7 @@
         name: "world_applier",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/world_applier.json5`).
-        sha256: "e771a1924eac6df2b570d15a861b76015c631c01a6c018b78fb8f1eb555c2ae8",
+        sha256: "a00de1d7d76e678e997480c0d65ceb55c1824e4a7962664b9f03242f5051c8b8",
       },
       actions: [
         {
@@ -708,7 +708,7 @@
         {
           member: "expand",
           tool: "world.expand",
-          description: "Give the simulated world that a world pattern gives for a seed: world is the world pattern (or a world, which every seed gives) as JSON5 text, bases the files of the worlds it extends, or empty, and seed a number. The simulation draws each sampler from its own stream of the seed, in a model of the drawn world, apart from the simulated world that stands. The progress gives the bytes of the files of the drawn world. The result gives world, the concrete world/v1 document as JSON5 text, named <pattern>_seed_<seed>, which world.apply and world.run take. After the call, nothing has changed: the same pattern, seed, catalogue and simulation give the same world. Fails with world_refused for a pattern that does not hold, naming the cause, and with seed_refused for a seed that gives no world, naming the entry.",
+          description: "Give the simulated world that a world pattern gives for a seed: world is the world pattern (or a world, which every seed gives) as JSON5 text, bases the files of the worlds it extends, or empty, and seed a number. The simulation draws each sampler from its own stream of the seed, in a model of the drawn world, apart from the simulated world that stands. The progress gives the bytes of the files of the drawn world. The result gives world, the concrete world/v1 document as JSON5 text, named <pattern>_seed_<seed>, which world.apply and world.run take. After the call, nothing has changed: the same pattern, seed, catalogue and simulation give the same world. The draws read the model of each robot of the pattern from the simulated robot that stands under its name, and the call joins no robot: each robot of the pattern must stand first, as world.apply of a world with those robots leaves them, while world.run with expand joins them itself. A pose in a region rests on the highest colliding geometry in the region under it, and a stand in a region stands the robot on the first colliding geometry under its point of the top face of the region, above the bottom face of the region, never on a loose object. Fails with world_refused for a pattern that does not hold, naming the cause, with seed_refused for a seed that gives no world, naming the entry, and with resource_unavailable for a robot of the pattern that does not stand in the simulation, naming it.",
           operation: "long_running",
           progress_timeout_ms: 660000,
         },
