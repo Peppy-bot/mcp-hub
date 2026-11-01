@@ -207,7 +207,7 @@ landmarks and the state of one object, the robots and their bases), `object_cont
 object lets a caller set, a desk's height), `scene_lighting` (the lamps and the environment map),
 `scene_daylight` (the date, the hour, the clock rate and the weather that the sun, the moon and the
 sky light it with) and `scene_materials` edit the simulated world, `scene_view` pictures it from any viewpoint, finds in it what a region of such a
-picture shows, and shows the catalogue's preview of an asset and the spin sheet of a robot model, `simulation_clock` holds its time (the
+picture shows, and shows the catalogue's preview of an asset and the turntable model of a robot model, `simulation_clock` holds its time (the
 time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
 by its stance, measures where a robot can work in it (the surfaces its arms reach and its perception
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
