@@ -456,11 +456,11 @@
       // render_view and preview_asset answer with a picture: its frame is
       // the image block of the result, the rest of the response the
       // document, as a camera's picture tool answers, under the same
-      // representation and size policies. spin_sheet answers the same way,
-      // with the WebP file of its sheet as the block, untouched. A refusal is
-      // an error reply: it carries no picture, and reaches the client as a
-      // tool error with its failure kind and message. locate_in_view and
-      // locate_points answer with a document alone.
+      // representation and size policies. spin_sheet answers with the WebP
+      // file of its sheet, untouched, under policies of its own (see its
+      // entry). A refusal is an error reply: it carries no picture, and
+      // reaches the client as a tool error with its failure kind and message.
+      // locate_in_view and locate_points answer with a document alone.
       services: [
         {
           member: "render_view",
