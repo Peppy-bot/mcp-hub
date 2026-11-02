@@ -597,7 +597,7 @@
       contract: {
         name: "workspace",
         tag: "v1",
-        sha256: "1234c37379c0f77b457ee87ec3f7b2f018b1eca83d1ea8a2be8c18629a8e3720",
+        sha256: "8fd142ce90cf30a44480fcd8612d7e9502afdd5bd0d3034053762b12c4e4b931",
       },
       services: [
         {
@@ -650,7 +650,7 @@
       contract: {
         name: "item_manipulation",
         tag: "v1",
-        sha256: "d93d0d1bd1253235ee4a5adfb2625b9674e107d7b3b7b50e02af8a0db584e6bb",
+        sha256: "099a4e179ac14cf23dd01f08f3e99c171ed6140d74f5ff29a657244a08ca986f",
       },
       actions: [
         {
