@@ -150,6 +150,7 @@ COVERED_SETTERS = {
             "robot.move_to_home",
             "robot.move_arm",
             "robot.move_arm_joints",
+            "robot.execute_joint_path",
             "robot.move_gripper",
             "robot.stop",
             "brain.switch_model",

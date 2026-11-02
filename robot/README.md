@@ -34,6 +34,7 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 65 s                      |
 | `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 125 s                     |
 | `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 125 s                     |
+| `robot.execute_joint_path`  | `limb_motion:v1` `execute_joint_path` | task, 125 s                   |
 | `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 65 s                      |
 | `robot.stop`                | `limb_motion:v1` `stop`             | mutating, 2 s                   |
 | `robot.check_arm_move`      | `limb_motion:v1` `check_arm_move`   | read only, 5 s                  |
@@ -43,17 +44,17 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 
-`robot.move_arm`, `robot.move_arm_joints` and `robot.move_gripper` name a limb as the listing
-reports it under `limbs`. A pose is in the robot frame: fixed to the robot's base, its origin the
-point the base stands on, +X the way the robot faces, +Y to its left, +Z up. `robot.check_arm_move`
-says whether a `robot.move_arm` goal has a plan, and moves nothing. `robot.stop` ends every planned
-move in flight on the robot, whoever started it. Then each limb holds where it was commanded to be
-when the stop came, and no gripper opens. `robot.move_to_ready` and `robot.move_to_home` report
-`arm_names`, `positions` and `orientations`: the grasp point of each arm in the robot frame,
-measured when the move ended. The three arrays are empty when the robot has no fresh measured pose
-of an arm. `robot.move_gripper` answers once the gripper stands still, or at its settle timeout. Its
-`final_opening` is the opening measured then: the target, where an object or the effort cap holds
-the jaws, or wherever they stood at the timeout.
+`robot.move_arm`, `robot.move_arm_joints`, `robot.execute_joint_path` and `robot.move_gripper` name
+limbs as the listing reports them under `limbs`. A pose is in the robot frame: fixed to the robot's
+base, its origin the point the base stands on, +X the way the robot faces, +Y to its left, +Z up.
+`robot.check_arm_move` says whether a `robot.move_arm` goal has a plan, and moves nothing.
+`robot.stop` ends every planned move in flight on the robot, whoever started it. Then each limb
+holds where it was commanded to be when the stop came, and no gripper opens. `robot.move_to_ready`
+and `robot.move_to_home` report `arm_names`, `positions` and `orientations`: the grasp point of each
+arm in the robot frame, measured when the move ended. The three arrays are empty when the robot has
+no fresh measured pose of an arm. `robot.move_gripper` answers once the gripper stands still, or at
+its settle timeout. Its `final_opening` is the opening measured then: the target, where an object or
+the effort cap holds the jaws, or wherever they stood at the timeout.
 `robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
 frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
 takes. `robot.describe_workspace` says where on a flat surface at a given height the robot can
