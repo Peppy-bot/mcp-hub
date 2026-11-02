@@ -192,7 +192,7 @@ jobs:
       - name: Run every Python test in the repository
         run: |
           set -euo pipefail
-          python -m pip install --quiet pytest==9.1.1
+          python -m pip install --quiet pytest==9.2.0
           python -m pytest --verbose
 
   # The one status check the org ruleset requires on main. It is green only
