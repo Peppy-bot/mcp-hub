@@ -13,7 +13,8 @@ A model starts with the listing:
 | `robot.list` | read only, 2 s |
 
 It lists every robot present. Each entry carries `robot`, the name every other tool takes;
-`tools`, the tools that robot answers, including its brain's and its recorder's where it has them;
+`tools`, the tools that robot answers: the `robot.` tools, and the `brain.`, `recorder.` and
+`planner.` tools of its brain, its recorder and its motion planner where it has them;
 `resources`, the resources it publishes, each read at `peppy://resource/<name>`; `members`, its
 camera names under `camera` (color) and `depth_camera` (carrying depth), and its motor-bearing
 components under `motor_health` and `alerts`; `identity`, its model and the machine hosting it;
@@ -111,6 +112,12 @@ robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
 `alpha/chest/depth_camera.latest_depth_samples`, `alpha/left_arm_inst/alerts.active`, and the
 server sends `resources/list_changed` when a join or a removal changes the list.
 
+A robot with a motion planner answers `planner.plan_joint_path` as a task, 65 s,
+`planner.check_joint_path` as a read-only tool, 15 s, `planner.describe_arms` as a read-only tool,
+2 s, and `planner.clear_occupancy_map` as a mutating tool, 2 s (`motion_planning:v1`). A plan moves
+nothing: it gives a path of joint waypoints for one arm around what the robot's depth camera has
+seen, which `robot.execute_joint_path` runs, the plan's start passed as its expected start.
+
 `robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
 only, tasks included, newest first, with the client that made each, its arguments and how it ended,
 with the failure kind and the message of a call that a robot refused or that failed, so a client
@@ -148,9 +155,9 @@ The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the expos
 `robot_control` axis of every launcher with robots, deployed by `simulation_mcp` and selected with
 `--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`.
 Every robot beside it is listed with its identity, its limb state and where its design lets it
-work, on an OpenArm with its collision readout and its camera mounts too, on the physical robots
-with their drivers' motor health and alerts, with the backbone's moves, and with its brain and
-recorder whenever they run; its camera rig adds the cameras,
+work, on an OpenArm with its collision readout and its camera mounts too, on an OpenArm v2 with its
+motion planner, on the physical robots with their drivers' motor health and alerts, with the
+backbone's moves, and with its brain and recorder whenever they run; its camera rig adds the cameras,
 `cameras` on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no
 camera. The server reads
 one clock, the simulation's beside a simulation and wall time on the physical robots, so a stack
