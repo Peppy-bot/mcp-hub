@@ -208,8 +208,8 @@ object lets a caller set, a desk's height), `scene_lighting` (the lamps and the 
 `scene_daylight` (the date, the hour, the clock rate and the weather that the sun, the moon and the
 sky light it with) and `scene_materials` edit the simulated world, `scene_view` pictures it from any viewpoint, finds in it what a region of such a
 picture shows, and shows the catalogue's preview of an asset and the turntable model of a robot model, `simulation_clock` holds its time (the
-time now, a pause, a step), `scene_workspace` stands a robot at a work surface of the loaded scene
-by its stance, measures where a robot can work in it (the surfaces its arms reach and its perception
+time now, a pause, a step), `scene_workspace` stands a robot at one side of a work surface of an
+object by its stance, measures where a robot can work in it (the surfaces its arms reach and its perception
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
 on one surface) and names the places of the task, `sim_sensor_streams` sets the rate at which it
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
@@ -355,10 +355,11 @@ families is defined once, as `SIMULATION` and `FRAMEWORK` in
 
 ## No robot model in a world or in the framework
 
-A simulated world never names a robot model and never depends on one: a scene and its work
-surfaces say nothing of which robots can work there. `workspace.stand_at` stands any robot at a
-work surface by its stance (a standing robot on the joining spot in front of it, a mounted robot
-clamped on the edge of its top), and `workspace.describe` and `workspace.check` measure whether that
+A simulated world never names a robot model and never depends on one: a scene, its objects and
+their work surfaces say nothing of which robots can work there. `workspace.stand_at` stands any
+robot at one side of a work surface by its stance (a standing robot on the line out of the centre
+of the side's edge, facing it, a mounted robot clamped on the edge of the top at the centre of the
+side), and `workspace.describe` and `workspace.check` measure whether that
 robot can work it. So the texts of a `simulation/` document describe worlds without models and
 robots in general terms, by their stance. The texts of a `framework/` document name no robot model
 either: the launcher's scope names the robots that a stack can add, with a description of each, so
