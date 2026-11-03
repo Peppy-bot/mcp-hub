@@ -634,7 +634,7 @@
       contract: {
         name: "motion_planning",
         tag: "v1",
-        sha256: "51bd4c8b9b8023ff2c2e2669c03860b11813d2f6f10dd51827a838798466c39f",
+        sha256: "f66d8e59df767fc886448d09b23c0e377287084b23ee0e734fd5d1849984d448",
       },
       actions: [
         {
