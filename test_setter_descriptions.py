@@ -131,6 +131,7 @@ COVERED_SETTERS = {
             "materials.reset_materials",
             "clock.set_paused",
             "clock.step",
+            "workspace.furnish",
             "workspace.stand_at",
             "workspace.name_location",
             "sensors.hold",
