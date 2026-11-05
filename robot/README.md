@@ -113,10 +113,14 @@ robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
 server sends `resources/list_changed` when a join or a removal changes the list.
 
 A robot with a motion planner answers `planner.plan_joint_path` as a task, 65 s,
-`planner.check_joint_path` as a read-only tool, 15 s, `planner.describe_arms` as a read-only tool,
-2 s, and `planner.clear_occupancy_map` as a mutating tool, 2 s (`motion_planning:v1`). A plan moves
-nothing: it gives a path of joint waypoints for one arm around what the robot's depth camera has
-seen, which `robot.execute_joint_path` runs, the plan's start passed as its expected start.
+`planner.check_joint_path`, `planner.describe_arms` and `planner.get_planning_scene` as read-only
+tools, 15 s, 2 s and 2 s, and `planner.clear_occupancy_map`, `planner.apply_collision_objects`,
+`planner.apply_attached_collision_object` and `planner.set_allowed_collision` as mutating tools, 2 s
+each (`motion_planning:v1`). A plan moves nothing: it gives a path of joint waypoints for one arm
+around what the robot's depth camera has seen and the objects of its planning scene, which
+`robot.execute_joint_path` runs, the plan's start passed as its expected start. The scene holds the
+objects a client adds, such as a table top or an item the brain found, the objects attached to an
+arm's grasp link, which move with it, and the pairs allowed to touch.
 
 `robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
 only, tasks included, newest first, with the client that made each, its arguments and how it ended,

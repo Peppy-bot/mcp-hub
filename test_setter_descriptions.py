@@ -156,6 +156,9 @@ COVERED_SETTERS = {
             "robot.stop",
             "planner.plan_joint_path",
             "planner.clear_occupancy_map",
+            "planner.apply_collision_objects",
+            "planner.apply_attached_collision_object",
+            "planner.set_allowed_collision",
             "brain.switch_model",
         }
     ),
