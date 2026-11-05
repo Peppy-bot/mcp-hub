@@ -113,7 +113,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "899bf16b89b8183fbc0fab65c9fe87fce67ccba6a6fe1a3a2854ad5e61bebe12",
+        sha256: "970710089f859c0c41a3b7daf1fefaecd582f77c78d13a01064e16753aeeb4c8",
       },
       actions: [
         {
@@ -142,7 +142,7 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "84f9ea051ef7337ae15a9d49b2f5086ee77f41d5e162dc0cbca924d8317cbf7a",
+        sha256: "4f13a32383c030fd8640684dfddd4ca6ab35e908c0139b39c850fd8b5f737d3c",
       },
       actions: [
         {
