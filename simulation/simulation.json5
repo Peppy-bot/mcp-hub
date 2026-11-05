@@ -593,7 +593,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "b0d32ccb081d1da131518997852eb4fcffe867326f805084ea037ff5e7241f61",
+        sha256: "21b53c7bafb343f11754253e6a5f9b3a8c45157c63b917c60d744e78501264cb",
       },
 
       // Three services that measure, one that names a location. A measuring
