@@ -94,7 +94,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "23a4153949a3830bf7a18033a20d564deb8f63f0c4f5d7193029b7c1381c3ccf",
+        sha256: "1bedfef8eebe92dac84120cb5bd85a1e998001cfdabe3c998c79044326ad86a6",
       },
 
       // The catalogue and the inventory become tools that answer within one
@@ -593,7 +593,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "c5bc3919f38c173f04aaf32381cfeb639bb3160cb211e6d9990bd9e381639562",
+        sha256: "18afe00b18105b8468452cbb951caf8c9bb5370a97132d6de3b6b07630918a6e",
       },
 
       // Three services that measure, one that names a location. A measuring
@@ -642,10 +642,15 @@
         },
       ],
 
-      // One action. Waldo builds the world anew around the robot it stands,
-      // twice for a mounted robot whose pose sinks into the top (once at
-      // the top's height, once raised clear of it), so it takes the
-      // deadline of scene.move_robot.
+      // Two actions. Waldo builds the world anew around the robot that
+      // stand_at stands, twice for a mounted robot whose pose sinks into
+      // the top (once at the top's height, once raised clear of it), so it
+      // takes the deadline of scene.move_robot. furnish fetches the files of
+      // its pieces, then measures each scale of each piece with a robot
+      // station in a world of its own, about 14 s for a two-armed robot
+      // that Waldo does not keep the measurement of, and reports each
+      // measurement as it starts, so it is bounded by its progress, as
+      // world.expand is.
       actions: [
         {
           member: "stand_at",
@@ -655,6 +660,13 @@
           // Advertised to the client: this one moves the (simulated) robot.
           safety_sensitive: true,
           deadline_ms: 30000,
+        },
+        {
+          member: "furnish",
+          tool: "workspace.furnish",
+          description: "Learn where the furniture of a room goes in the simulated world, by rules and a seed, and the steps that set it up, in one call; it moves nothing. items lists the pieces, largest first, each with every field present and the fields its form does not use empty: name, the name it spawns under (lowercase letters, digits and underscores); asset, an object asset of scene.get_assets_list; scale, { min, max }, the same for a piece without a robot station; physics, static for a piece with a station; rule, { kind, on_wall, near, item, gap_m, distance_m }, of kind against_wall (its back against the wall on_wall names, or any wall), in_corner, free (walkway room on every side, nearest near [x, y] when given), beside (against the same wall as item, gap_m apart) or facing (front to front with item, distance_m between the fronts); and stations, each { landmark, side, robot, depth_m, width_m }: a robot of scene.get_robots_list that works the work surface on landmark from side, or, with robot empty, a station depth_m deep and width_m wide. The walls of the scene and the fronts of the assets are those scene.get_assets_list gives. seed picks one layout of the many: the same world, items and seed give the same answer. walkway_m is the width of a walkway, for example 0.8. The answer gives each piece that has a place its position, yaw, scale and physics for scene.spawn_object, and where the robot of each of its stations stands; each piece without a place one line that says why; and the steps, in order: spawn the item, then stand each robot at its station with workspace.stand_at, at the object that the spawn of its item gave. After the call, nothing in the world has moved: the layout stands only once the caller follows its steps, and a world that changes before then can refuse a step.",
+          operation: "long_running",
+          progress_timeout_ms: 300000,
         },
       ],
     },
