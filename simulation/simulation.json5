@@ -94,7 +94,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "0e77e3c62ec96fd050dd408678d5cb37c03903a064d7c5a5990484c9f4e9f736",
+        sha256: "19270b00bc960238f521416fe4f4ca258f35178c8b152f1b79433506b0a4598a",
       },
 
       // The catalogue and the inventory become tools that answer within one
