@@ -202,7 +202,7 @@ another.
 
 ### What only a simulation gives, published under a wording rule
 
-`scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses, the
+`scene_manipulation` (assets, the loading of a scene or of a template at a seed, the objects standing in the scene and their poses, the
 landmarks and the state of one object, the robots and their bases), `object_controls` (what an
 object lets a caller set, a desk's height), `scene_lighting` (the lamps and the environment map),
 `scene_daylight` (the date, the hour, the clock rate and the weather that the sun, the moon and the
