@@ -112,14 +112,16 @@ robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
 `alpha/chest/depth_camera.latest_depth_samples`, `alpha/left_arm_inst/alerts.active`, and the
 server sends `resources/list_changed` when a join or a removal changes the list.
 
-A robot with a motion planner answers `planner.plan_joint_path` as a task, 65 s,
-`planner.check_joint_path`, `planner.describe_arms` and `planner.get_planning_scene` as read-only
+A robot with a motion planner answers `planner.plan_joint_path` and
+`planner.plan_cartesian_path` as tasks, 65 s and 15 s, `planner.check_joint_path`,
+`planner.describe_arms` and `planner.get_planning_scene` as read-only
 tools, 15 s, 2 s and 2 s, and `planner.clear_occupancy_map`, `planner.apply_collision_objects`,
 `planner.apply_attached_collision_object` and `planner.set_allowed_collision` as mutating tools, 2 s
 each (`motion_planning:v1`). A plan moves nothing: it gives a path of joint waypoints for one arm
 or both, which pass their k-th waypoints together, around what the robot's depth camera has seen,
 the objects of its planning scene and each other, which `robot.execute_joint_path` runs, each arm's
-start passed as its expected start. The scene holds the objects a client adds, such as a table top
+start passed as its expected start. A Cartesian path gives such a path for one arm whose link follows
+straight lines through poses, as much of them as is valid, and the fraction covered. The scene holds the objects a client adds, such as a table top
 or an item the brain found, the objects attached to an arm's grasp link, which move with it, and the
 pairs allowed to touch.
 
