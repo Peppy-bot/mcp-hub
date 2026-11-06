@@ -120,7 +120,9 @@ tools, 15 s, 2 s and 2 s, and `planner.clear_occupancy_map`, `planner.apply_coll
 each (`motion_planning:v1`). A plan moves nothing: it gives a path of joint waypoints for one arm
 or both, which pass their k-th waypoints together, around what the robot's depth camera has seen,
 the objects of its planning scene and each other, which `robot.execute_joint_path` runs, each arm's
-start passed as its expected start. A Cartesian path gives such a path for one arm whose link follows
+start passed as its expected start. `path_orientation_constraints` holds orientations along the whole
+path, such as a carried cup kept upright, at every state the move runs, in any order of the list. A
+Cartesian path gives such a path for one arm whose link follows
 straight lines through poses, as much of them as is valid, and the fraction covered. The scene holds the objects a client adds, such as a table top
 or an item the brain found, the objects attached to an arm's grasp link, which move with it, and the
 pairs allowed to touch.
