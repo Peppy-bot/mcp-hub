@@ -101,8 +101,6 @@ TOOL_FIELDS = {
         "position": "array",
         "orientation": "array",
         "duration_s": "number",
-        "plan_position_tolerance_m": "number",
-        "plan_orientation_tolerance_rad": "number",
         "settle_position_tolerance_m": "number",
         "settle_orientation_tolerance_rad": "number",
         "settle_timeout_s": "number",
@@ -762,8 +760,23 @@ class ScriptTests(StandInCase):
                 "position": [0.3, 0.2, 0.4],
                 "orientation": [0.0, 0.0, 0.0, 1.0],
                 "duration_s": 0.0,
-                "plan_position_tolerance_m": demo.PLAN_POSITION_TOLERANCE_M,
-                "plan_orientation_tolerance_rad": demo.PLAN_ORIENTATION_TOLERANCE_RAD,
+                "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
+                "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
+                "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
+            },
+        )
+
+    def test_a_move_with_no_orientation_names_the_position_alone(self):
+        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed_without_kind("the provider abandoned the goal")]}))
+        self.run_script(server, "move-arm", "--robot", ROBOT, "--arm", "left_arm", "--position", "0.3", "0.2", "0.4")
+        (call,) = server.calls("tools/call")
+        self.assertEqual(
+            call.params["arguments"],
+            {
+                demo.ROBOT_ARGUMENT: ROBOT,
+                "arm_name": "left_arm",
+                "position": [0.3, 0.2, 0.4],
+                "duration_s": 0.0,
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
                 "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
