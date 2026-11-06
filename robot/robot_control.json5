@@ -635,7 +635,7 @@
       contract: {
         name: "motion_planning",
         tag: "v1",
-        sha256: "cc20e3ed40f33020d6b144be71fbd2c362c0578b90aaa55350e90bac98f134f8",
+        sha256: "83fbd6dc29b899159711467f2b12ca7ca6d54fafbfcb247ba0a487ae08a3802b",
       },
       actions: [
         {
@@ -650,6 +650,18 @@
           // and every `any` plan of the libraries' drawn scenes answered at most
           // 1.0 s past its time on amd64.
           deadline_ms: 65000,
+        },
+        {
+          member: "plan_cartesian_path",
+          tool: "planner.plan_cartesian_path",
+          description: "Compute a path along which one link of an arm follows straight lines through poses, around the objects of the planning scene, what the robot's depth camera has seen and the robot's own body, without moving anything. arm_name is the arm, as robot.list reports it; start_joint_positions, empty to start from where the arm stands; link_name, the link that follows the lines, by the name planner.describe_arms gives: the arm's grasp_link, or a link fixed to it; waypoints, the poses to pass through, each a position and an orientation, a unit quaternion [x, y, z, w]. The link's orientation turns the shorter way in step with its position, within 1 mm and 0.01 rad at every state. With avoid_collisions false, no collision is checked and no depth frame is needed: a test of reach and precision alone, such as whether an obstacle is what blocks a path. After the call, nothing has moved, and the result gives start_joint_positions; waypoints, as much of the path as is valid, each with joint_positions and the arm's grasp-point position and orientation; and fraction, the share of the path covered from 0 to 1, each line counting equally. A fraction below 1 means the path ends before a pose the arm cannot reach, that collides, or past which the precision cannot be kept. To move, run the waypoints with robot.execute_joint_path, passing start_joint_positions as its expected_start_joint_positions. With avoid_collisions true, a start in contact fails with start_in_collision, the message naming the pair; from a start nearer than the clearance planner.get_planning_scene reports, the path leaves in one straight joint run to the first state that keeps it; and planner.set_allowed_collision lets a held object or the fingers touch what they touch. No waypoints, or any other link, such as an inner link or a finger, are refused with rejected: name the grasp_link. It is refused with precondition_failed before the robot's joints are measured, when the start lies outside a joint limit by more than the planner's start tolerance, and, with avoid_collisions true on a robot with a depth camera, before the planner's first depth frame. It does not check space the camera has not seen, such as under a table, which counts as free.",
+          operation: "long_running",
+          // As planner.check_joint_path: a path holds no time limit of its own,
+          // and the longest of 400 drawn paths, 30 cm lines, took 109 ms on
+          // amd64, about 0.2 s on a Jetson AGX Thor at its 1.8 times amd64's
+          // plan time, so 15 s runs paths of many lines; a cancel ends a longer
+          // one.
+          deadline_ms: 15000,
         },
       ],
       services: [
