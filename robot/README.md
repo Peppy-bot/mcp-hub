@@ -121,8 +121,12 @@ each (`motion_planning:v1`). A plan moves nothing: it gives a path of joint wayp
 or both, which pass their k-th waypoints together, around what the robot's depth camera has seen,
 the objects of its planning scene and each other, which `robot.execute_joint_path` runs, each arm's
 start passed as its expected start. `path_orientation_constraints` holds orientations along the whole
-path, such as a carried cup kept upright, at every state the move runs, in any order of the list. A
-Cartesian path gives such a path for one arm whose link follows
+path, such as a carried cup kept upright, at every state the move runs, in any order of the list.
+`so101` has no depth camera, so its plan keeps clear of the objects a client enters and its own
+links alone, and what its hand holds of the links it may not touch; a plan from its home posture, folded onto itself,
+is refused, so plan from `robot.move_to_ready`; and with five joints its goal takes an
+orientation with slack: `tolerance_rad` or `free_axis` reaches a pose `robot.move_arm` refuses for
+its orientation. A Cartesian path gives such a path for one arm whose link follows
 straight lines through poses, as much of them as is valid, and the fraction covered. The scene holds the objects a client adds, such as a table top
 or an item the brain found, the objects attached to an arm's grasp link, which move with it, and the
 pairs allowed to touch.
