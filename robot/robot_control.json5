@@ -113,7 +113,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "899bf16b89b8183fbc0fab65c9fe87fce67ccba6a6fe1a3a2854ad5e61bebe12",
+        sha256: "28838ff4269e00c8220b74c04c83db3a84a9f1f39542d7a6e95bf57d0d98b134",
       },
       actions: [
         {
@@ -142,13 +142,13 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "84f9ea051ef7337ae15a9d49b2f5086ee77f41d5e162dc0cbca924d8317cbf7a",
+        sha256: "5dd45a33ab42e2521803fd8807419eebff40564bae57194ae4bc2127e3a2f8f8",
       },
       actions: [
         {
           member: "move_arm",
           tool: "robot.move_arm",
-          description: "Move one arm's grasp point to a pose in the robot frame. arm_name is one of the robot's arms as robot.list reports them; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w]; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. plan_position_tolerance_m and plan_orientation_tolerance_rad bound how far the planned pose may sit from the requested one: 0.001 and 0.01 suit a seven-joint arm such as openarm_v2; a five-joint arm such as so101 reaches a position to about 0.01 and cannot hold an arbitrary orientation, so give it 0.01 and a wide plan_orientation_tolerance_rad, 3.2 or more for any orientation. settle_position_tolerance_m and settle_orientation_tolerance_rad say how close the measured grasp point must come to the pose for the move to complete, each at least the plan tolerance of its axis: 0.02 and 0.15 suit openarm_v2. settle_timeout_s is how long after the planned end of the motion the grasp point may still stand outside those before the move fails: 2 is usual, 60 the most. Every tolerance is a positive number and every time a number of seconds from 0 to 60; other values are refused with rejected. The call answers once the arm has settled or the timeout ran out: it completes when the measured grasp point stands within the settle tolerances of the pose, and fails with timeout when it does not, with a message such as 'still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end'. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_position and final_orientation, where the grasp point was when the move ended, from the joints the robot measured then. A pose no plan reaches inside both plan tolerances fails with unreachable rather than being approximated: call robot.check_arm_move first to learn whether the pose has a plan.",
+          description: "Move one arm's grasp point to a pose in the robot frame, or to a position with no particular orientation. arm_name is one of the robot's arms as robot.list reports them; position is [x, y, z] in meters and orientation a unit quaternion [x, y, z, w], or left out to name none, when the grasp point aims to keep the turn it starts with; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. The grasp point travels on a straight line, and the plan ends within 1 mm and 0.01 rad of the goal or the move fails with unreachable. A five-joint arm such as so101 ends on few orientations exactly, so leave orientation out on it unless the orientation came from where its arm has stood. settle_position_tolerance_m says how close the measured grasp point must come to the position for the move to complete, and settle_orientation_tolerance_rad how close the measured orientation must come to the goal's or, with orientation left out, to where the plan ends: 0.02 and 0.15 are usual. settle_timeout_s is how long after the planned end of the motion the grasp point may still stand outside those before the move fails: 2 is usual, 60 the most. Every tolerance is a positive number and every time a number of seconds from 0 to 60; other values are refused with rejected. The call answers once the arm has settled or the timeout ran out: it completes when the measured grasp point stands within the settle tolerances of the pose, and fails with timeout when it does not, with a message such as 'still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end'. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_position and final_orientation, where the grasp point was when the move ended, from the joints the robot measured then. A goal no straight line reaches fails with unreachable, and a line the joint limits cannot run within 60 s fails with rejected: call robot.check_arm_move first to learn whether the pose has a plan, and where a robot has a motion planner, plan a joint path to reach what a line does not.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 125000,
@@ -156,7 +156,7 @@
         {
           member: "move_arm_joints",
           tool: "robot.move_arm_joints",
-          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the arm's fixed joint order: the order of final_joint_positions in the result, and of the arm's joint_positions in the robot.limb_state resource; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. settle_tolerances_rad holds one positive value per joint, in the same order: how close each measured joint must come to its target for the move to complete, 0.1 each being usual. settle_timeout_s is how long after the planned end of the motion a joint may still stand outside its tolerance before the move fails: 2 is usual, 60 the most. The call answers once the arm has settled or the timeout ran out: it fails with timeout when a joint is still off, with a message naming the joint and by how much. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_joint_positions, the joints the robot measured when the move ended. A vector of another length, a value outside the joint limits, or a tolerance that is not positive, is refused. The way to use it: pass back the final_joint_positions of an earlier robot.move_arm_joints of the arm, to return to that configuration.",
+          description: "Move one arm to a joint configuration. arm_name is one of the robot's arms as robot.list reports them; joint_positions holds one value in radians per joint of that arm, as many as robot.list reports for it under limbs, in the arm's fixed joint order: the order of final_joint_positions in the result, and of the arm's joint_positions in the robot.limb_state resource; duration_s is the requested move time in seconds, 0 for the fastest the joint limits allow. settle_tolerances_rad holds one positive value per joint, in the same order: how close each measured joint must come to its target for the move to complete, 0.1 each being usual. settle_timeout_s is how long after the planned end of the motion a joint may still stand outside its tolerance before the move fails: 2 is usual, 60 the most. The call answers once the arm has settled or the timeout ran out: it fails with timeout when a joint is still off, with a message naming the joint and by how much. After the call, the arm holds where it stands either way, and the result of a completed or cancelled move gives final_joint_positions, the joints the robot measured when the move ended. A vector of another length, a value outside the joint limits, or a tolerance that is not positive, is refused, and a move the joint limits cannot run within 60 s fails with rejected. The way to use it: pass back the final_joint_positions of an earlier robot.move_arm_joints of the arm, to return to that configuration.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 125000,
@@ -189,7 +189,7 @@
         {
           member: "check_arm_move",
           tool: "robot.check_arm_move",
-          description: "Learn whether a robot.move_arm goal with these fields has a plan from where the arm is commanded now, without moving anything. The fields are the planning fields of robot.move_arm, with the same meaning. Answers with reachable, true when a plan exists; duration_s, the time the move would take, 0 when not reachable; and reason, why no plan exists, in the words that a robot.move_arm failure with unreachable gives, empty when reachable. A request that robot.move_arm would refuse is refused with the kind of that refusal: rejected for an unknown arm or a value robot.move_arm does not take, precondition_failed while the arm is executing a move, which the check does not disturb, and leader_streaming while a leader streams to the arm. The check finds a plan and no more: it does not check collisions with the robot itself or with the room, so a move that passes the check can still stop short. Changes nothing.",
+          description: "Learn whether a robot.move_arm goal with these fields has a plan from where the arm is commanded now, without moving anything. The fields are arm_name, position, orientation and duration_s of robot.move_arm, with the same meaning. Answers with reachable, true when a plan exists; duration_s, the time the move would take, 0 when not reachable; and reason, why no plan exists, in the words that the robot.move_arm failure gives, empty when reachable. A request that robot.move_arm would refuse is refused with the kind of that refusal: rejected for an unknown arm or a value robot.move_arm does not take, precondition_failed while the arm is executing a move, which the check does not disturb, and leader_streaming while a leader streams to the arm. The check finds a plan and no more: it does not check collisions with the robot itself or with the room, so a move that passes the check can still stop short. Changes nothing.",
           operation: "read_only",
           deadline_ms: 5000,
         },
@@ -635,7 +635,7 @@
       contract: {
         name: "motion_planning",
         tag: "v1",
-        sha256: "cc20e3ed40f33020d6b144be71fbd2c362c0578b90aaa55350e90bac98f134f8",
+        sha256: "83fbd6dc29b899159711467f2b12ca7ca6d54fafbfcb247ba0a487ae08a3802b",
       },
       actions: [
         {
@@ -650,6 +650,18 @@
           // and every `any` plan of the libraries' drawn scenes answered at most
           // 1.0 s past its time on amd64.
           deadline_ms: 65000,
+        },
+        {
+          member: "plan_cartesian_path",
+          tool: "planner.plan_cartesian_path",
+          description: "Compute a path along which one link of an arm follows straight lines through poses, around the objects of the planning scene, what the robot's depth camera has seen and the robot's own body, without moving anything. arm_name is the arm, as robot.list reports it; start_joint_positions, empty to start from where the arm stands; link_name, the link that follows the lines, by the name planner.describe_arms gives: the arm's grasp_link, or a link fixed to it; waypoints, the poses to pass through, each a position and an orientation, a unit quaternion [x, y, z, w]. The link's orientation turns the shorter way in step with its position, within 1 mm and 0.01 rad at every state. With avoid_collisions false, no collision is checked and no depth frame is needed: a test of reach and precision alone, such as whether an obstacle is what blocks a path. After the call, nothing has moved, and the result gives start_joint_positions; waypoints, as much of the path as is valid, each with joint_positions and the arm's grasp-point position and orientation; and fraction, the share of the path covered from 0 to 1, each line counting equally. A fraction below 1 means the path ends before a pose the arm cannot reach, that collides, or past which the precision cannot be kept. To move, run the waypoints with robot.execute_joint_path, passing start_joint_positions as its expected_start_joint_positions. With avoid_collisions true, a start in contact fails with start_in_collision, the message naming the pair; from a start nearer than the clearance planner.get_planning_scene reports, the path leaves in one straight joint run to the first state that keeps it; and planner.set_allowed_collision lets a held object or the fingers touch what they touch. No waypoints, or any other link, such as an inner link or a finger, are refused with rejected: name the grasp_link. It is refused with precondition_failed before the robot's joints are measured, when the start lies outside a joint limit by more than the planner's start tolerance, and, with avoid_collisions true on a robot with a depth camera, before the planner's first depth frame. It does not check space the camera has not seen, such as under a table, which counts as free.",
+          operation: "long_running",
+          // As planner.check_joint_path: a path holds no time limit of its own,
+          // and the longest of 400 drawn paths, 30 cm lines, took 109 ms on
+          // amd64, about 0.2 s on a Jetson AGX Thor at its 1.8 times amd64's
+          // plan time, so 15 s runs paths of many lines; a cancel ends a longer
+          // one.
+          deadline_ms: 15000,
         },
       ],
       services: [

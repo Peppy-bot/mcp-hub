@@ -157,6 +157,7 @@ COVERED_SETTERS = {
             "robot.move_gripper",
             "robot.stop",
             "planner.plan_joint_path",
+            "planner.plan_cartesian_path",
             "planner.clear_occupancy_map",
             "planner.apply_collision_objects",
             "planner.apply_attached_collision_object",
