@@ -134,6 +134,7 @@ COVERED_SETTERS = {
             "clock.step",
             "workspace.furnish",
             "workspace.stand_at",
+            "workspace.raise_object",
             "workspace.name_location",
             "sensors.hold",
             "sensors.release",
