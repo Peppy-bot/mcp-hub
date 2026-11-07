@@ -108,6 +108,7 @@ COVERED_SETTERS = {
     SIMULATION_DOCUMENT: frozenset(
         {
             "scene.load_scene",
+            "scene.load_template",
             "scene.clear_scene",
             "scene.spawn_object",
             "scene.move_object",
