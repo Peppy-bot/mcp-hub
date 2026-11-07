@@ -92,8 +92,6 @@ DEMO_POSTURE_DURATION_S = 4.0
 # The tolerances and settle timeout the move commands send when none is
 # given, the values the tools' descriptions name for openarm_v2. Both limbs
 # take the same settle timeout.
-PLAN_POSITION_TOLERANCE_M = 0.001
-PLAN_ORIENTATION_TOLERANCE_RAD = 0.01
 SETTLE_POSITION_TOLERANCE_M = 0.02
 SETTLE_ORIENTATION_TOLERANCE_RAD = 0.15
 SETTLE_TIMEOUT_S = 2.0
@@ -395,14 +393,13 @@ def command_move_arm(client, args, out, sleep):
     goal = {
         "arm_name": args.arm,
         "position": args.position,
-        "orientation": args.orientation,
         "duration_s": args.duration_s,
-        "plan_position_tolerance_m": args.plan_position_tolerance_m,
-        "plan_orientation_tolerance_rad": args.plan_orientation_tolerance_rad,
         "settle_position_tolerance_m": args.settle_position_tolerance_m,
         "settle_orientation_tolerance_rad": args.settle_orientation_tolerance_rad,
         "settle_timeout_s": args.settle_timeout_s,
     }
+    if args.orientation is not None:
+        goal["orientation"] = args.orientation
     return run_move(client, TOOL_MOVE_ARM, addressed(args.robot, goal), out, sleep)
 
 
@@ -472,21 +469,13 @@ def build_parser():
     arm.add_argument("--arm", required=True, help="one of the robot's arms, as `list` reports them")
     arm.add_argument("--position", type=float, nargs=3, metavar=("X", "Y", "Z"), required=True, help="meters")
     arm.add_argument(
-        "--orientation", type=float, nargs=4, metavar=("X", "Y", "Z", "W"), required=True, help="unit quaternion"
+        "--orientation",
+        type=float,
+        nargs=4,
+        metavar=("X", "Y", "Z", "W"),
+        help="unit quaternion; left out, the move is to the position alone",
     )
     arm.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
-    arm.add_argument(
-        "--plan-position-tolerance-m",
-        type=float,
-        default=PLAN_POSITION_TOLERANCE_M,
-        help="how far the planned position may sit from the requested one; 0.001 suits openarm_v2, 0.01 so101",
-    )
-    arm.add_argument(
-        "--plan-orientation-tolerance-rad",
-        type=float,
-        default=PLAN_ORIENTATION_TOLERANCE_RAD,
-        help="how far the planned orientation may sit from the requested one; a five-joint arm needs a wide one",
-    )
     arm.add_argument(
         "--settle-position-tolerance-m",
         type=float,
@@ -497,7 +486,7 @@ def build_parser():
         "--settle-orientation-tolerance-rad",
         type=float,
         default=SETTLE_ORIENTATION_TOLERANCE_RAD,
-        help="how close the measured orientation must come to the requested one for the move to complete",
+        help="how close the measured orientation must come to the requested one, or to where the plan ends, for the move to complete",
     )
     arm.add_argument("--settle-timeout-s", type=float, default=SETTLE_TIMEOUT_S, help=settle_timeout_help)
     arm.set_defaults(run=command_move_arm)
