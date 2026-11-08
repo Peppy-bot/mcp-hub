@@ -142,6 +142,7 @@ COVERED_SETTERS = {
             "world.check",
             "world.expand",
             "world.apply",
+            "world.reset",
             "world.run",
             "world.judge",
             "sweep.start",
