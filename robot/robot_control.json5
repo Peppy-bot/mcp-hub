@@ -812,7 +812,7 @@
       contract: {
         name: "brain_model",
         tag: "v1",
-        sha256: "a0f114765054e9fb2abe814d6a377369396724bafbf7ed19600896f4464596b8",
+        sha256: "6156b98578398bec8c949679e08223baed601c51c458903c44fd76c38de1da62",
       },
       actions: [
         {
@@ -840,6 +840,9 @@
           deadline_ms: 2000,
         },
       ],
+      // `forget` is live on the brain and absent here: the applier of
+      // worlds calls it when it builds the scene again. A model updates
+      // what the brain knows with the brain's own looks and goals.
     },
 
     // A robot's recorder, where it has one: it films the robot's cameras
