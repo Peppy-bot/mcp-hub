@@ -128,7 +128,7 @@
         {
           member: "move_to_home",
           tool: "robot.move_to_home",
-          description: "Bring every arm of the robot to its rest posture, lower and closer to the robot's body than at its working posture. duration_s is the requested move time in seconds. After the call, the result reports where each arm ended in arm_names, positions and orientations, as the posture result of this endpoint's instructions says. Close the grippers first: on some robots, such as openarm_v2, open jaws stop against the robot's body before the arms reach the rest posture.",
+          description: "Bring every arm of the robot to its rest posture, lower and closer to the robot's body than at its working posture. Its path sees nothing of the scene: at a table in front of the robot, such as one it works at, the arms go down through the top and what stands on it, so call it only where no table stands in front of the robot. duration_s is the requested move time in seconds. After the call, the result reports where each arm ended in arm_names, positions and orientations, as the posture result of this endpoint's instructions says. Close the grippers first: on some robots, such as openarm_v2, open jaws stop against the robot's body before the arms reach the rest posture.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 65000,
