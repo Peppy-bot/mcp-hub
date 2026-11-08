@@ -213,8 +213,8 @@ object by its stance, measures where a robot can work in it (the surfaces its ar
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
 on one surface) and names the places of the task, `sim_sensor_streams` sets the rate at which it
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
-while it does), `world_applier` applies its worlds, expands its world patterns, runs workflow runs in
-them and judges them, and `sweep_runner` runs one workflow revision in many worlds of its world
+while it does), `world_applier` applies its worlds, resets it to the world it started with, expands
+its world patterns, runs workflow runs in them and judges them, and `sweep_runner` runs one workflow revision in many worlds of its world
 patterns. None has a physical counterpart. A model legitimately drives the first nine to set the
 world up and check it, a client application holds the sensors that it shows or records, the
 application that saves and rebuilds worlds calls `world_applier`, and a test engineer who validates a
