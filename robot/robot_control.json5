@@ -128,7 +128,7 @@
         {
           member: "move_to_home",
           tool: "robot.move_to_home",
-          description: "Bring every arm of the robot to its rest posture, lower and closer to the robot's body than at its working posture. duration_s is the requested move time in seconds. After the call, the result reports where each arm ended in arm_names, positions and orientations, as the posture result of this endpoint's instructions says. Close the grippers first: on some robots, such as openarm_v2, open jaws stop against the robot's body before the arms reach the rest posture.",
+          description: "Bring every arm of the robot to its rest posture, lower and closer to the robot's body than at its working posture. Its path sees nothing of the scene: at a table in front of the robot, such as one it works at, the arms go down through the top and what stands on it, so call it only where no table stands in front of the robot. duration_s is the requested move time in seconds. After the call, the result reports where each arm ended in arm_names, positions and orientations, as the posture result of this endpoint's instructions says. Close the grippers first: on some robots, such as openarm_v2, open jaws stop against the robot's body before the arms reach the rest posture.",
           operation: "long_running",
           safety_sensitive: true,
           deadline_ms: 65000,
@@ -806,13 +806,14 @@
       ],
     },
 
-    // The model each role of a robot's brain runs, the models it takes, and
-    // the switch of one while the brain runs.
+    // The model each role of a robot's brain runs, the models it takes, the
+    // switch of one while the brain runs, and the forget of the world the
+    // brain knew.
     brain_model: {
       contract: {
         name: "brain_model",
         tag: "v1",
-        sha256: "a0f114765054e9fb2abe814d6a377369396724bafbf7ed19600896f4464596b8",
+        sha256: "6156b98578398bec8c949679e08223baed601c51c458903c44fd76c38de1da62",
       },
       actions: [
         {
@@ -837,6 +838,13 @@
           tool: "brain.list_models",
           description: "Report every model the robot's brain takes for each role: roles and models, index-aligned, one entry per model, grouped by role in the order brain.get_model gives. These are the names brain.switch_model takes. Changes nothing.",
           operation: "read_only",
+          deadline_ms: 2000,
+        },
+        {
+          member: "forget",
+          tool: "brain.forget",
+          description: "Make the robot's brain forget what it knows of the world around the robot: every item it remembers, and the item each of its grippers holds. Call it when that world changed while the brain did not look, such as a scene that was loaded, cleared or built again around the robot: else the brain sends a gripper to an item that is gone, and keeps a gripper holding an item that is gone. After the call, no gripper holds an item, as brain.get_state reports, and the brain refuses each item_id it gave before as one it no longer knows; brain.scan_items and brain.identify_item give the items they see again, each with a new item_id. item_ids names each item the brain forgot, the held ones among them, and is empty when it knew none. A goal that runs during the call ends as it would have: a grab that succeeds after the call holds its item. Starts no motion.",
+          operation: "mutating",
           deadline_ms: 2000,
         },
       ],
