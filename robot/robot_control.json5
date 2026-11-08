@@ -806,8 +806,9 @@
       ],
     },
 
-    // The model each role of a robot's brain runs, the models it takes, and
-    // the switch of one while the brain runs.
+    // The model each role of a robot's brain runs, the models it takes, the
+    // switch of one while the brain runs, and the forget of the world the
+    // brain knew.
     brain_model: {
       contract: {
         name: "brain_model",
@@ -839,10 +840,14 @@
           operation: "read_only",
           deadline_ms: 2000,
         },
+        {
+          member: "forget",
+          tool: "brain.forget",
+          description: "Make the robot's brain forget what it knows of the world around the robot: every item it remembers, and the item each of its grippers holds. Call it when that world changed while the brain did not look, such as a scene that was loaded, cleared or built again around the robot: else the brain sends a gripper to an item that is gone, and keeps a gripper holding an item that is gone. After the call, no gripper holds an item, as brain.get_state reports, and the brain refuses each item_id it gave before as one it no longer knows; brain.scan_items and brain.identify_item give the items they see again, each with a new item_id. item_ids names each item the brain forgot, the held ones among them, and is empty when it knew none. A goal that runs during the call ends as it would have: a grab that succeeds after the call holds its item. Starts no motion.",
+          operation: "mutating",
+          deadline_ms: 2000,
+        },
       ],
-      // `forget` is live on the brain and absent here: the applier of
-      // worlds calls it when it builds the scene again. A model updates
-      // what the brain knows with the brain's own looks and goals.
     },
 
     // A robot's recorder, where it has one: it films the robot's cameras

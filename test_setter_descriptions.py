@@ -164,6 +164,7 @@ COVERED_SETTERS = {
             "planner.apply_attached_collision_object",
             "planner.set_allowed_collision",
             "brain.switch_model",
+            "brain.forget",
         }
     ),
     FRAMEWORK_DOCUMENT: frozenset({"stack.join", "stack.remove", "fleet.halt", "fleet.clear_halt"}),
