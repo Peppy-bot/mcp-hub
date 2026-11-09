@@ -202,7 +202,7 @@ another.
 
 ### What only a simulation gives, published under a wording rule
 
-`scene_manipulation` (assets, scene loading, the objects standing in the scene and their poses, the
+`scene_manipulation` (assets, the loading of a scene or of a template at a seed, the objects standing in the scene and their poses, the
 landmarks and the state of one object, the robots and their bases), `object_controls` (what an
 object lets a caller set, a desk's height), `scene_lighting` (the lamps and the environment map),
 `scene_daylight` (the date, the hour, the clock rate and the weather that the sun, the moon and the
@@ -213,10 +213,10 @@ object by its stance, measures where a robot can work in it (the surfaces its ar
 camera sees, whether given objects are workable where they stand, and where the items of a task fit
 on one surface) and names the places of the task, `sim_sensor_streams` sets the rate at which it
 renders the cameras of each robot's rig (1 Hz until a client application holds them, their own rate
-while it does), `world_applier` applies its worlds, expands its world patterns, runs workflow runs in
-them and judges them, and `sweep_runner` runs one workflow revision in many worlds of its world
-patterns. None has a physical counterpart. A model legitimately drives the first nine to set the
-world up and check it, a client application holds the sensors that it shows or records, the
+while it does), `world_applier` applies its worlds, resets it to the world it started with, expands
+its world patterns, runs workflow runs in them and judges them, and `sweep_runner` runs one
+workflow revision in many worlds of its world patterns. None has a physical counterpart. A model
+legitimately drives the first nine to set the world up and check it, a client application holds the sensors that it shows or records, the
 application that saves and rebuilds worlds calls `world_applier`, and a test engineer who validates a
 workflow calls `sweep_runner`. A robot's own answer to where it can work, from its
 design alone, is the robots' `workspace` target, and a robot's task finds its items through the

@@ -108,6 +108,7 @@ COVERED_SETTERS = {
     SIMULATION_DOCUMENT: frozenset(
         {
             "scene.load_scene",
+            "scene.load_template",
             "scene.clear_scene",
             "scene.spawn_object",
             "scene.move_object",
@@ -133,6 +134,7 @@ COVERED_SETTERS = {
             "clock.step",
             "workspace.furnish",
             "workspace.stand_at",
+            "workspace.raise_object",
             "workspace.name_location",
             "sensors.hold",
             "sensors.release",
@@ -140,6 +142,7 @@ COVERED_SETTERS = {
             "world.check",
             "world.expand",
             "world.apply",
+            "world.reset",
             "world.run",
             "world.judge",
             "sweep.start",
@@ -162,6 +165,7 @@ COVERED_SETTERS = {
             "planner.apply_attached_collision_object",
             "planner.set_allowed_collision",
             "brain.switch_model",
+            "brain.forget",
         }
     ),
     FRAMEWORK_DOCUMENT: frozenset({"stack.join", "stack.remove", "fleet.halt", "fleet.clear_halt"}),
