@@ -674,7 +674,7 @@
       // costs what workspace.describe costs, and Waldo solves the reaches
       // of a height on half the cores of its host. In a release build, a
       // stand of best of a two-armed robot at a table 0.75 m high takes
-      // 14 s to 18 s on 12 solver threads and 116 s to 151 s on one, and
+      // 14 s to 21 s on 12 solver threads and 116 s to 151 s on one, and
       // about 1 s once Waldo keeps the reaches of its heights. Waldo then
       // builds the world anew around the robot that stand_at stands,
       // twice for a mounted robot whose pose sinks into the top (once at
@@ -683,7 +683,7 @@
       // world twice, once with the object on the floor, to plan the raise
       // and the stands of the robots at the object in it, and once to put
       // them in place. It measures each of these robots at each height
-      // that it plans: for one robot, 9 s to 17 s on 12 solver threads and
+      // that it plans: for one robot, 10 s to 17 s on 12 solver threads and
       // 73 s to 133 s on one. Its deadline covers the search for two
       // robots on one thread. furnish fetches the files of
       // its pieces, then measures each scale of each piece with a robot
