@@ -32,7 +32,7 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.get_guide`           | `robot_guide:v1` `get_guide`        | read only, 2 s                  |
 | `robot.get_limb_names`      | `limb_state:v1` `get_limb_names`    | read only, 2 s                  |
 | `robot.move_to_ready`       | `postures:v1` `move_to_ready`       | task, 65 s                      |
-| `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 75 s: the close of the grippers, then the arm move |
+| `robot.move_to_home`        | `postures:v1` `move_to_home`        | task, 75 s: the close of the grippers, at most 10 s, then the arm move |
 | `robot.move_arm`            | `limb_motion:v1` `move_arm`         | task, 125 s                     |
 | `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 125 s                     |
 | `robot.execute_joint_path`  | `limb_motion:v1` `execute_joint_path` | task, 125 s                   |
