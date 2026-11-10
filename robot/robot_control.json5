@@ -69,7 +69,7 @@
         // was written against (`sha256sum robot/robot_identity.json5` in
         // the contracts hub). A launch that resolves other bytes refuses,
         // naming the contract. Every pin below is the same kind.
-        sha256: "c208a984b856b262aa55e99951c295f424eb5fad4c28507c67e00bd89b22e2ef",
+        sha256: "ba9cc3d6e786bebd7f696f261bf90960dda5b2c335b081d18fbcff0833dfabe4",
       },
       services: [
         {
@@ -82,20 +82,20 @@
       ],
     },
 
-    // The robot's guide: the park poses its launcher measured for its model,
-    // which no other contract gives, so a client that drives robots of many
+    // The robot's guide: the park poses its model's description gives, which
+    // no other contract gives, so a client that drives robots of many
     // models reads them from each robot and keeps no list of models.
     guide: {
       contract: {
         name: "robot_guide",
         tag: "v1",
-        sha256: "ed7378a4827aa5febf986b02a5bfdc5c7bc0306bf998b7628fe1f2b8bb3ee151",
+        sha256: "3156f76bbb15cd4ccb433d352f89225a9bfb6e3d0287e25ed040548329597a00",
       },
       services: [
         {
           member: "get_guide",
           tool: "robot.get_guide",
-          description: "Report the robot's guide: the park pose of each arm that has one, as the robot's launcher measured it for its model. park_arm_names, park_joints_per_arm and park_joint_positions give the joints of each park pose in radians, in the arm's joint order, each arm's vector concatenated in park_arm_names order. An arm at its park pose stands up, above the surface it works on and out of the view of the perception camera, so its next move down to the surface comes from above, over what stands on it; move an arm to its park pose with robot.move_arm_joints. An arm with no park pose is absent from the arrays, and a robot whose launcher gave none answers empty arrays. Changes nothing.",
+          description: "Report the robot's guide: the park pose of each arm that has one, as the description of the robot's model gives it. park_arm_names, park_joints_per_arm and park_joint_positions give the joints of each park pose in radians, in the arm's joint order, each arm's vector concatenated in park_arm_names order. An arm at its park pose stands up, above the surface it works on and out of the view of the perception camera, so its next move down to the surface comes from above, over what stands on it; move an arm to its park pose with robot.move_arm_joints. An arm with no park pose is absent from the arrays, and a robot whose description gives none answers empty arrays. Changes nothing.",
           operation: "read_only",
           deadline_ms: 2000,
         },

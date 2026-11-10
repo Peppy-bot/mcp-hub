@@ -186,7 +186,7 @@ peppy stack launch simulation_mcp --join openarm_sim:alpha,so101_sim:charlie    
 peppy stack join openarm_sim:bravo                                                  # listed when the join returns
 peppy stack launch simulation_mcp --with mujoco,world_control=none                  # MuJoCo, this endpoint and the framework's
 peppy stack launch physical --with robot_control
-peppy stack join openarm:alpha --with v2,cameras                                    # the real robot
+peppy stack join openarm:alpha --with openarm_v2,cameras                            # the real robot
 ```
 
 The endpoint, the tools, the resources, and every command below are identical under all of them.
