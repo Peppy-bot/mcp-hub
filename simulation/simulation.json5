@@ -670,15 +670,22 @@
       // work surface the robot works, as workspace.describe measures a
       // surface, one time for a raise of floor and one time for each
       // height of the search of a raise of best, 24 heights at most. The
-      // search builds no world. Waldo then builds the world anew around
-      // the robot that stand_at stands, twice for a mounted robot whose
-      // pose sinks into the top (once at the top's height, once raised
-      // clear of it). stand_at has the deadline of scene.move_robot.
-      // raise_object builds the world twice, once with the object on the
-      // floor, to plan the raise and the stands of the robots at the
-      // object in it, and once to put them in place. It measures each of
-      // these robots at each height that it plans, and has twice the
-      // deadline of stand_at. furnish fetches the files of
+      // search builds no world. A height whose reaches Waldo does not keep
+      // costs what workspace.describe costs, and Waldo solves the reaches
+      // of a height on half the cores of its host. In a release build, a
+      // stand of best of a two-armed robot at a table 0.75 m high takes
+      // 14 s to 18 s on 12 solver threads and 116 s to 151 s on one, and
+      // about 1 s once Waldo keeps the reaches of its heights. Waldo then
+      // builds the world anew around the robot that stand_at stands,
+      // twice for a mounted robot whose pose sinks into the top (once at
+      // the top's height, once raised clear of it). The deadline of
+      // stand_at covers the search on one thread. raise_object builds the
+      // world twice, once with the object on the floor, to plan the raise
+      // and the stands of the robots at the object in it, and once to put
+      // them in place. It measures each of these robots at each height
+      // that it plans: for one robot, 9 s to 17 s on 12 solver threads and
+      // 73 s to 133 s on one. Its deadline covers the search for two
+      // robots on one thread. furnish fetches the files of
       // its pieces, then measures each scale of each piece with a robot
       // station in a world of its own, about 14 s for a two-armed robot
       // that Waldo does not keep the measurement of, and reports each
@@ -692,7 +699,7 @@
           operation: "long_running",
           // Advertised to the client: this one moves the (simulated) robot.
           safety_sensitive: true,
-          deadline_ms: 30000,
+          deadline_ms: 180000,
         },
         {
           member: "raise_object",
@@ -702,7 +709,7 @@
           // Advertised to the client: this one moves the robots that stood
           // at the object.
           safety_sensitive: true,
-          deadline_ms: 60000,
+          deadline_ms: 300000,
         },
         {
           member: "furnish",
