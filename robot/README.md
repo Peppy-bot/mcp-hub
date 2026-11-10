@@ -123,8 +123,9 @@ the objects of its planning scene and each other, which `robot.execute_joint_pat
 start passed as its expected start. `path_orientation_constraints` holds orientations along the whole
 path, such as a carried cup kept upright, at every state the move runs, in any order of the list.
 `so101` has no depth camera, so its plan keeps clear of the objects a client enters and its own
-links alone, and what its hand holds of the links it may not touch; a plan from its home posture, folded onto itself,
-is refused, so plan from `robot.move_to_ready`; and with five joints its goal takes an
+links alone, and what its hand holds of the links it may not touch; folded onto itself as it rests, its arm refuses a
+plan with `start_in_collision`: move it to `robot.move_to_home`, out of contact, and plan from there; and with five
+joints its goal takes an
 orientation with slack: `tolerance_rad` or `free_axis` reaches a pose `robot.move_arm` refuses for
 its orientation. A Cartesian path gives such a path for one arm whose link follows
 straight lines through poses, as much of them as is valid, and the fraction covered. The scene holds the objects a client adds, such as a table top
