@@ -49,8 +49,12 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 limbs as the listing reports them under `limbs`. A pose is in the robot frame: fixed to the robot's
 base, its origin the point the base stands on, +X the way the robot faces, +Y to its left, +Z up.
 `robot.check_arm_move` says whether a `robot.move_arm` goal has a plan, and moves nothing.
-`robot.stop` ends every planned move in flight on the robot, whoever started it. Then each limb
-holds where it was commanded to be when the stop came, and no gripper opens. `robot.move_to_ready`
+`robot.stop` ends every planned move in flight on the robot, whoever started it. Then each arm
+holds where it stands, each gripper holds where it was commanded to be when the stop came, and no
+gripper opens. An arm move with `contact_gap_m` above 0 also ends on contact: it completes with
+`ended_on_contact` true once the measured grasp point falls farther behind its command than the gap,
+as it does when the arm sets a held item down. After an arm move that ended on contact, failed or was
+cancelled, the arm holds where it stands. `robot.move_to_ready`
 and `robot.move_to_home` report `arm_names`, `positions` and `orientations`: the grasp point of each
 arm in the robot frame, measured when the move ended. The three arrays are empty when the robot has
 no fresh measured pose of an arm. `robot.move_gripper` answers once the gripper stands still, or at
@@ -222,6 +226,7 @@ uv run robot_control_demo.py tools
 uv run robot_control_demo.py list
 uv run robot_control_demo.py move-to-ready --robot alpha --duration-s 4
 uv run robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
+uv run robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.3 --contact-gap-m 0.004
 uv run robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening 0
 uv run robot_control_demo.py move-to-home --robot alpha --duration-s 4
 uv run robot_control_demo.py demo --robot alpha

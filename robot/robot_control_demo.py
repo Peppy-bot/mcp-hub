@@ -95,6 +95,8 @@ DEMO_POSTURE_DURATION_S = 4.0
 SETTLE_POSITION_TOLERANCE_M = 0.02
 SETTLE_ORIENTATION_TOLERANCE_RAD = 0.15
 SETTLE_TIMEOUT_S = 2.0
+# The contact gap the arm move sends when none is given: no contact check.
+NO_CONTACT_CHECK_M = 0.0
 
 EXIT_OK = 0
 EXIT_NOT_DONE = 1
@@ -397,6 +399,7 @@ def command_move_arm(client, args, out, sleep):
         "settle_position_tolerance_m": args.settle_position_tolerance_m,
         "settle_orientation_tolerance_rad": args.settle_orientation_tolerance_rad,
         "settle_timeout_s": args.settle_timeout_s,
+        "contact_gap_m": args.contact_gap_m,
     }
     if args.orientation is not None:
         goal["orientation"] = args.orientation
@@ -489,6 +492,13 @@ def build_parser():
         help="how close the measured orientation must come to the requested one, or to where the plan ends, for the move to complete",
     )
     arm.add_argument("--settle-timeout-s", type=float, default=SETTLE_TIMEOUT_S, help=settle_timeout_help)
+    arm.add_argument(
+        "--contact-gap-m",
+        type=float,
+        default=NO_CONTACT_CHECK_M,
+        help="how far the measured grasp point may fall behind its command before the move ends on contact "
+        "and completes; 0 is no contact check",
+    )
     arm.set_defaults(run=command_move_arm)
 
     gripper = commands.add_parser("move-gripper", help="drive one gripper to an opening")
