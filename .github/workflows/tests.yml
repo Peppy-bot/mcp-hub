@@ -82,7 +82,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           # Nothing here pushes, so the job has no use for a writable
@@ -173,14 +173,14 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       # A Python with pip, whatever the runner image ships beside its own
       # python3; 3.12 is what the client scripts run on (Ubuntu 24.04).
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.12"
 
@@ -195,11 +195,43 @@ jobs:
           python -m pip install --quiet pytest==9.2.0
           python -m pytest --verbose
 
+  # The lockfile, .github/workflows/actions.lock, holds the commit of each
+  # action that the workflows of this repository use, and GitHub Actions runs
+  # that commit only. This job fails when the lockfile does not agree with
+  # the `uses:` lines of the workflows and of the actions they use, or when a
+  # commit of the lockfile is not in the history of its tag or branch.
+  # `gh actions-lock` writes the lockfile.
+  lockfile:
+    name: Verify the lockfile of the actions
+    # The smallest RunsOn runner: the job asks the GitHub API about each
+    # commit of the lockfile and builds nothing.
+    runs-on: runs-on=${{ github.run_id }}/runner=peppy-ci-ubuntu-24.04-x86_64/image=peppy-ubuntu24/cpu=2/ram=4+8/family=c8a+c7a+m8a+m7a${{ fromJSON(github.run_attempt) >= 3 && '/spot=false' || '' }}  # custom Peppy AMI
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # Nothing here pushes, so the job has no use for a writable
+          # credential sitting in .git/config for every later step to inherit.
+          persist-credentials: false
+
+      # The release of the extension is pinned, so every run verifies with
+      # the same program.
+      - name: Install the gh actions-lock extension
+        run: gh extension install github/gh-actions-lock --pin v0.4.1
+
+      - name: Verify the lockfile
+        run: gh actions-lock --verify
+
   # The one status check the org ruleset requires on main. It is green only
   # when every job above succeeded or was skipped, so a red job blocks the
   # merge whichever job it ran in.
   test:
-    needs: [wait-for-peppy, check-index, python-tests]
+    needs: [wait-for-peppy, check-index, python-tests, lockfile]
     # Runs whatever happened above: on the default condition a failed or
     # cancelled job would leave this check unreported instead of red.
     if: always()
