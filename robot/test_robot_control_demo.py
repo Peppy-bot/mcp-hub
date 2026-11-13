@@ -104,6 +104,7 @@ TOOL_FIELDS = {
         "settle_position_tolerance_m": "number",
         "settle_orientation_tolerance_rad": "number",
         "settle_timeout_s": "number",
+        "contact_gap_m": "number",
         demo.ROBOT_ARGUMENT: "string",
     },
     demo.TOOL_MOVE_GRIPPER: {
@@ -763,6 +764,7 @@ class ScriptTests(StandInCase):
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
                 "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
+                "contact_gap_m": demo.NO_CONTACT_CHECK_M,
             },
         )
 
@@ -780,8 +782,27 @@ class ScriptTests(StandInCase):
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
                 "settle_timeout_s": demo.SETTLE_TIMEOUT_S,
+                "contact_gap_m": demo.NO_CONTACT_CHECK_M,
             },
         )
+
+    def test_a_move_with_a_contact_gap_sends_it_and_prints_whether_a_contact_ended_it(self):
+        landed = {
+            "final_position": [0.3, 0.2, 0.31],
+            "final_orientation": [0.0, 0.0, 0.0, 1.0],
+            "ended_on_contact": True,
+            "action_time": 1.2,
+        }
+        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), completed(landed)]}))
+        code, out, _, _ = self.run_script(
+            server, "move-arm", "--robot", ROBOT, "--arm", "left_arm", "--position", "0.3", "0.2", "0.3",
+            "--orientation", "0", "0", "0", "1", "--duration-s", "4", "--contact-gap-m", "0.01",
+        )
+        self.assertEqual(code, demo.EXIT_OK)
+        (call,) = server.calls("tools/call")
+        self.assertEqual(call.params["arguments"]["contact_gap_m"], 0.01)
+        self.assertIn("robot.move_arm: completed", out)
+        self.assertIn('"ended_on_contact": true', out)
 
     def test_a_move_the_robot_did_not_finish_is_reported_with_its_failure_kind_and_message(self):
         unsettled = "still 8.0 mm / 0.02 rad from the target, 2.0 s after the planned end"
