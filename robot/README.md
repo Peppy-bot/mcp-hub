@@ -47,8 +47,13 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 
 `robot.move_arm`, `robot.move_arm_joints`, `robot.execute_joint_path` and `robot.move_gripper` name
-limbs as the listing reports them under `limbs`. A pose is in the robot frame: fixed to the robot's
-base, its origin the point the base stands on, +X the way the robot faces, +Y to its left, +Z up.
+limbs as the listing reports them under `limbs`. Every point and pose names its `frame` and its
+`timestamp`, by the frame rule of the server's `instructions`: a frame of the robot's tree, such as
+the robot frame, whose name `robot.describe_sensors` gives in `robot_frame`, fixed to the robot's
+base, its origin the point the base stands on, +X the way the robot faces, +Y to its left, +Z up;
+and an RFC 3339 time on the robot's clock,
+`1970-01-01T00:00:00Z` for the latest time. The robot places a pose by its tree at its timestamp
+when it takes the call, so a pose read before the robot moved names the same place after.
 `robot.check_arm_move` says whether a `robot.move_arm` goal has a plan, and moves nothing.
 `robot.stop` ends every planned move in flight on the robot, whoever started it. Then each arm
 holds where it stands, each gripper holds where it was commanded to be when the stop came, and no
@@ -56,16 +61,19 @@ gripper opens. An arm move with `contact_gap_m` above 0 also ends on contact: it
 `ended_on_contact` true once the measured grasp point falls farther behind its command than the gap,
 as it does when the arm sets a held item down. After an arm move that ended on contact, failed or was
 cancelled, the arm holds where it stands. `robot.move_to_ready`
-and `robot.move_to_home` report `arm_names`, `positions` and `orientations`: the grasp point of each
-arm in the robot frame, measured when the move ended. The three arrays are empty when the robot has
-no fresh measured pose of an arm. `robot.move_gripper` answers once the gripper stands still, or at
-its settle timeout. Its `final_opening` is the opening measured then: the target, where an object or
-the effort cap holds the jaws, or wherever they stood at the timeout.
+and `robot.move_to_home` report `frame`, `timestamp`, `arm_names` and `grasp_points`: the grasp
+point of each arm in the robot frame, at the time the robot measured it when the move ended.
+`arm_names` and `grasp_points` are empty when the robot has no fresh measured pose of an arm.
+`robot.move_gripper` answers once the gripper stands still, or at its settle timeout. Its
+`final_opening` is the opening measured then: the target, where an object or the effort cap holds
+the jaws, or wherever they stood at the timeout.
 `robot.describe_sensors` names the robot frame and the frame of each sensor of the robot's design
 in the robot's tree of frames, with the arm that carries it, and `robot.lookup_transform` places
-one frame of the tree in another at a time, such as a camera's frame in the robot frame at the
-capture time of a picture, so a pixel and its depth become a point `robot.move_arm` takes. A
-lookup that fails gives `unknown_frame`, `no_chain`, `extrapolation` or `broken_tree`.
+one frame of the tree, where it stood at one time, in another as it stands at a time, such as a
+camera's frame at the capture time of a picture in the robot frame now. A pixel and its depth
+become a point of the frame the picture's header names, which `robot.move_arm` takes with the
+picture's timestamp. A call whose frame or time the robot cannot place gives `unknown_frame`,
+`no_chain`, `extrapolation` or `broken_tree`.
 `robot.describe_workspace` says where on a flat surface at a given height the robot can
 work, with the largest rectangle in the robot frame to put items in, and `robot.check_positions`
 whether it can work given points: which arm reaches each, and for a point no arm reaches, how far
@@ -91,9 +99,9 @@ under `members`:
 
 The one `depth_stream` member of a depth camera is published twice: the picture for a model to see
 how far things are, and the samples for a program to compute with. A read of an image resource
-gives the message without its frame as JSON, and the frame as a blob. A picture tool answers with
-the frame as an image, which is what a model sees, so the two pictures are tools too and the
-samples stay a resource.
+gives the message without its `data` as JSON, its `header` naming the camera's frame, and the
+picture as a blob. A picture tool answers with the picture as an image, which is what a model
+sees, so the two pictures are tools too and the samples stay a resource.
 
 The motor-bearing components of a robot, an OpenArm's arm and gripper drivers or an SO-101's
 follower, are named in the resource, as the listing gives them under `members`:
@@ -115,8 +123,8 @@ A robot with a brain answers `brain.scan_items`, `brain.identify_item`, `brain.g
 `item_manipulation:v1`, `brain_model:v1`), and one with a recorder
 `recorder.record_episode` (`episode_recording:v1`), confirmation gated. A scan and an identify
 report each item's region in the picture `depth_camera.look` gives for the camera they name, with
-the frame's size and capture time. Resources are published per
-robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
+the picture's size, and each item's point in the robot frame at that picture's capture time.
+Resources are published per robot, `alpha/robot.limb_state`, `alpha/wrist_left/camera.latest_frame`,
 `alpha/chest/depth_camera.latest_depth_samples`, `alpha/left_arm_inst/alerts.active`, and the
 server sends `resources/list_changed` when a join or a removal changes the list.
 
@@ -150,7 +158,8 @@ Every contract is pinned by sha256 to the document this exposure was written aga
 cameras' brightness and contrast stay private. The server's `instructions` tell a model:
 
 - to list first, and that what a robot cannot do through these tools, it cannot do;
-- how to address the limbs, and which units and robot frame apply;
+- how to address the limbs, which units apply, and the frame rule: the frame and the timestamp
+  of every point and pose, and the kinds of a call whose frame the robot cannot place;
 - that a robot's motor health and alerts are resources, one of each per component named under
   `members`;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
@@ -241,7 +250,9 @@ uv run robot_control_demo.py demo --robot alpha
 title, the instructions, and every tool with its description, the camera tools included. `list`
 calls `robot.list` and prints every robot with its limbs, its cameras, the tools it answers and
 the resources it publishes. Each move has a subcommand naming its robot; the script drives the
-moves alone and reads no camera. `demo` brings the robot's arms to ready, closes and opens every
+moves alone and reads no camera. `move-arm` gives its pose in the robot frame, whose name it reads
+from `robot.describe_sensors`, at the latest time, and an empty orientation when `--orientation`
+is left out. `demo` brings the robot's arms to ready, closes and opens every
 gripper the listing gives it, and returns home, stopping at the first move that does not complete.
 `--endpoint <url>` points the script at another endpoint. Ctrl-C cancels the move in flight
 through `tasks/cancel` and waits for the robot to settle.

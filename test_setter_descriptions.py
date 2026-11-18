@@ -33,6 +33,16 @@ A target left out because it has no setter fails here when it gets one. The
 setters of the covered targets are an explicit list too. So a new setter, or
 a tool whose operation changes, fails here until the list names it.
 
+A tool whose request takes a point, a pose or a velocity takes it as a
+record that names its frame and its timestamp, and the document's
+instructions state what the two mean in a frame rule, a sentence that
+begins with "Frame rule:". So the description of every such tool, a setter
+or a read, names `frame` and `timestamp` as whole words and sends its reader
+to the frame rule. STAMPED_TOOLS lists these tools per exposure document:
+the tools whose contract member's request holds a record with frame and
+timestamp, which `peppy mcp catalog <name>:<tag>` shows in each tool's
+input schema. A listed tool that is not a tool of its document fails here.
+
 The documents are read with `exposure_json5`, since the pull request
 workflow installs pytest and nothing else.
 """
@@ -186,6 +196,48 @@ COVERED_SETTERS = {
 }
 
 
+# The sentence of a document's instructions that opens its frame rule.
+FRAME_RULE = "Frame rule:"
+# The words of a tool description that send its reader to the frame rule.
+FRAME_RULE_REFERENCE = "frame rule"
+# The fields of a stamped value that a tool description names.
+STAMPED_FIELDS = ("frame", "timestamp")
+
+# The tools whose request takes a stamped value, per exposure document.
+STAMPED_TOOLS = {
+    ROBOT_DOCUMENT: frozenset(
+        {
+            "robot.move_arm",
+            "robot.check_arm_move",
+            "robot.lookup_transform",
+            "robot.check_positions",
+            "planner.plan_joint_path",
+            "planner.plan_cartesian_path",
+            "planner.apply_collision_objects",
+            "brain.grab_item",
+            "brain.place_item",
+        }
+    ),
+    SIMULATION_DOCUMENT: frozenset(
+        {
+            "scene.spawn_object",
+            "scene.move_object",
+            "scene.apply_force",
+            "scene.move_robot",
+            "lighting.set_light_position",
+            "lighting.set_light_direction",
+            "lighting.set_light_orientation",
+            "scene.look",
+            "scene.locate_in_view",
+            "scene.locate_points",
+            "workspace.describe",
+            "workspace.find_places",
+            "workspace.furnish",
+        }
+    ),
+}
+
+
 def has_an_after_the_call_sentence(description: str) -> bool:
     """Whether a sentence of `description` begins with "After the call,"."""
     return _AFTER_THE_CALL_SENTENCE.search(description) is not None
@@ -211,6 +263,48 @@ def setter_violations(document: dict, targets: Iterable[str]) -> list[str]:
         for entry in setters(document, targets)
         if not has_an_after_the_call_sentence(entry.get("description", ""))
     ]
+
+
+def tool_entries(document: dict) -> dict[str, dict]:
+    """Every entry of the services and actions of `document`, by its tool."""
+    return {
+        entry["tool"]: entry
+        for target in document["targets"].values()
+        for entry in [*target.get("services", []), *target.get("actions", [])]
+    }
+
+
+def names_the_word(text: str, word: str) -> bool:
+    """Whether `text` holds `word` as a whole word: `timestamp` in
+    "source_timestamp" does not count."""
+    return re.search(rf"(?<![\w]){re.escape(word)}(?![\w])", text) is not None
+
+
+def stamped_tool_violations(document: dict, tools: Iterable[str]) -> list[str]:
+    """Each of `tools` that `document` does not hold, or whose description
+    does not name `frame` and `timestamp` beside the name of the frame rule,
+    and the frame rule; an empty list is the rule holding."""
+    entries = tool_entries(document)
+    violations = []
+    for tool in sorted(tools):
+        if tool not in entries:
+            violations.append(f"{tool}: not a tool of the document")
+            continue
+        description = entries[tool].get("description", "")
+        # The name of the rule holds the word frame, and names no field.
+        fields_text = description.replace(FRAME_RULE_REFERENCE, "")
+        missing = [f"`{word}`" for word in STAMPED_FIELDS if not names_the_word(fields_text, word)]
+        if FRAME_RULE_REFERENCE not in description:
+            missing.append(f'"{FRAME_RULE_REFERENCE}"')
+        if missing:
+            violations.append(f"{tool}: its description does not name " + ", ".join(missing))
+    return violations
+
+
+def states_the_frame_rule(document: dict) -> bool:
+    """Whether a sentence of the document's instructions opens with "Frame rule:"."""
+    instructions = document.get("server", {}).get("instructions", "")
+    return re.search(r"(?:^|[.!?]\s+)" + re.escape(FRAME_RULE), instructions) is not None
 
 
 def read_document(relative: str) -> dict:
@@ -255,6 +349,94 @@ def test_a_target_left_out_for_having_no_setter_has_none(relative: str) -> None:
     no_setter = [target for target, reason in UNCOVERED_TARGETS[relative].items() if reason == NO_SETTER]
     tools = [entry["tool"] for entry in setters(read_document(relative), no_setter)]
     assert not tools, f"{relative}: a target listed with no setter gives {tools}"
+
+
+@pytest.mark.parametrize("relative", sorted(STAMPED_TOOLS))
+def test_every_tool_that_takes_a_stamped_value_names_frame_timestamp_and_the_frame_rule(relative: str) -> None:
+    violations = stamped_tool_violations(read_document(relative), STAMPED_TOOLS[relative])
+    assert not violations, f"{relative}: " + "; ".join(violations)
+
+
+@pytest.mark.parametrize("relative", sorted(STAMPED_TOOLS))
+def test_a_document_with_tools_that_take_a_stamped_value_states_the_frame_rule(relative: str) -> None:
+    assert states_the_frame_rule(read_document(relative)), (
+        f'{relative}: no sentence of its instructions begins with "{FRAME_RULE}"'
+    )
+
+
+def test_the_stamped_tool_lists_name_exposure_documents() -> None:
+    documents = {document_name(path) for path in exposure_documents(REPOSITORY_ROOT)}
+    assert set(STAMPED_TOOLS) <= documents, f"listed but not an exposure document: {sorted(set(STAMPED_TOOLS) - documents)}"
+
+
+_STAMPED_FIXTURE = """{
+  peppy_schema: "mcp_exposure/v1",
+  manifest: { name: "arm", tag: "v1" },
+  server: { title: "Arm", instructions: "Every robot. Frame rule: every pose names its frame and its timestamp." },
+  targets: {
+    limb_motion: {
+      contract: { name: "limb_motion", tag: "v1" },
+      actions: [
+        { member: "move_arm", tool: "robot.move_arm",
+          description: "Move the arm. target gives frame and timestamp, by the frame rule. After the call, the arm stands still.",
+          operation: "long_running", deadline_ms: 125000 },
+      ],
+      services: [
+        { member: "check_arm_move", tool: "robot.check_arm_move",
+          description: "Check a move. target gives frame and timestamp, by the frame rule.",
+          operation: "read_only", deadline_ms: 5000 },
+      ],
+    },
+  },
+}
+"""
+_STAMPED_FIXTURE_TOOLS = ("robot.move_arm", "robot.check_arm_move")
+_MOVE_ARM_SENTENCE = "Move the arm. target gives frame and timestamp, by the frame rule."
+
+
+def test_a_document_whose_stamped_tools_name_their_fields_and_the_rule_passes() -> None:
+    document = parse_json5(_STAMPED_FIXTURE)
+    assert stamped_tool_violations(document, _STAMPED_FIXTURE_TOOLS) == []
+    assert states_the_frame_rule(document)
+
+
+@pytest.mark.parametrize(
+    ("replacement", "missing"),
+    [
+        ("Move the arm. target gives timestamp, by the frame rule.", "`frame`"),
+        ("Move the arm. target gives frame and source_timestamp, by the frame rule.", "`timestamp`"),
+        ("Move the arm. target gives frame and timestamp, in the robot frame.", '"frame rule"'),
+        ("Move the arm to a pose.", '`frame`, `timestamp`, "frame rule"'),
+    ],
+    ids=["no frame", "timestamp inside a word", "no frame rule", "none"],
+)
+def test_a_stamped_tool_that_does_not_name_a_field_or_the_rule_is_named(replacement: str, missing: str) -> None:
+    assert _MOVE_ARM_SENTENCE in _STAMPED_FIXTURE
+    document = parse_json5(_STAMPED_FIXTURE.replace(_MOVE_ARM_SENTENCE, replacement))
+    assert stamped_tool_violations(document, _STAMPED_FIXTURE_TOOLS) == [
+        f"robot.move_arm: its description does not name {missing}"
+    ]
+
+
+def test_a_listed_stamped_tool_that_the_document_does_not_hold_is_named() -> None:
+    document = parse_json5(_STAMPED_FIXTURE)
+    assert stamped_tool_violations(document, (*_STAMPED_FIXTURE_TOOLS, "robot.move_arms")) == [
+        "robot.move_arms: not a tool of the document"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("instructions", "states_it"),
+    [
+        ("Frame rule: every pose names its frame.", True),
+        ("Every robot. Frame rule: every pose names its frame.", True),
+        ("Every robot; Frame rule: every pose names its frame.", False),
+        ("Every robot, by the frame rule: every pose names its frame.", False),
+        ("Every robot.", False),
+    ],
+)
+def test_the_frame_rule_opens_a_sentence_of_the_instructions(instructions: str, states_it: bool) -> None:
+    assert states_the_frame_rule({"server": {"instructions": instructions}}) is states_it
 
 
 _FIXTURE = """// Two covered targets, the tools that are not setters, and a target
@@ -343,14 +525,14 @@ def test_a_read_only_tool_is_not_checked() -> None:
 @pytest.mark.parametrize(
     ("description", "has_it"),
     [
-        ("After the call, the lamp sits at current_position.", True),
-        ("Set it. After the call, the lamp sits at current_position.", True),
-        ("Set it?  After the call, the lamp sits at current_position.", True),
-        ("Set it!\nAfter the call, the lamp sits at current_position.", True),
-        ("Set it; After the call, the lamp sits at current_position.", False),
-        ("Set it: After the call, the lamp sits at current_position.", False),
-        ("Set it.After the call, the lamp sits at current_position.", False),
-        ("Answers with current_position, the effective position after the call.", False),
+        ("After the call, the lamp sits at the position of current.", True),
+        ("Set it. After the call, the lamp sits at the position of current.", True),
+        ("Set it?  After the call, the lamp sits at the position of current.", True),
+        ("Set it!\nAfter the call, the lamp sits at the position of current.", True),
+        ("Set it; After the call, the lamp sits at the position of current.", False),
+        ("Set it: After the call, the lamp sits at the position of current.", False),
+        ("Set it.After the call, the lamp sits at the position of current.", False),
+        ("Answers with current, the effective position after the call.", False),
         ("", False),
     ],
 )
