@@ -233,6 +233,7 @@ uv run robot_control_demo.py move-to-ready --robot alpha --duration-s 4
 uv run robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
 uv run robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.3 --contact-gap-m 0.004
 uv run robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening 0
+uv run robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening open
 uv run robot_control_demo.py move-to-home --robot alpha --duration-s 4
 uv run robot_control_demo.py demo --robot alpha
 ```

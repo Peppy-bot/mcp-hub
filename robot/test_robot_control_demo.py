@@ -1115,6 +1115,13 @@ class WireTests(unittest.TestCase):
         self.assertEqual(decode_header_value(demo.header_value("=?base64?x?=")), "=?base64?x?=")
 
 
+class OpeningTests(unittest.TestCase):
+    def test_a_fraction_of_jaw_travel_is_an_opening(self):
+        self.assertEqual(demo.opening_value("0"), 0.0)
+        self.assertEqual(demo.opening_value("0.5"), 0.5)
+        self.assertEqual(demo.opening_value("2"), 2.0)
+
+
 class StandInFidelityTests(StandInCase):
     """The request mistakes the real transport refuses, refused here the same
     way, so the tests above hold the script to the real endpoint's shape."""
