@@ -19,6 +19,7 @@ of the names `robot_control_demo.py list` reports.
     robot_control_demo.py list
     robot_control_demo.py move-to-ready --robot alpha --duration-s 4
     robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening 0
+    robot_control_demo.py move-gripper --robot alpha --gripper left_gripper --opening open
     robot_control_demo.py move-arm --robot alpha --arm right_arm --position 0.3 -0.2 0.4 --orientation 0 0.7071068 0 0.7071068
     robot_control_demo.py move-to-home --robot alpha --duration-s 4
     robot_control_demo.py demo --robot alpha
@@ -38,6 +39,7 @@ the robot to settle).
 import argparse
 import base64
 import json
+import math
 import sys
 import time
 import urllib.error
@@ -88,6 +90,8 @@ ROBOT_ARGUMENT = "robot"
 # Openings as fractions of full jaw travel, the contract's unit.
 GRIPPER_CLOSED = 0.0
 GRIPPER_OPEN = 1.0
+# The words that `--opening` takes for the two ends of the jaw travel.
+OPENING_WORDS = {"closed": GRIPPER_CLOSED, "open": GRIPPER_OPEN}
 DEMO_POSTURE_DURATION_S = 4.0
 # The tolerances and settle timeout the move commands send when none is
 # given, the values the tools' descriptions name for openarm_v2. Both limbs
@@ -406,6 +410,24 @@ def command_move_arm(client, args, out, sleep):
     return run_move(client, TOOL_MOVE_ARM, addressed(args.robot, goal), out, sleep)
 
 
+def opening_value(text):
+    """The value of `--opening`: one of the OPENING_WORDS for an end of the
+    jaw travel, or a fraction of that travel, which the robot judges. The
+    script refuses text that is neither, and a number that is not finite,
+    which JSON cannot carry."""
+    if text in OPENING_WORDS:
+        return OPENING_WORDS[text]
+    try:
+        opening = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"an opening is a fraction of jaw travel or one of the words {', '.join(OPENING_WORDS)}, not {text!r}"
+        ) from None
+    if not math.isfinite(opening):
+        raise argparse.ArgumentTypeError(f"an opening is a finite number, not {text!r}")
+    return opening
+
+
 def gripper_goal(gripper_name, opening, max_effort=0.0, settle_timeout_s=SETTLE_TIMEOUT_S):
     return {"gripper_name": gripper_name, "opening": opening, "max_effort": max_effort, "settle_timeout_s": settle_timeout_s}
 
@@ -504,7 +526,12 @@ def build_parser():
     gripper = commands.add_parser("move-gripper", help="drive one gripper to an opening")
     gripper.add_argument("--robot", required=True, help=robot_help)
     gripper.add_argument("--gripper", required=True, help="one of the robot's grippers, as `list` reports them")
-    gripper.add_argument("--opening", type=float, required=True, help="fraction of jaw travel: 0 closed, 1 fully open")
+    gripper.add_argument(
+        "--opening",
+        type=opening_value,
+        required=True,
+        help="fraction of jaw travel: 0 closed, 1 fully open; or the word closed or open",
+    )
     gripper.add_argument(
         "--max-effort", type=float, default=0.0, help="effort cap toward the target; 0 is no preference"
     )
