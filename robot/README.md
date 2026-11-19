@@ -50,10 +50,10 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 limbs as the listing reports them under `limbs`. Every point and pose names its `frame` and its
 `timestamp`, by the frame rule of the server's `instructions`: a frame of the robot's tree, such as
 the robot frame, whose name `robot.describe_sensors` gives in `robot_frame`, fixed to the robot's
-base, its origin the point the base stands on, +X the way the robot faces, +Y to its left, +Z up;
-and an RFC 3339 time on the robot's clock, which a call leaves out for the latest time. The robot
-places a pose by its tree at its timestamp when it takes the call, so a pose read before the robot
-moved names the same place after.
+base, its origin where the robot's URDF puts its root link, +X the way the robot faces, +Y to its
+left, +Z up; and an RFC 3339 time on the robot's clock, which a call leaves out for the latest time.
+The robot places a pose by its tree at its timestamp when it takes the call, so a pose read before
+the robot moved names the same place after.
 `robot.check_arm_move` says whether a `robot.move_arm` goal has a plan, and moves nothing.
 `robot.stop` ends every planned move in flight on the robot, whoever started it. Then each arm
 holds where it stands, each gripper holds where it was commanded to be when the stop came, and no
