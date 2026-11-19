@@ -39,7 +39,8 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 65 s                      |
 | `robot.stop`                | `limb_motion:v1` `stop`             | mutating, 2 s                   |
 | `robot.check_arm_move`      | `limb_motion:v1` `check_arm_move`   | read only, 5 s                  |
-| `robot.get_camera_poses`    | `camera_mounts:v1` `get_camera_poses` | read only, 2 s                |
+| `robot.describe_sensors`    | `sensor_mounts:v1` `describe_sensors` | read only, 2 s                |
+| `robot.lookup_transform`    | `transform_lookup:v1` `lookup_transform` | read only, 3 s: a wait of at most 1 s, then the read |
 | `robot.describe_workspace`  | `workspace:v1` `describe_workspace` | read only, 15 s                 |
 | `robot.check_positions`     | `workspace:v1` `check_positions`    | read only, 15 s                 |
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
@@ -60,9 +61,12 @@ arm in the robot frame, measured when the move ended. The three arrays are empty
 no fresh measured pose of an arm. `robot.move_gripper` answers once the gripper stands still, or at
 its settle timeout. Its `final_opening` is the opening measured then: the target, where an object or
 the effort cap holds the jaws, or wherever they stood at the timeout.
-`robot.get_camera_poses` reports where each camera of the robot's design stands in the robot
-frame, from the joints measured now, so a pixel and its depth become a point `robot.move_arm`
-takes. `robot.describe_workspace` says where on a flat surface at a given height the robot can
+`robot.describe_sensors` names the robot frame and the frame of each sensor of the robot's design
+in the robot's tree of frames, with the arm that carries it, and `robot.lookup_transform` places
+one frame of the tree in another at a time, such as a camera's frame in the robot frame at the
+capture time of a picture, so a pixel and its depth become a point `robot.move_arm` takes. A
+lookup that fails gives `unknown_frame`, `no_chain`, `extrapolation` or `broken_tree`.
+`robot.describe_workspace` says where on a flat surface at a given height the robot can
 work, with the largest rectangle in the robot frame to put items in, and `robot.check_positions`
 whether it can work given points: which arm reaches each, and for a point no arm reaches, how far
 short the closest arm stops. Both answer from the robot's design and the field of view of its
@@ -173,7 +177,8 @@ The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the expos
 `robot_control` axis of every launcher with robots, deployed by `simulation_mcp` and selected with
 `--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`.
 Every robot beside it is listed with its identity, its limb state and where its design lets it
-work, on an OpenArm with its collision readout and its camera mounts too, on an OpenArm v2 with its
+work, where it carries its sensors and where each of its frames stands, on an OpenArm with its
+collision readout too, on an OpenArm v2 with its
 motion planner, on the physical robots with their drivers' motor health and alerts, with the
 backbone's moves, and with its brain and recorder whenever they run; its camera rig adds the cameras,
 `cameras` on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no
