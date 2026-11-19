@@ -43,6 +43,11 @@ the tools whose contract member's request holds a record with frame and
 timestamp, which `peppy mcp catalog <name>:<tag>` shows in each tool's
 input schema. A listed tool that is not a tool of its document fails here.
 
+A call leaves a timestamp out for the latest time. So the instructions of
+a document with such tools say that a call may leave timestamp out, and
+the description of each such tool spells no time 0: no RFC 3339 time of
+1970-01-01, and no "time 0" or "timestamp 0" in words.
+
 The documents are read with `exposure_json5`, since the pull request
 workflow installs pytest and nothing else.
 """
@@ -203,6 +208,14 @@ FRAME_RULE_REFERENCE = "frame rule"
 # The fields of a stamped value that a tool description names.
 STAMPED_FIELDS = ("frame", "timestamp")
 
+# The words of a document's instructions that say a call may leave its
+# timestamp out.
+TIMESTAMP_LEFT_OUT = "may leave timestamp out"
+# The time 0 as a tool description can spell it: an RFC 3339 time of
+# 1970-01-01, or "time 0" or "timestamp 0" in words, a field name such as
+# target_timestamp included.
+TIME_ZERO = re.compile(r"1970-01-01|\b(?:\w+_)?time(?:stamp)? 0(?!\.?\d)")
+
 # The tools whose request takes a stamped value, per exposure document.
 STAMPED_TOOLS = {
     ROBOT_DOCUMENT: frozenset(
@@ -307,6 +320,20 @@ def states_the_frame_rule(document: dict) -> bool:
     return re.search(r"(?:^|[.!?]\s+)" + re.escape(FRAME_RULE), instructions) is not None
 
 
+def absent_timestamp_violations(document: dict, tool: str) -> list[str]:
+    """What keeps a call of `tool` from leaving its timestamp out: each
+    spelling of the time 0 in the tool's description, and instructions
+    that do not say a call may leave timestamp out; an empty list is the
+    rule holding."""
+    description = tool_entries(document).get(tool, {}).get("description", "")
+    violations = [
+        f'{tool}: its description spells the time 0 as "{spelling}"' for spelling in TIME_ZERO.findall(description)
+    ]
+    if TIMESTAMP_LEFT_OUT not in document.get("server", {}).get("instructions", ""):
+        violations.append(f'{tool}: the instructions do not say "{TIMESTAMP_LEFT_OUT}"')
+    return violations
+
+
 def read_document(relative: str) -> dict:
     return read_json5(REPOSITORY_ROOT / relative)
 
@@ -364,6 +391,14 @@ def test_a_document_with_tools_that_take_a_stamped_value_states_the_frame_rule(r
     )
 
 
+@pytest.mark.parametrize(
+    ("relative", "tool"), [(relative, tool) for relative, tools in sorted(STAMPED_TOOLS.items()) for tool in sorted(tools)]
+)
+def test_a_tool_that_takes_a_stamped_value_takes_it_with_no_timestamp(relative: str, tool: str) -> None:
+    violations = absent_timestamp_violations(read_document(relative), tool)
+    assert not violations, f"{relative}: " + "; ".join(violations)
+
+
 def test_the_stamped_tool_lists_name_exposure_documents() -> None:
     documents = {document_name(path) for path in exposure_documents(REPOSITORY_ROOT)}
     assert set(STAMPED_TOOLS) <= documents, f"listed but not an exposure document: {sorted(set(STAMPED_TOOLS) - documents)}"
@@ -372,7 +407,7 @@ def test_the_stamped_tool_lists_name_exposure_documents() -> None:
 _STAMPED_FIXTURE = """{
   peppy_schema: "mcp_exposure/v1",
   manifest: { name: "arm", tag: "v1" },
-  server: { title: "Arm", instructions: "Every robot. Frame rule: every pose names its frame and its timestamp." },
+  server: { title: "Arm", instructions: "Every robot. Frame rule: every pose names its frame and its timestamp, and a call may leave timestamp out for the latest time." },
   targets: {
     limb_motion: {
       contract: { name: "limb_motion", tag: "v1" },
@@ -422,6 +457,48 @@ def test_a_listed_stamped_tool_that_the_document_does_not_hold_is_named() -> Non
     document = parse_json5(_STAMPED_FIXTURE)
     assert stamped_tool_violations(document, (*_STAMPED_FIXTURE_TOOLS, "robot.move_arms")) == [
         "robot.move_arms: not a tool of the document"
+    ]
+
+
+def test_a_stamped_tool_whose_call_may_leave_its_timestamp_out_passes() -> None:
+    document = parse_json5(_STAMPED_FIXTURE)
+    assert absent_timestamp_violations(document, "robot.move_arm") == []
+
+
+@pytest.mark.parametrize(
+    ("replacement", "spelling"),
+    [
+        ("Move the arm. target gives frame and timestamp 1970-01-01T00:00:00Z, by the frame rule.", "1970-01-01"),
+        ("Move the arm. target gives frame and timestamp, by the frame rule, timestamp 0 for now.", "timestamp 0"),
+        ("Move the arm. target gives frame and timestamp, by the frame rule, at the time 0.", "time 0"),
+        ("Move the arm. target gives frame and timestamp, by the frame rule, and target_timestamp 0.", "target_timestamp 0"),
+    ],
+    ids=["rfc 3339", "timestamp 0", "time 0", "a field name"],
+)
+def test_a_stamped_tool_that_spells_the_time_0_is_named(replacement: str, spelling: str) -> None:
+    document = parse_json5(_STAMPED_FIXTURE.replace(_MOVE_ARM_SENTENCE, replacement))
+    assert absent_timestamp_violations(document, "robot.move_arm") == [
+        f'robot.move_arm: its description spells the time 0 as "{spelling}"'
+    ]
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Move the arm. target gives frame and timestamp, by the frame rule, within 0.5 s.",
+        "Move the arm. target gives frame and timestamp, by the frame rule; timeout 0 answers at once.",
+    ],
+    ids=["a decimal", "another word"],
+)
+def test_a_number_that_is_not_the_time_0_passes(description: str) -> None:
+    document = parse_json5(_STAMPED_FIXTURE.replace(_MOVE_ARM_SENTENCE, description))
+    assert absent_timestamp_violations(document, "robot.move_arm") == []
+
+
+def test_instructions_that_do_not_say_a_call_may_leave_timestamp_out_are_named() -> None:
+    document = parse_json5(_STAMPED_FIXTURE.replace(", and a call may leave timestamp out for the latest time", ""))
+    assert absent_timestamp_violations(document, "robot.move_arm") == [
+        'robot.move_arm: the instructions do not say "may leave timestamp out"'
     ]
 
 

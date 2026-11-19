@@ -98,12 +98,6 @@ SETTLE_ORIENTATION_TOLERANCE_RAD = 0.15
 SETTLE_TIMEOUT_S = 2.0
 # The contact gap the arm move sends when none is given: no contact check.
 NO_CONTACT_CHECK_M = 0.0
-# The timestamp of a pose the robot places at the latest time: the time 0,
-# as the endpoint renders a time.
-LATEST_TIME = "1970-01-01T00:00:00Z"
-# The orientation of a pose that names none: the grasp point keeps the turn
-# it starts with.
-NO_ORIENTATION = []
 
 EXIT_OK = 0
 EXIT_NOT_DONE = 1
@@ -409,13 +403,11 @@ def command_move_to_home(client, args, out, sleep):
 
 
 def command_move_arm(client, args, out, sleep):
-    """Move the arm to a pose in the robot frame, placed at the latest time."""
-    target = {
-        "frame": robot_frame(client, args.robot),
-        "timestamp": LATEST_TIME,
-        "position": args.position,
-        "orientation": NO_ORIENTATION if args.orientation is None else args.orientation,
-    }
+    """Move the arm to a pose in the robot frame with no timestamp, which the
+    robot places at the latest time; with no orientation, the grasp point
+    keeps the turn it starts with."""
+    orientation = {} if args.orientation is None else {"orientation": args.orientation}
+    target = {"frame": robot_frame(client, args.robot), "position": args.position, **orientation}
     goal = {
         "arm_name": args.arm,
         "target": target,

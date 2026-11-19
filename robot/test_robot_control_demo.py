@@ -96,13 +96,23 @@ SENSORS = {
     "alpha": {"robot_frame": "base_link", "sensor_names": [], "sensor_kinds": [], "sensor_frames": [], "carried_by": []},
     "charlie": {"robot_frame": "base", "sensor_names": [], "sensor_kinds": [], "sensor_frames": [], "carried_by": []},
 }
+
+# A field of `kind` that a goal may leave out, as the contract marks it
+# $optional.
+OptionalField = namedtuple("OptionalField", "kind")
 # The fields of a pose that names its frame and its time, as the derived
-# catalog publishes a nested object: every field required.
-POSE_STAMPED_FIELDS = {"frame": "string", "timestamp": "string", "position": "array", "orientation": "array"}
+# catalog publishes a nested object: timestamp and orientation optional, as
+# move_arm's target marks them.
+POSE_STAMPED_FIELDS = {
+    "frame": "string",
+    "timestamp": OptionalField("string"),
+    "position": "array",
+    "orientation": OptionalField("array"),
+}
 # The goal fields of each tool and their JSON types, as the derived catalog
-# publishes them (every field required, nothing else allowed): the
-# contract's fields and the routing argument the server adds. A nested
-# object's fields are a dictionary of their own.
+# publishes them (every field required unless an OptionalField, nothing else
+# allowed): the contract's fields and the routing argument the server adds.
+# A nested object's fields are a dictionary of their own.
 TOOL_FIELDS = {
     demo.TOOL_MOVE_TO_READY: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
     demo.TOOL_MOVE_TO_HOME: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
@@ -364,10 +374,10 @@ JSON_TYPES = {"number": (int, float), "string": str, "array": list}
 def field_problems(fields, arguments, prefix=""):
     """What `arguments` lacks or holds beyond `fields`, and each value of
     another JSON type, nested objects included, each named by its path."""
-    problems = [f"`{prefix}{name}` is required" for name in fields if name not in arguments]
+    problems = [f"`{prefix}{name}` is required" for name in required(fields) if name not in arguments]
     problems += [f"`{prefix}{name}` is not a field of the goal" for name in arguments if name not in fields]
     for name, value in arguments.items():
-        expected = fields.get(name)
+        expected = kind_of(fields.get(name))
         if isinstance(expected, dict):
             if isinstance(value, dict):
                 problems += field_problems(expected, value, f"{prefix}{name}.")
@@ -376,6 +386,16 @@ def field_problems(fields, arguments, prefix=""):
         elif expected and (isinstance(value, bool) or not isinstance(value, JSON_TYPES[expected])):
             problems.append(f"`{prefix}{name}` is not a {expected}")
     return problems
+
+
+def kind_of(field):
+    """The JSON type, or the fields of a nested object, of `field`."""
+    return field.kind if isinstance(field, OptionalField) else field
+
+
+def required(fields):
+    """The names of `fields` that a goal must give."""
+    return [name for name, field in fields.items() if not isinstance(field, OptionalField)]
 
 
 def argument_problems(tool, arguments):
@@ -388,9 +408,10 @@ def object_schema(fields):
     return {
         "type": "object",
         "properties": {
-            name: object_schema(kind) if isinstance(kind, dict) else {"type": kind} for name, kind in fields.items()
+            name: object_schema(kind) if isinstance(kind, dict) else {"type": kind}
+            for name, kind in ((name, kind_of(field)) for name, field in fields.items())
         },
-        "required": list(fields),
+        "required": required(fields),
         "additionalProperties": False,
     }
 
@@ -806,12 +827,7 @@ class ScriptTests(StandInCase):
             {
                 demo.ROBOT_ARGUMENT: ROBOT,
                 "arm_name": "left_arm",
-                "target": {
-                    "frame": "base_link",
-                    "timestamp": demo.LATEST_TIME,
-                    "position": [0.3, 0.2, 0.4],
-                    "orientation": [0.0, 0.0, 0.0, 1.0],
-                },
+                "target": {"frame": "base_link", "position": [0.3, 0.2, 0.4], "orientation": [0.0, 0.0, 0.0, 1.0]},
                 "duration_s": 0.0,
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
@@ -829,12 +845,7 @@ class ScriptTests(StandInCase):
             {
                 demo.ROBOT_ARGUMENT: ROBOT,
                 "arm_name": "left_arm",
-                "target": {
-                    "frame": "base_link",
-                    "timestamp": demo.LATEST_TIME,
-                    "position": [0.3, 0.2, 0.4],
-                    "orientation": demo.NO_ORIENTATION,
-                },
+                "target": {"frame": "base_link", "position": [0.3, 0.2, 0.4]},
                 "duration_s": 0.0,
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
@@ -1133,6 +1144,18 @@ class ClientTests(StandInCase):
         self.assertEqual(refused.exception.code, -32602)
         self.assertIn("`opening` is required", refused.exception.message)
         self.assertEqual(server.tasks, {})
+
+    def test_a_target_may_leave_out_its_timestamp_and_its_orientation_and_not_its_frame(self):
+        server = self.serve()
+        client = demo.McpClient(server.url)
+        with self.assertRaises(demo.ProtocolError) as refused:
+            client.request(
+                "tools/call",
+                {"name": demo.TOOL_MOVE_ARM, "arguments": {"arm_name": "left_arm", "target": {"position": [0.3, 0.2, 0.4]}}},
+            )
+        self.assertIn("`target.frame` is required", refused.exception.message)
+        self.assertNotIn("target.timestamp", refused.exception.message)
+        self.assertNotIn("target.orientation", refused.exception.message)
 
     def test_an_unknown_task_is_invalid_params(self):
         server = self.serve()
