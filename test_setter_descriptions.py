@@ -39,9 +39,11 @@ instructions state what the two mean in a frame rule, a sentence that
 begins with "Frame rule:". So the description of every such tool, a setter
 or a read, names `frame` and `timestamp` as whole words and sends its reader
 to the frame rule. STAMPED_TOOLS lists these tools per exposure document:
-the tools whose contract member's request holds a record with frame and
-timestamp, which `peppy mcp catalog <name>:<tag>` shows in each tool's
-input schema. A listed tool that is not a tool of its document fails here.
+the tools whose contract member's request holds a frame and a time that
+the frame rule places, which `peppy mcp catalog <name>:<tag>` shows in each
+tool's input schema: a record with frame and timestamp, or the two frames
+and the two times of robot.lookup_transform. A listed tool that is not a
+tool of its document fails here.
 
 A call leaves a timestamp out for the latest time. So the instructions of
 a document with such tools say that a call may leave timestamp out, and

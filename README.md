@@ -174,8 +174,9 @@ the timestamp out for the latest time: the `instructions` say that a call may le
 and no description of such a tool spells the time 0, as `1970-01-01` or as "time 0" or "timestamp
 0". The same test fails the pull request in which a tool of its `STAMPED_TOOLS` breaks this, and a
 document that holds such a tool and no frame rule. A tool joins `STAMPED_TOOLS` when its contract
-member's request holds a record with `frame` and `timestamp`, which `peppy mcp catalog` shows in the
-tool's input schema.
+member's request holds a frame and a time that the frame rule places, which `peppy mcp catalog`
+shows in the tool's input schema: a record with `frame` and `timestamp`, or the two frames and the
+two times of `robot.lookup_transform`.
 
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
