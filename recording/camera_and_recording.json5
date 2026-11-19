@@ -43,7 +43,7 @@
         {
           member: "video_stream",
           resource: "camera.latest_frame",
-          description: "Latest frame from the camera bound to this endpoint. A read gives the message without its picture, as JSON: header with frame, the camera's frame, the capture timestamp and capture_index, the capture counter, encoding, width and height; and data, the picture, as a JPEG blob. To look through the camera, call camera.look, which answers with the same frame as a picture.",
+          description: "The latest picture from the camera bound to this endpoint. A read gives the message without its picture, as JSON: header with frame, the camera's frame, the capture timestamp and capture_index, the capture counter, encoding, width and height; and data, the picture, as a JPEG blob. To look through the camera, call camera.look, which answers with the same picture.",
           // A snapshot older than this reads as stale rather than serving
           // yesterday's frame as if it were current.
           freshness: { max_age_ms: 2000 },
