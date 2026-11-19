@@ -94,7 +94,7 @@
         // in the contracts hub). A launch that resolves other bytes for
         // `scene_manipulation:v1` refuses instead of publishing schemas this
         // file never saw.
-        sha256: "952d41fc03e28e26a5acd7fb42c20a05d06d2845b27d399d394befeb539f4180",
+        sha256: "f6f62d21fec8f4367b12f999f005e89d692524449e47a93da0c1af0774cb5a4a",
       },
 
       // The catalogue and the inventory become tools that answer within one
@@ -287,7 +287,7 @@
         name: "scene_lighting",
         tag: "v2",
         // Pinned like `scene` above (`sha256sum simulation/scene_lighting.json5`).
-        sha256: "e0209d7a8e94e8f98ce3a08e79e387086b1922d395b29d7728c42da033e76716",
+        sha256: "5f16752a9dbb79e4e1a261ac830c47c6d747b9e87c0f0461d1de10e2dd12614c",
       },
 
       // Each service becomes a tool that answers within one request. The
@@ -473,7 +473,7 @@
         name: "scene_view",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_view.json5`).
-        sha256: "d11e0a35c3a54fcc415fc09dd27be24e6083c498afc323532f981e6dc8299b1b",
+        sha256: "e4bd3aeec8f086914b79407af8415f5a30af546f82eb3e7a32e058e974fd8df2",
       },
 
       // render_view and preview_asset answer with a picture: its data is
@@ -616,7 +616,7 @@
         name: "scene_workspace",
         tag: "v1",
         // Pinned like `scene` above (`sha256sum simulation/scene_workspace.json5`).
-        sha256: "37c2357a38f1610a93f700e509e797970ad5afc89563e456c71aefdb4f9793e6",
+        sha256: "b4c9780a377785e0cae0d266070f1b1eadbe5a0472dc7d47bed0d87aa0c5459f",
       },
 
       // Three services that measure, one that names a location. A measuring

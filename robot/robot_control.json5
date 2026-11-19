@@ -114,7 +114,7 @@
       contract: {
         name: "postures",
         tag: "v1",
-        sha256: "6d66a7023ea163202ef4fbe3ceb16eea4c773f07a4065194bc14707d123503e1",
+        sha256: "6c314b8c1f3d691b89f7748df460d6424102bffe903e33675c275d85457fb801",
       },
       actions: [
         {
@@ -145,7 +145,7 @@
       contract: {
         name: "limb_motion",
         tag: "v1",
-        sha256: "a1f24e78bdc14560923aaa8b39047f7fa78129eff62822838c4e8cd26c913516",
+        sha256: "37d52e4262f7e16f9482cd52d6dc44abf3687d9ba7e9109b30a1eba1660975cc",
       },
       actions: [
         {
@@ -206,7 +206,7 @@
       contract: {
         name: "limb_state",
         tag: "v1",
-        sha256: "6dab3ce14cb84639e15ca1c90f868f8cf6059b40f26e21eaa392cd2e7274482f",
+        sha256: "9c1395e1d7e78a8bbafb92d0c0a1e671ca2a3db7c9f95fb0a2d0e2ca6f572658",
       },
       topics: [
         {
@@ -322,7 +322,7 @@
       contract: {
         name: "rgb_camera",
         tag: "v1",
-        sha256: "eca74020e764f49febb6bf9897690d0b2f13398604b766b7495acd5bf6775597",
+        sha256: "ff5063bea27d4b67d73a6b40c875f0ec45834c9b4111b0a0690517853d68418d",
       },
       argument: "camera",
       topics: [
@@ -403,7 +403,7 @@
       contract: {
         name: "rgbd_camera",
         tag: "v1",
-        sha256: "3068d37022ba3bccdf0a9b9aee3135e99136c7b74f1657eb2a71346948a62399",
+        sha256: "fddde6edcfed73c464431e18bf1bc5d96378927507719b8cec6761fb020fb7df",
       },
       argument: "camera",
       topics: [
@@ -552,7 +552,7 @@
       contract: {
         name: "camera_geometry",
         tag: "v1",
-        sha256: "a0229875c29cfe62039bfa76cd5caf63ab2ed48c49adf33941ae39e5726ffef1",
+        sha256: "e803e8712edb4bc442db360ddbc3be2c87ebf8cbc5c887f073a10f6657447359",
       },
       argument: "camera",
       services: [
@@ -587,7 +587,7 @@
       contract: {
         name: "sensor_mounts",
         tag: "v1",
-        sha256: "978f45898d637166ff60c668ae315d4b98cb8060c5f11d61acbb270a4a4829df",
+        sha256: "f0e0a2160393ddd15e3518398abc8e59bf5855a8a235bd6f72ded497e5e9e1bb",
       },
       services: [
         {
@@ -607,7 +607,7 @@
       contract: {
         name: "transform_lookup",
         tag: "v1",
-        sha256: "b9725031034c96d44e8ccea9e6cd2fd54f2ee8a0c83f7942e1bc8eb66529eab2",
+        sha256: "91bc0b9f7fb306ff5c49aacfc47d5e0d80fac4ae24696f10488dd1e46139d606",
       },
       services: [
         {
@@ -635,7 +635,7 @@
       contract: {
         name: "workspace",
         tag: "v1",
-        sha256: "56dc3e814957ec84d1a1f18db90ecc7c6665f2f26339bfd1aed4939b4b9004e9",
+        sha256: "3062c0b71848d74ef7307a69379cb70e352c8b22fc05ac19f6b38c8f7c38af2e",
       },
       services: [
         {
@@ -665,7 +665,7 @@
       contract: {
         name: "motion_planning",
         tag: "v1",
-        sha256: "e236b3daefb3f60529404117e2d555ac6c2555caa4b7bdfef327836c0a480480",
+        sha256: "381c6d4edbaded9a48e458198a5b3e852534523a50b6799b8899adda80e510d7",
       },
       actions: [
         {
@@ -769,7 +769,7 @@
       contract: {
         name: "item_perception",
         tag: "v1",
-        sha256: "d7f9479499ecf96bea46165c6c267c574e1f5840f0265e546e0c62a3bbe05394",
+        sha256: "1238569036be386e9cb5c74aee068e425598a9b3a56dd990a447424060ae178c",
       },
       actions: [
         {
@@ -793,7 +793,7 @@
       contract: {
         name: "item_manipulation",
         tag: "v1",
-        sha256: "f6be301b7e423460a0d7833bf2173ecaec925f651230063fde4035d02927d2f3",
+        sha256: "783839746e3e0ac374d9b873f333434742b96cd27c9f0c04e6a0f8e80f2cbf55",
       },
       actions: [
         {
