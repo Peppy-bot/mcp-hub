@@ -39,6 +39,7 @@ the robot to settle).
 import argparse
 import base64
 import json
+import math
 import sys
 import time
 import urllib.error
@@ -410,9 +411,21 @@ def command_move_arm(client, args, out, sleep):
 
 
 def opening_value(text):
-    """The value of `--opening`: a fraction of jaw travel, or one of the
-    OPENING_WORDS for an end of the travel. The robot judges the fraction."""
-    return OPENING_WORDS.get(text, float(text))
+    """The value of `--opening`: one of the OPENING_WORDS for an end of the
+    jaw travel, or a fraction of that travel, which the robot judges. The
+    script refuses text that is neither, and a number that is not finite,
+    which JSON cannot carry."""
+    if text in OPENING_WORDS:
+        return OPENING_WORDS[text]
+    try:
+        opening = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"an opening is a fraction of jaw travel or one of the words {', '.join(OPENING_WORDS)}, not {text!r}"
+        ) from None
+    if not math.isfinite(opening):
+        raise argparse.ArgumentTypeError(f"an opening is a finite number, not {text!r}")
+    return opening
 
 
 def gripper_goal(gripper_name, opening, max_effort=0.0, settle_timeout_s=SETTLE_TIMEOUT_S):

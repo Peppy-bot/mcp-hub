@@ -14,6 +14,7 @@ recorded, never run.
     pytest    # from the repository root, as the pull request workflow runs it
 """
 
+import argparse
 import base64
 import http.server
 import io
@@ -725,6 +726,20 @@ class ScriptTests(StandInCase):
         for poll in server.calls("tasks/get"):
             self.assertEqual(poll.headers["mcp-name"], poll.params["taskId"])
 
+    def test_the_word_open_sends_a_fully_open_gripper(self):
+        server = self.serve()
+        code, _, err, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "open")
+        self.assertEqual(code, demo.EXIT_OK, err)
+        (call,) = server.calls("tools/call")
+        self.assertEqual(call.params["arguments"]["opening"], demo.GRIPPER_OPEN)
+
+    def test_an_opening_that_is_neither_a_word_nor_a_number_sends_nothing(self):
+        server = self.serve()
+        with self.assertRaises(SystemExit) as exit_:
+            self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "left_gripper", "--opening", "half")
+        self.assertEqual(exit_.exception.code, 2)
+        self.assertEqual(server.received, [])
+
     def test_a_refused_goal_is_a_failed_task_quoting_its_failure_kind_and_message(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_GRIPPER: [refused("rejected", "opening 2 is outside [0, 1]")]}))
         code, out, _, _ = self.run_script(server, "move-gripper", "--robot", ROBOT, "--gripper", "right_gripper", "--opening", "2")
@@ -1120,6 +1135,19 @@ class OpeningTests(unittest.TestCase):
         self.assertEqual(demo.opening_value("0"), 0.0)
         self.assertEqual(demo.opening_value("0.5"), 0.5)
         self.assertEqual(demo.opening_value("2"), 2.0)
+
+    def test_a_word_names_an_end_of_the_jaw_travel(self):
+        self.assertEqual(demo.opening_value("closed"), demo.GRIPPER_CLOSED)
+        self.assertEqual(demo.opening_value("open"), demo.GRIPPER_OPEN)
+
+    def test_text_that_is_neither_a_word_nor_a_number_is_refused(self):
+        with self.assertRaisesRegex(argparse.ArgumentTypeError, "closed, open, not 'half'"):
+            demo.opening_value("half")
+
+    def test_a_number_that_is_not_finite_is_refused(self):
+        for text in ("nan", "inf", "-inf"):
+            with self.subTest(text=text), self.assertRaisesRegex(argparse.ArgumentTypeError, "finite"):
+                demo.opening_value(text)
 
 
 class StandInFidelityTests(StandInCase):
