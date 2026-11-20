@@ -83,6 +83,7 @@ TOOL_MOVE_TO_READY = "robot.move_to_ready"
 TOOL_MOVE_TO_HOME = "robot.move_to_home"
 TOOL_MOVE_ARM = "robot.move_arm"
 TOOL_MOVE_GRIPPER = "robot.move_gripper"
+TOOL_DESCRIBE_SENSORS = "robot.describe_sensors"
 # The routing argument every move takes: the robot it addresses.
 ROBOT_ARGUMENT = "robot"
 # Openings as fractions of full jaw travel, the contract's unit.
@@ -343,12 +344,22 @@ def command_tools(client, args, out, sleep):
     return EXIT_OK
 
 
+def read_tool(client, tool, arguments):
+    """The structured answer of a read-only `tool` called with `arguments`."""
+    result = client.request("tools/call", {"name": tool, "arguments": arguments})
+    if result.get("isError"):
+        raise EndpointError(tool + ": " + " ".join(block.get("text", "") for block in result.get("content", [])))
+    return result.get("structuredContent", {})
+
+
 def list_robots(client):
     """The robots the endpoint lists, as `robot.list` answers them."""
-    result = client.request("tools/call", {"name": TOOL_LIST, "arguments": {}})
-    if result.get("isError"):
-        raise EndpointError(TOOL_LIST + ": " + " ".join(block.get("text", "") for block in result.get("content", [])))
-    return result.get("structuredContent", {}).get("robots", [])
+    return read_tool(client, TOOL_LIST, {}).get("robots", [])
+
+
+def robot_frame(client, robot):
+    """The name of `robot`'s robot frame, as `robot.describe_sensors` gives it."""
+    return read_tool(client, TOOL_DESCRIBE_SENSORS, addressed(robot, {}))["robot_frame"]
 
 
 def joined(names):
@@ -392,17 +403,20 @@ def command_move_to_home(client, args, out, sleep):
 
 
 def command_move_arm(client, args, out, sleep):
+    """Move the arm to a pose in the robot frame with no timestamp, which the
+    robot places at the latest time; with no orientation, the grasp point
+    keeps the turn it starts with."""
+    orientation = {} if args.orientation is None else {"orientation": args.orientation}
+    target = {"frame": robot_frame(client, args.robot), "position": args.position, **orientation}
     goal = {
         "arm_name": args.arm,
-        "position": args.position,
+        "target": target,
         "duration_s": args.duration_s,
         "settle_position_tolerance_m": args.settle_position_tolerance_m,
         "settle_orientation_tolerance_rad": args.settle_orientation_tolerance_rad,
         "settle_timeout_s": args.settle_timeout_s,
         "contact_gap_m": args.contact_gap_m,
     }
-    if args.orientation is not None:
-        goal["orientation"] = args.orientation
     return run_move(client, TOOL_MOVE_ARM, addressed(args.robot, goal), out, sleep)
 
 
@@ -467,16 +481,16 @@ def build_parser():
     home.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
     home.set_defaults(run=command_move_to_home)
 
-    arm = commands.add_parser("move-arm", help="move one arm's grasp point to a world-frame pose")
+    arm = commands.add_parser("move-arm", help="move one arm's grasp point to a pose in the robot frame")
     arm.add_argument("--robot", required=True, help=robot_help)
     arm.add_argument("--arm", required=True, help="one of the robot's arms, as `list` reports them")
-    arm.add_argument("--position", type=float, nargs=3, metavar=("X", "Y", "Z"), required=True, help="meters")
+    arm.add_argument("--position", type=float, nargs=3, metavar=("X", "Y", "Z"), required=True, help="meters, in the robot frame")
     arm.add_argument(
         "--orientation",
         type=float,
         nargs=4,
         metavar=("X", "Y", "Z", "W"),
-        help="unit quaternion; left out, the move is to the position alone",
+        help="unit quaternion in the robot frame; left out, the move is to the position alone",
     )
     arm.add_argument("--duration-s", type=float, default=0.0, help=duration_help)
     arm.add_argument(

@@ -166,6 +166,18 @@ A text states a physical fact only when a test of the code behind the tool pins 
 
 [`test_setter_descriptions.py`](test_setter_descriptions.py) fails the pull request in which the description of a covered setter has no sentence that begins with `After the call,`. The capital letter and the comma are part of the rule. The words must begin a sentence: "the effective value after the call" inside a sentence does not count. The covered targets are the ones in its `COVERED_TARGETS`: every target of `simulation/simulation.json5`, the `postures`, `limb_motion`, `planner` and `brain_model` targets of `robot/robot_control.json5`, and the `stack` and `fleet` targets of `framework/framework_controls.json5`. Its `UNCOVERED_TARGETS` names every other target of every exposure document, each with the reason. The test fails for a target that neither list names, and for a setter of a covered target that its `COVERED_SETTERS` does not name. So a target or a setter joins the rule, or stays out of it, only when its author says so. The test checks that the sentence is there, not that it is true.
 
+A tool whose request takes a point, a pose or a velocity takes it as a record that names its `frame`
+and its `timestamp`. The endpoint's `instructions` state what the two mean, and how a call that the
+provider cannot place ends, in a sentence that begins with `Frame rule:`. The description of each
+such tool names `frame` and `timestamp` and the frame rule, a setter and a read alike. A call leaves
+the timestamp out for the latest time: the `instructions` say that a call may leave timestamp out,
+and no description of such a tool spells the time 0, as `1970-01-01` or as "time 0" or "timestamp
+0". The same test fails the pull request in which a tool of its `STAMPED_TOOLS` breaks this, and a
+document that holds such a tool and no frame rule. A tool joins `STAMPED_TOOLS` when its contract
+member's request holds a frame and a time that the frame rule places, which `peppy mcp catalog`
+shows in the tool's input schema: a record with `frame` and `timestamp`, or the two frames and the
+two times of `robot.lookup_transform`.
+
 The tests read the structure of the documents with [`exposure_json5.py`](exposure_json5.py), a
 json5 reader that uses the Python standard library alone. The workflow installs pytest and nothing
 else. The reader refuses each form that serde_json5, the json5 reader of peppy, refuses. It also

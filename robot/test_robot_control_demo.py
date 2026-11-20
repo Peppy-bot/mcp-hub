@@ -49,8 +49,8 @@ ROBOTS = [
             "depth_camera.depth_info", "depth_camera.info", "depth_camera.look",
             "depth_camera.look_depth", "depth_camera.set_exposure",
             "depth_camera.set_gain", "depth_camera.set_white_balance",
-            "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
-            "robot.move_to_home", "robot.move_to_ready",
+            "robot.describe_sensors", "robot.get_identity", "robot.get_limb_names", "robot.move_arm",
+            "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
         ],
         "resources": [
             "alpha/chest/depth_camera.latest_depth_picture", "alpha/chest/depth_camera.latest_depth_samples",
@@ -80,8 +80,8 @@ ROBOTS = [
         "tools": [
             "camera.info", "camera.look", "camera.set_exposure", "camera.set_gain",
             "camera.set_white_balance",
-            "robot.get_identity", "robot.get_limb_names", "robot.move_arm", "robot.move_gripper",
-            "robot.move_to_home", "robot.move_to_ready",
+            "robot.describe_sensors", "robot.get_identity", "robot.get_limb_names", "robot.move_arm",
+            "robot.move_gripper", "robot.move_to_home", "robot.move_to_ready",
         ],
         "resources": ["charlie/wrist/camera.latest_frame", "charlie/robot.limb_state"],
         "members": {"camera": ["wrist"]},
@@ -90,16 +90,35 @@ ROBOTS = [
         "limbs": {"arm_names": ["arm"], "joints_per_arm": [5], "gripper_names": ["gripper"]},
     },
 ]
+# What robot.describe_sensors answers for each robot: the name of its robot
+# frame, which the arm moves place their poses in, and no sensor.
+SENSORS = {
+    "alpha": {"robot_frame": "base_link", "sensor_names": [], "sensor_kinds": [], "sensor_frames": [], "carried_by": []},
+    "charlie": {"robot_frame": "base", "sensor_names": [], "sensor_kinds": [], "sensor_frames": [], "carried_by": []},
+}
+
+# A field of `kind` that a goal may leave out, as the contract marks it
+# $optional.
+OptionalField = namedtuple("OptionalField", "kind")
+# The fields of a pose that names its frame and its time, as the derived
+# catalog publishes a nested object: timestamp and orientation optional, as
+# move_arm's target marks them.
+POSE_STAMPED_FIELDS = {
+    "frame": "string",
+    "timestamp": OptionalField("string"),
+    "position": "array",
+    "orientation": OptionalField("array"),
+}
 # The goal fields of each tool and their JSON types, as the derived catalog
-# publishes them (every field required, nothing else allowed): the
-# contract's fields and the routing argument the server adds.
+# publishes them (every field required unless an OptionalField, nothing else
+# allowed): the contract's fields and the routing argument the server adds.
+# A nested object's fields are a dictionary of their own.
 TOOL_FIELDS = {
     demo.TOOL_MOVE_TO_READY: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
     demo.TOOL_MOVE_TO_HOME: {"duration_s": "number", demo.ROBOT_ARGUMENT: "string"},
     demo.TOOL_MOVE_ARM: {
         "arm_name": "string",
-        "position": "array",
-        "orientation": "array",
+        "target": POSE_STAMPED_FIELDS,
         "duration_s": "number",
         "settle_position_tolerance_m": "number",
         "settle_orientation_tolerance_rad": "number",
@@ -116,6 +135,8 @@ TOOL_FIELDS = {
     },
     # The listing tool takes nothing and answers within the call.
     demo.TOOL_LIST: {},
+    # A read of one robot, which answers within the call.
+    demo.TOOL_DESCRIBE_SENSORS: {demo.ROBOT_ARGUMENT: "string"},
 }
 DEADLINE_MS = {
     demo.TOOL_MOVE_TO_READY: 65000,
@@ -123,6 +144,7 @@ DEADLINE_MS = {
     demo.TOOL_MOVE_ARM: 125000,
     demo.TOOL_MOVE_GRIPPER: 65000,
     demo.TOOL_LIST: 2000,
+    demo.TOOL_DESCRIBE_SENSORS: 2000,
 }
 TTL_GRACE_MS = 1000
 STANDARD_HEADERS_VERSION = "2026-07-28"
@@ -241,9 +263,13 @@ def tool_error(message):
 
 # Where the arms of alpha stand at its working posture: the posture result.
 POSTURE_RESULT = {
+    "frame": "base_link",
+    "timestamp": TIMESTAMP,
     "arm_names": ["left_arm", "right_arm"],
-    "positions": [0.3, 0.2, 0.4, 0.3, -0.2, 0.4],
-    "orientations": [0.0, 0.7071068, 0.0, 0.7071068, 0.0, 0.7071068, 0.0, 0.7071068],
+    "grasp_points": [
+        {"position": [0.3, 0.2, 0.4], "orientation": [0.0, 0.7071068, 0.0, 0.7071068]},
+        {"position": [0.3, -0.2, 0.4], "orientation": [0.0, 0.7071068, 0.0, 0.7071068]},
+    ],
 }
 # The reason the runtime gives a goal its caller cancelled.
 CANCELLED_BY_ITS_CALLER = "cancelled by its caller"
@@ -345,15 +371,49 @@ def decode_header_value(value):
 JSON_TYPES = {"number": (int, float), "string": str, "array": list}
 
 
-def argument_problems(tool, arguments):
-    fields = TOOL_FIELDS[tool]
-    problems = [f"`{name}` is required" for name in fields if name not in arguments]
-    problems += [f"`{name}` is not a field of the goal" for name in arguments if name not in fields]
+def field_problems(fields, arguments, prefix=""):
+    """What `arguments` lacks or holds beyond `fields`, and each value of
+    another JSON type, nested objects included, each named by its path."""
+    problems = [f"`{prefix}{name}` is required" for name in required(fields) if name not in arguments]
+    problems += [f"`{prefix}{name}` is not a field of the goal" for name in arguments if name not in fields]
     for name, value in arguments.items():
-        expected = fields.get(name)
-        if expected and (isinstance(value, bool) or not isinstance(value, JSON_TYPES[expected])):
-            problems.append(f"`{name}` is not a {expected}")
+        expected = kind_of(fields.get(name))
+        if isinstance(expected, dict):
+            if isinstance(value, dict):
+                problems += field_problems(expected, value, f"{prefix}{name}.")
+            else:
+                problems.append(f"`{prefix}{name}` is not an object")
+        elif expected and (isinstance(value, bool) or not isinstance(value, JSON_TYPES[expected])):
+            problems.append(f"`{prefix}{name}` is not a {expected}")
     return problems
+
+
+def kind_of(field):
+    """The JSON type, or the fields of a nested object, of `field`."""
+    return field.kind if isinstance(field, OptionalField) else field
+
+
+def required(fields):
+    """The names of `fields` that a goal must give."""
+    return [name for name, field in fields.items() if not isinstance(field, OptionalField)]
+
+
+def argument_problems(tool, arguments):
+    return field_problems(TOOL_FIELDS[tool], arguments)
+
+
+def object_schema(fields):
+    """The JSON schema of an object of `fields`, as the derived catalog
+    publishes it."""
+    return {
+        "type": "object",
+        "properties": {
+            name: object_schema(kind) if isinstance(kind, dict) else {"type": kind}
+            for name, kind in ((name, kind_of(field)) for name, field in fields.items())
+        },
+        "required": required(fields),
+        "additionalProperties": False,
+    }
 
 
 def in_call_result(tool, steps):
@@ -479,12 +539,7 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
             {
                 "name": tool,
                 "description": f"Run {tool}.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {name: {"type": kind} for name, kind in TOOL_FIELDS[tool].items()},
-                    "required": list(TOOL_FIELDS[tool]),
-                    "additionalProperties": False,
-                },
+                "inputSchema": object_schema(TOOL_FIELDS[tool]),
             }
             for tool in self.server.scenario.tools
         ]
@@ -499,6 +554,13 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
             if problems:
                 raise McpRefusal(-32602, f"`{tool}` takes no arguments; it lists every robot of the stack")
             return completed({"robots": self.server.scenario.robots})["result"]
+        if tool == demo.TOOL_DESCRIBE_SENSORS:
+            arguments = params.get("arguments") or {}
+            problems = argument_problems(tool, arguments)
+            if problems:
+                raise McpRefusal(-32602, f"invalid arguments for `{tool}`: " + "; ".join(problems))
+            robot = self._listed_robot(arguments)
+            return completed(SENSORS[robot])["result"]
         steps = self.server.scenario.steps_for(tool)
         capabilities = meta.get(demo.META_CLIENT_CAPABILITIES) or {}
         client_declared_tasks = demo.TASKS_EXTENSION in (capabilities.get("extensions") or {})
@@ -515,20 +577,24 @@ class StandInHandler(http.server.BaseHTTPRequestHandler):
         problems = argument_problems(tool, params.get("arguments") or {})
         if problems:
             raise McpRefusal(-32602, f"invalid arguments for `{tool}`: " + "; ".join(problems))
-        # The server routes the call to the robot named, and a robot that
-        # is not on the stack is refused naming the ones that are.
-        robot = params["arguments"][demo.ROBOT_ARGUMENT]
-        listed = [entry["robot"] for entry in self.server.scenario.robots]
-        if robot not in listed:
-            raise McpRefusal(
-                -32602, f"`{robot}` is not a robot of this stack; the robots are " + ", ".join(f"`{name}`" for name in listed)
-            )
+        self._listed_robot(params["arguments"])
         if not client_declared_tasks:
             return in_call_result(tool, steps)
         task_id = f"task-{len(self.server.tasks) + 1}"
         task = StandInTask(task_id, steps)
         self.server.tasks[task_id] = task
         return {"resultType": "task", **self._task_fields(task, DEADLINE_MS[tool] + TTL_GRACE_MS), **working()}
+
+    def _listed_robot(self, arguments):
+        """The robot the call names. The server routes the call to it, and a
+        robot that is not on the stack is refused naming the ones that are."""
+        robot = arguments[demo.ROBOT_ARGUMENT]
+        listed = [entry["robot"] for entry in self.server.scenario.robots]
+        if robot not in listed:
+            raise McpRefusal(
+                -32602, f"`{robot}` is not a robot of this stack; the robots are " + ", ".join(f"`{name}`" for name in listed)
+            )
+        return robot
 
     def _task(self, params):
         task = self.server.tasks.get(params.get("taskId"))
@@ -752,14 +818,16 @@ class ScriptTests(StandInCase):
         )
         self.assertEqual(code, demo.EXIT_NOT_DONE)
         self.assertIn("robot.move_arm: failed: the action failed: the provider abandoned the goal", out)
-        (call,) = server.calls("tools/call")
+        describe, call = server.calls("tools/call")
+        self.assertEqual(
+            (describe.params["name"], describe.params["arguments"]), (demo.TOOL_DESCRIBE_SENSORS, {demo.ROBOT_ARGUMENT: ROBOT})
+        )
         self.assertEqual(
             call.params["arguments"],
             {
                 demo.ROBOT_ARGUMENT: ROBOT,
                 "arm_name": "left_arm",
-                "position": [0.3, 0.2, 0.4],
-                "orientation": [0.0, 0.0, 0.0, 1.0],
+                "target": {"frame": "base_link", "position": [0.3, 0.2, 0.4], "orientation": [0.0, 0.0, 0.0, 1.0]},
                 "duration_s": 0.0,
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
@@ -771,13 +839,13 @@ class ScriptTests(StandInCase):
     def test_a_move_with_no_orientation_names_the_position_alone(self):
         server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed_without_kind("the provider abandoned the goal")]}))
         self.run_script(server, "move-arm", "--robot", ROBOT, "--arm", "left_arm", "--position", "0.3", "0.2", "0.4")
-        (call,) = server.calls("tools/call")
+        _, call = server.calls("tools/call")
         self.assertEqual(
             call.params["arguments"],
             {
                 demo.ROBOT_ARGUMENT: ROBOT,
                 "arm_name": "left_arm",
-                "position": [0.3, 0.2, 0.4],
+                "target": {"frame": "base_link", "position": [0.3, 0.2, 0.4]},
                 "duration_s": 0.0,
                 "settle_position_tolerance_m": demo.SETTLE_POSITION_TOLERANCE_M,
                 "settle_orientation_tolerance_rad": demo.SETTLE_ORIENTATION_TOLERANCE_RAD,
@@ -786,10 +854,21 @@ class ScriptTests(StandInCase):
             },
         )
 
+    def test_a_move_arm_names_the_robot_frame_of_the_robot_it_moves(self):
+        server = self.serve(Scenario({demo.TOOL_MOVE_ARM: [working(), failed_without_kind("the provider abandoned the goal")]}))
+        self.run_script(server, "move-arm", "--robot", "charlie", "--arm", "arm", "--position", "0.2", "0.0", "0.1")
+        describe, call = server.calls("tools/call")
+        self.assertEqual(describe.params["arguments"], {demo.ROBOT_ARGUMENT: "charlie"})
+        self.assertEqual(call.params["arguments"]["target"]["frame"], "base")
+
     def test_a_move_with_a_contact_gap_sends_it_and_prints_whether_a_contact_ended_it(self):
         landed = {
-            "final_position": [0.3, 0.2, 0.31],
-            "final_orientation": [0.0, 0.0, 0.0, 1.0],
+            "final_pose": {
+                "frame": "base_link",
+                "timestamp": TIMESTAMP,
+                "position": [0.3, 0.2, 0.31],
+                "orientation": [0.0, 0.0, 0.0, 1.0],
+            },
             "ended_on_contact": True,
             "action_time": 1.2,
         }
@@ -799,7 +878,7 @@ class ScriptTests(StandInCase):
             "--orientation", "0", "0", "0", "1", "--duration-s", "4", "--contact-gap-m", "0.01",
         )
         self.assertEqual(code, demo.EXIT_OK)
-        (call,) = server.calls("tools/call")
+        _, call = server.calls("tools/call")
         self.assertEqual(call.params["arguments"]["contact_gap_m"], 0.01)
         self.assertIn("robot.move_arm: completed", out)
         self.assertIn('"ended_on_contact": true', out)
@@ -1065,6 +1144,18 @@ class ClientTests(StandInCase):
         self.assertEqual(refused.exception.code, -32602)
         self.assertIn("`opening` is required", refused.exception.message)
         self.assertEqual(server.tasks, {})
+
+    def test_a_target_may_leave_out_its_timestamp_and_its_orientation_and_not_its_frame(self):
+        server = self.serve()
+        client = demo.McpClient(server.url)
+        with self.assertRaises(demo.ProtocolError) as refused:
+            client.request(
+                "tools/call",
+                {"name": demo.TOOL_MOVE_ARM, "arguments": {"arm_name": "left_arm", "target": {"position": [0.3, 0.2, 0.4]}}},
+            )
+        self.assertIn("`target.frame` is required", refused.exception.message)
+        self.assertNotIn("target.timestamp", refused.exception.message)
+        self.assertNotIn("target.orientation", refused.exception.message)
 
     def test_an_unknown_task_is_invalid_params(self):
         server = self.serve()

@@ -33,17 +33,17 @@
         // contracts hub). With it, a launch that resolves other bytes for
         // `rgb_camera:v1` refuses instead of publishing schemas this file
         // never saw.
-        sha256: "eca74020e764f49febb6bf9897690d0b2f13398604b766b7495acd5bf6775597",
+        sha256: "ff5063bea27d4b67d73a6b40c875f0ec45834c9b4111b0a0690517853d68418d",
       },
 
       // A topic becomes a resource: the latest policy-approved snapshot,
       // which clients read and subscribe to. Under a representation a read
-      // serves the message without its frame, and the frame as a blob.
+      // serves the message without its data, and the picture as a blob.
       topics: [
         {
           member: "video_stream",
           resource: "camera.latest_frame",
-          description: "Latest frame from the camera bound to this endpoint. A read gives the message without its frame, as JSON: header with the capture timestamp and frame_id, encoding, width and height; and the frame as a JPEG blob. To look through the camera, call camera.look, which answers with the same frame as a picture.",
+          description: "The latest picture from the camera bound to this endpoint. A read gives the message without its picture, as JSON: header with frame, the camera's frame, the capture timestamp and capture_index, the capture counter, encoding, width and height; and data, the picture, as a JPEG blob. To look through the camera, call camera.look, which answers with the same picture.",
           // A snapshot older than this reads as stale rather than serving
           // yesterday's frame as if it were current.
           freshness: { max_age_ms: 2000 },
@@ -51,19 +51,19 @@
           // or transcoding runs. A 30 Hz camera does not become 30 Hz of
           // JPEG encoding for a client that reads twice a minute.
           update: { max_hz: 2 },
-          // Interpret the message as an image and publish its frame as JPEG.
+          // Interpret the message as an image and publish its data as JPEG.
           // The roles name members of THIS topic's message format.
           representation: {
             image: "jpeg",
             quality: 80,
             fields: {
-              data: "frame",
+              data: "data",
               encoding: "encoding",
               width: "width",
               height: "height",
             },
           },
-          // The frame is a variable-length byte array, so its serialized size
+          // data is a variable-length byte array, so its serialized size
           // has no static maximum and the runtime size policy is mandatory.
           max_result_bytes: 524288,
           on_oversize: "downscale",
@@ -71,7 +71,7 @@
           // frame as an image. It takes no argument and reaches no node.
           picture: {
             tool: "camera.look",
-            description: "Look through the camera bound to this endpoint: its latest frame as a JPEG picture, with the capture timestamp, width and height. Changes nothing.",
+            description: "Look through the camera bound to this endpoint: its latest picture as a JPEG, with the camera's frame, the capture timestamp, width and height. Changes nothing.",
           },
         },
       ],
