@@ -37,14 +37,18 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.move_arm_joints`     | `limb_motion:v1` `move_arm_joints`  | task, 125 s                     |
 | `robot.execute_joint_path`  | `limb_motion:v1` `execute_joint_path` | task, 125 s                   |
 | `robot.move_gripper`        | `limb_motion:v1` `move_gripper`     | task, 65 s                      |
-| `robot.stop`                | `limb_motion:v1` `stop`             | mutating, 2 s                   |
+| `robot.stop`                | `robot_stop:v1` `stop`              | mutating, 2 s                   |
 | `robot.check_arm_move`      | `limb_motion:v1` `check_arm_move`   | read only, 5 s                  |
+| `robot.drive_base`          | `base_motion:v1` `drive_base`       | task, 125 s                     |
+| `robot.move_base`           | `base_motion:v1` `move_base`        | task, 125 s                     |
+| `robot.describe_base`       | `base_state:v1` `describe_base`     | read only, 2 s                  |
 | `robot.describe_sensors`    | `sensor_mounts:v1` `describe_sensors` | read only, 2 s                |
 | `robot.lookup_transform`    | `transform_lookup:v1` `lookup_transform` | read only, 3 s: a wait of at most 1 s, then the read |
 | `robot.describe_workspace`  | `workspace:v1` `describe_workspace` | read only, 15 s                 |
 | `robot.check_positions`     | `workspace:v1` `check_positions`    | read only, 15 s                 |
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
+| `robot.base_state`          | `base_state:v1` `base_states`       | resource, 5 Hz at most, 2 s fresh |
 
 `robot.move_arm`, `robot.move_arm_joints`, `robot.execute_joint_path` and `robot.move_gripper` name
 limbs as the listing reports them under `limbs`. Every point and pose names its `frame` and its
@@ -53,14 +57,37 @@ call leaves out for the robot frame, the frame whose name `robot.describe_sensor
 `robot_frame`, fixed to the robot's base, its origin where the robot's URDF puts its root link, +X
 the way the robot faces, +Y to its left, +Z up; and an RFC 3339 time on the robot's clock, which a
 call leaves out for the latest time. The robot places a pose by its tree at its timestamp when it
-takes the call, so a pose read before the robot moved names the same place after.
+takes the call, so a pose read before the robot moved names the same place after. On a wheeled
+base the robot frame's origin is on the floor at the point the base turns about in place, midway
+between the driven wheels of a differential base. A velocity names its `frame` and its `timestamp`
+by the same rule.
 `robot.check_arm_move` says whether a `robot.move_arm` goal has a plan, and moves nothing.
-`robot.stop` ends every planned move in flight on the robot, whoever started it. Then each arm
-holds where it stands, each gripper holds where it was commanded to be when the stop came, and no
-gripper opens. An arm move with `contact_gap_m` above 0 also ends on contact: it completes with
-`ended_on_contact` true once the measured grasp point falls farther behind its command than the gap,
-as it does when the arm sets a held item down. After an arm move that ended on contact, failed or was
-cancelled, the arm holds where it stands. `robot.move_to_ready`
+`robot.stop` ends every planned move in flight on the robot, whoever started it, through the
+robot's backbone, which implements `robot_stop`. Then each arm holds where it stands, each gripper
+holds where it was commanded to be when the stop came, no gripper opens, and a mobile base comes to
+rest at its deceleration limits and is held at rest against the leader that streams velocities to
+it on `drive_link` until 0.5 s pass, from the stop on, with no velocity from it. An arm move with
+`contact_gap_m` above 0 also ends on contact: it completes with `ended_on_contact` true once the
+measured grasp point falls farther behind its command than the gap, as it does when the arm sets a
+held item down. After an arm move that ended on contact, failed or was cancelled, the arm holds
+where it stands. A robot that is a mobile base has no limbs: the listing reports its `limbs` as null, with a note
+under `notes`. `robot.move_base` moves it to a `target` pose, which the robot places in `odom`, and
+`robot.drive_base` drives it at one `velocity` for a time, which the robot places in the robot
+frame and drives in it as the base moves, each by the frame rule when the robot takes the call.
+`odom` is the robot frame where the base stood when its odometry started, fixed to the floor. Both
+moves report `final_pose`, where the base's odometry placed the robot frame in `odom` when the move
+ended, and how long the call took, and check no obstacle; `robot.move_base` steers by the base's
+odometry. A base runs one move at a time. A move is checked in this order: a value it does not take
+is refused with `rejected`, a target or a velocity the robot cannot place with a kind of the frame
+rule, a placed target or velocity off the floor's plane or outside the base's limits with
+`rejected`, a move while the base's motion sensing is silent with `resource_unavailable`, a move
+while the base's mode is neither standing nor moving with `precondition_failed`, a move while a
+leader streams to the base with `leader_streaming`, and a move while another runs with
+`precondition_failed`. A leader that streams during a move does not move the base until the move
+ends. `robot.describe_base` reports the base's odometry source, the limits of its velocity along x
+and y and of its turn rate, each with its acceleration, deceleration, deadband and rest bound, and
+its outline in the robot frame, and the `robot.base_state` resource where its odometry places it in
+`odom`, the velocity it executes in the robot frame, and its mode. `robot.move_to_ready`
 and `robot.move_to_home` report `frame`, `timestamp`, `arm_names` and `grasp_points`: the grasp
 point of each arm in the robot frame, at the time the robot measured it when the move ended.
 `arm_names` and `grasp_points` are empty when the robot has no fresh measured pose of an arm.
@@ -158,12 +185,16 @@ Every contract is pinned by sha256 to the document this exposure was written aga
 cameras' brightness and contrast stay private. The server's `instructions` tell a model:
 
 - to list first, and that what a robot cannot do through these tools, it cannot do;
-- how to address the limbs, which units apply, and the frame rule: the frame and the timestamp
-  of every point and pose, and the kinds of a call whose frame the robot cannot place;
+- how to address the limbs, that a mobile base has none, which units apply, and the frame rule:
+  the frame and the timestamp of every point, pose and velocity, and the kinds of a call whose
+  frame the robot cannot place;
+- how a mobile base moves, in which frame each base move places its target or its velocity and
+  gives its result, and that a base runs one move at a time;
 - that a robot's motor health and alerts are resources, one of each per component named under
   `members`;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
-- that no robot move checks the floor, a table, an object or a held item;
+- that no robot move checks the floor, a table, an object or a held item, and no base move an
+  obstacle;
 - how a call that a robot refuses, or that fails, ends: with `outcome`, `failure_kind` and
   `message`, the kinds of every robot and the kinds of the tools (`unreachable`,
   `leader_streaming`, `not_found`), and how a cancelled move gives its reason and its result;
@@ -185,17 +216,16 @@ begins with `After the call,`, as [Writing tool texts](../README.md#writing-tool
 The [launchers hub](https://github.com/Peppy-bot/launchers-hub) serves the exposure as the
 `robot_control` axis of every launcher with robots, deployed by `simulation_mcp` and selected with
 `--with robot_control` on the others, one server for the stack, `mcp/fragments/robot_control.json5`.
-Every robot beside it is listed with its identity, its limb state and where its design lets it
-work, where it carries its sensors and where each of its frames stands, on an OpenArm with its
-collision readout too, on an OpenArm v2 with its
-motion planner, on the physical robots with their drivers' motor health and alerts, with the
-backbone's moves, and with its brain and recorder whenever they run; its camera rig adds the cameras,
-`cameras` on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no
-camera. The server reads
-one clock, the simulation's beside a simulation and wall time on the physical robots, so a stack
-under it is real or simulated. A join adds its robot to the running server and a removal takes
-it out, whether it comes from the command line or from `stack.join` and `stack.remove` on the
-framework's endpoint:
+Every robot beside it is listed with its identity, where it carries its sensors and where each of
+its frames stands. An arm robot is listed with its limb state and where its design lets it work,
+on an OpenArm with its collision readout too, on an OpenArm v2 with its motion planner, on the
+physical robots with their drivers' motor health and alerts, with the backbone's moves, and with its
+brain and recorder whenever they run. A mobile base is listed with its base state and its moves, its
+backbone's. A robot's camera rig adds the cameras, `cameras` on hardware and `cameras_sim` in
+simulation, so a robot without a rig is listed with no camera. The server reads one clock, the
+simulation's beside a simulation and wall time on the physical robots, so a stack under it is real or
+simulated. A join adds its robot to the running server and a removal takes it out, whether it comes
+from the command line or from `stack.join` and `stack.remove` on the framework's endpoint:
 
 ```sh
 peppy stack launch simulation_mcp                                                   # Waldo, this endpoint beside the simulated world's and the framework's, no robot listed
