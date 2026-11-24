@@ -13,8 +13,9 @@ A model starts with the listing:
 | `robot.list` | read only, 2 s |
 
 It lists every robot present. Each entry carries `robot`, the name every other tool takes;
-`tools`, the tools that robot answers: the `robot.` tools, and the `brain.`, `recorder.` and
-`planner.` tools of its brain, its recorder and its motion planner where it has them;
+`tools`, the tools that robot answers: the `robot.` tools, and the `brain.`, `recorder.`,
+`planner.` and `navigator.` tools of its brain, its recorder, its motion planner and its navigator
+where it has them;
 `resources`, the resources it publishes, each read at `peppy://resource/<name>`; `members`, its
 camera names under `camera` (color) and `depth_camera` (carrying depth), and its motor-bearing
 components under `motor_health` and `alerts`; `identity`, its model and the machine hosting it;
@@ -42,6 +43,11 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.drive_base`          | `base_motion:v1` `drive_base`       | task, 125 s                     |
 | `robot.move_base`           | `base_motion:v1` `move_base`        | task, 125 s                     |
 | `robot.describe_base`       | `base_state:v1` `describe_base`     | read only, 2 s                  |
+| `navigator.navigate_to_pose` | `base_navigation:v1` `navigate_to_pose` | task, 60 s progress window |
+| `navigator.spin`            | `base_navigation:v1` `spin`         | task, 60 s progress window      |
+| `navigator.drive_on_heading` | `base_navigation:v1` `drive_on_heading` | task, 60 s progress window |
+| `navigator.back_up`         | `base_navigation:v1` `back_up`      | task, 60 s progress window      |
+| `navigator.clear_grid`      | `base_navigation:v1` `clear_grid`   | mutating, 2 s                   |
 | `robot.describe_sensors`    | `sensor_mounts:v1` `describe_sensors` | read only, 2 s                |
 | `robot.lookup_transform`    | `transform_lookup:v1` `lookup_transform` | read only, 3 s: a wait of at most 1 s, then the read |
 | `robot.describe_workspace`  | `workspace:v1` `describe_workspace` | read only, 15 s                 |
@@ -87,7 +93,19 @@ leader streams to the base with `leader_streaming`, and a move while another run
 ends. `robot.describe_base` reports the base's odometry source, the limits of its velocity along x
 and y and of its turn rate, each with its acceleration, deceleration, deadband and rest bound, and
 its outline in the robot frame, and the `robot.base_state` resource where its odometry places it in
-`odom`, the velocity it executes in the robot frame, and its mode. `robot.move_to_ready`
+`odom`, the velocity it executes in the robot frame, and its mode. On a robot with a navigator,
+`navigator.navigate_to_pose` drives its mobile base to a `target` pose around what the robot's
+sensors have seen, the depth cameras fixed to the base: it plans a path, plans again as the
+sensors see more, slows and stops the base before an obstacle ahead and before a drop in the
+floor, and, when a try fails, empties its grid, turns in place, waits and backs up, once each,
+before it fails with `no_path` or `blocked`. `navigator.spin` turns the base in place, and
+`navigator.drive_on_heading` and `navigator.back_up` drive it straight ahead and back, each
+sweeping the base's padded footprint ahead of the move. Each runs in `odom` and gives its result
+there, keeps the base's footprint clear and no part outside it, and replaces the navigator's goal
+that runs; a `target` in `map` is refused with `not_localized` while no map is loaded. A call
+waits on them while the goal reports, at least once a second, and fails after 60 s with no
+report, the goal running on. `navigator.clear_grid` empties the navigator's grid of the floor.
+`robot.move_to_ready`
 and `robot.move_to_home` report `frame`, `timestamp`, `arm_names` and `grasp_points`: the grasp
 point of each arm in the robot frame, at the time the robot measured it when the move ended.
 `arm_names` and `grasp_points` are empty when the robot has no fresh measured pose of an arm.
@@ -189,15 +207,19 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
   the frame and the timestamp of every point, pose and velocity, and the kinds of a call whose
   frame the robot cannot place;
 - how a mobile base moves, in which frame each base move places its target or its velocity and
-  gives its result, and that a base runs one move at a time;
+  gives its result, and that a base runs one move at a time, a navigator goal replacing the
+  navigator's goal that runs;
 - that a robot's motor health and alerts are resources, one of each per component named under
   `members`;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
-- that no robot move checks the floor, a table, an object or a held item, and no base move an
-  obstacle;
+- that no move of the `robot.` tools checks the floor, a table, an object or a held item, and no
+  base move of them an obstacle, and that the `navigator.` tools drive a base around what the
+  robot's sensors see;
 - how a call that a robot refuses, or that fails, ends: with `outcome`, `failure_kind` and
-  `message`, the kinds of every robot and the kinds of the tools (`unreachable`,
-  `leader_streaming`, `not_found`), and how a cancelled move gives its reason and its result;
+  `message`, the kinds of every robot and the kinds of the tools (`unreachable`, `blocked`,
+  `not_localized`, `leader_streaming`, `not_found`), how a cancelled move gives its reason and
+  its result, and that a robot stop during a silence of the base's motion sensing ends a
+  navigator goal with `resource_unavailable`;
 - that an arm move completes only once the measured arm settled within the tolerances the call
   names, and fails with `timeout` otherwise, and that a gripper move never fails on its settle;
 - what the result of `robot.move_to_ready` and `robot.move_to_home` reports.
@@ -221,11 +243,12 @@ its frames stands. An arm robot is listed with its limb state and where its desi
 on an OpenArm with its collision readout too, on an OpenArm v2 with its motion planner, on the
 physical robots with their drivers' motor health and alerts, with the backbone's moves, and with its
 brain and recorder whenever they run. A mobile base is listed with its base state and its moves, its
-backbone's. A robot's camera rig adds the cameras, `cameras` on hardware and `cameras_sim` in
-simulation, so a robot without a rig is listed with no camera. The server reads one clock, the
-simulation's beside a simulation and wall time on the physical robots, so a stack under it is real or
-simulated. A join adds its robot to the running server and a removal takes it out, whether it comes
-from the command line or from `stack.join` and `stack.remove` on the framework's endpoint:
+backbone's, and its navigator's when it runs one. A robot's camera rig adds the cameras, `cameras`
+on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no camera. The
+server reads one clock, the simulation's beside a simulation and wall time on the physical robots,
+so a stack under it is real or simulated. A join adds its robot to the running server and a removal
+takes it out, whether it comes from the command line or from `stack.join` and `stack.remove` on the
+framework's endpoint:
 
 ```sh
 peppy stack launch simulation_mcp                                                   # Waldo, this endpoint beside the simulated world's and the framework's, no robot listed
