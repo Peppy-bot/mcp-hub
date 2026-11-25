@@ -104,16 +104,19 @@ and y and of its turn rate, each with its acceleration, deceleration, deadband a
 its outline in the robot frame, and the `robot.base_state` resource where its odometry places it in
 `odom`, the velocity it executes in the robot frame, and its mode. On a robot with a navigator,
 `navigator.navigate_to_pose` drives its mobile base to a `target` pose around what the robot's
-sensors have seen, the depth cameras fixed to the base: it plans a path, plans again as the
-sensors see more, slows and stops the base before an obstacle ahead and before a drop in the
+sensors have seen, the 2-D lidars and depth cameras fixed to the base: it plans a path, plans again
+as the sensors see more, slows and stops the base before an obstacle ahead and before a drop in the
 floor, and, when a try fails, empties its grid, turns in place, waits and backs up, once each,
 before it fails with `no_path` or `blocked`. `navigator.spin` turns the base in place, and
-`navigator.drive_on_heading` and `navigator.back_up` drive it straight ahead and back, each
-sweeping the base's padded footprint ahead of the move. Each runs in `odom` and gives its result
-there, keeps the base's footprint clear and no part outside it, and replaces the navigator's goal
-that runs; a `target` in `map` is refused with `not_localized` while no map is loaded. A call
-waits on them while the goal reports, at least once a second, and fails after 60 s with no
-report, the goal running on. `navigator.clear_grid` empties the navigator's grid of the floor.
+`navigator.drive_on_heading` and `navigator.back_up` drive it straight ahead and back, each sweeping
+the base's padded footprint ahead of the move. Each runs in `odom` and gives its result there, and a
+navigation to a `target` in `map` runs in `map` on the loaded map, planned over the whole map, and
+gives its result in `map`; each keeps the base's footprint clear and no part outside it, and
+replaces the navigator's goal that runs. A `target` in `map` is refused with `not_localized` while
+no map is loaded or the base is not localized in it, and a navigation in `map` fails with
+`not_localized` when the base stops being localized or the loaded map changes. A call waits on them
+while the goal reports, at least once a second, and fails after 60 s with no report, the goal
+running on. `navigator.clear_grid` empties the navigator's grid of the floor.
 `robot.move_to_ready`
 and `robot.move_to_home` report `frame`, `timestamp`, `arm_names` and `grasp_points`: the grasp
 point of each arm in the robot frame, at the time the robot measured it when the move ended.
