@@ -249,11 +249,11 @@ instant: its landmarks in the world frame and its state, such as whether it brok
 contents went, how far they cooked, whether it is crushed and how hot it and its heaters are. The
 state is a fact of the simulation, as a position is. So it reaches an endpoint through
 `scene_manipulation`, a contract that only a simulation gives, and never through `object_state`,
-which is ground truth. It has two uses. In phase 1 of sim-chat, the world setup, it lets the
-agent check an event that the user asks for in the world, such as a drop or a heating. It lets the
-eval judge of sim-chat, an MCP client as the agent is, read the result of a scenario. A robot task
-never reads it: phase 2 of sim-chat, the robot actions, offers no tool that gives it, and the view
-of phase 2 holds no answer that gave it.
+which is ground truth. It has two uses. In phase 1 of the studio chat, the world setup, it lets
+the agent check an event that the user asks for in the world, such as a drop or a heating. It lets
+the eval judge of the studio chat, an MCP client as the agent is, read the result of a scenario. A
+robot task never reads it: phase 2 of the studio chat, the robot actions, offers no tool that
+gives it, and the view of phase 2 holds no answer that gave it.
 
 The cameras are not simulation-only. The rig the simulation renders publishes
 `rgb_camera:v1` and `rgbd_camera:v1`, the contracts the physical `uvc_camera_linux` and `zed_camera`
