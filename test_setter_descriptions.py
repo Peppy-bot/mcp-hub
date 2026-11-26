@@ -131,6 +131,7 @@ COVERED_SETTERS = {
             "scene.clear_scene",
             "scene.spawn_object",
             "scene.move_object",
+            "scene.resize_object",
             "scene.remove_object",
             "scene.apply_force",
             "scene.move_robot",
