@@ -48,6 +48,14 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `navigator.drive_on_heading` | `base_navigation:v1` `drive_on_heading` | task, 60 s progress window |
 | `navigator.back_up`         | `base_navigation:v1` `back_up`      | task, 60 s progress window      |
 | `navigator.clear_grid`      | `base_navigation:v1` `clear_grid`   | mutating, 2 s                   |
+| `navigator.get_map_state`   | `room_map:v1` `get_map_state`       | read only, 2 s                  |
+| `navigator.start_mapping`   | `room_map:v1` `start_mapping`       | mutating, 4 s                   |
+| `navigator.finish_mapping`  | `room_map:v1` `finish_mapping`      | mutating, 2 s                   |
+| `navigator.list_maps`       | `room_map:v1` `list_maps`           | read only, 2 s                  |
+| `navigator.remove_map`      | `room_map:v1` `remove_map`          | mutating, 2 s                   |
+| `navigator.load_map`        | `room_map:v1` `load_map`            | mutating, 2 s                   |
+| `navigator.set_initial_pose` | `room_map:v1` `set_initial_pose`    | mutating, 7 s                   |
+| `navigator.reinitialize_global_localization` | `room_map:v1` `reinitialize_global_localization` | mutating, 4 s                   |
 | `robot.describe_sensors`    | `sensor_mounts:v1` `describe_sensors` | read only, 2 s                |
 | `robot.lookup_transform`    | `transform_lookup:v1` `lookup_transform` | read only, 3 s: a wait of at most 1 s, then the read |
 | `robot.describe_workspace`  | `workspace:v1` `describe_workspace` | read only, 15 s                 |
@@ -55,6 +63,7 @@ Every other tool takes `robot`. The robot's identity, guide, moves and state:
 | `robot.limb_state`          | `limb_state:v1` `limb_states`       | resource, 5 Hz at most, 2 s fresh |
 | `robot.collision_status`    | `collision_status:v1` `collision_status` | resource, 5 Hz at most     |
 | `robot.base_state`          | `base_state:v1` `base_states`       | resource, 5 Hz at most, 2 s fresh |
+| `navigator.map_pose`        | `room_map:v1` `map_poses`           | resource, 5 Hz at most, 2 s fresh |
 
 `robot.move_arm`, `robot.move_arm_joints`, `robot.execute_joint_path` and `robot.move_gripper` name
 limbs as the listing reports them under `limbs`. Every point and pose names its `frame` and its
@@ -95,16 +104,19 @@ and y and of its turn rate, each with its acceleration, deceleration, deadband a
 its outline in the robot frame, and the `robot.base_state` resource where its odometry places it in
 `odom`, the velocity it executes in the robot frame, and its mode. On a robot with a navigator,
 `navigator.navigate_to_pose` drives its mobile base to a `target` pose around what the robot's
-sensors have seen, the depth cameras fixed to the base: it plans a path, plans again as the
-sensors see more, slows and stops the base before an obstacle ahead and before a drop in the
+sensors have seen, the 2-D lidars and depth cameras fixed to the base: it plans a path, plans again
+as the sensors see more, slows and stops the base before an obstacle ahead and before a drop in the
 floor, and, when a try fails, empties its grid, turns in place, waits and backs up, once each,
 before it fails with `no_path` or `blocked`. `navigator.spin` turns the base in place, and
-`navigator.drive_on_heading` and `navigator.back_up` drive it straight ahead and back, each
-sweeping the base's padded footprint ahead of the move. Each runs in `odom` and gives its result
-there, keeps the base's footprint clear and no part outside it, and replaces the navigator's goal
-that runs; a `target` in `map` is refused with `not_localized` while no map is loaded. A call
-waits on them while the goal reports, at least once a second, and fails after 60 s with no
-report, the goal running on. `navigator.clear_grid` empties the navigator's grid of the floor.
+`navigator.drive_on_heading` and `navigator.back_up` drive it straight ahead and back, each sweeping
+the base's padded footprint ahead of the move. Each runs in `odom` and gives its result there, and a
+navigation to a `target` in `map` runs in `map` on the loaded map, planned over the whole map, and
+gives its result in `map`; each keeps the base's footprint clear and no part outside it, and
+replaces the navigator's goal that runs. A `target` in `map` is refused with `not_localized` while
+no map is loaded or the base is not localized in it, and a navigation in `map` fails with
+`not_localized` when the base stops being localized or the loaded map changes. A call waits on them
+while the goal reports, at least once a second, and fails after 60 s with no report, the goal
+running on. `navigator.clear_grid` empties the navigator's grid of the floor.
 `robot.move_to_ready`
 and `robot.move_to_home` report `frame`, `timestamp`, `arm_names` and `grasp_points`: the grasp
 point of each arm in the robot frame, at the time the robot measured it when the move ended.
@@ -193,6 +205,23 @@ straight lines through poses, as much of them as is valid, and the fraction cove
 or an item the brain found, the objects attached to an arm's grasp link, which move with it, and the
 pairs allowed to touch.
 
+A robot whose mobile base measures its odometry and carries a 2-D lidar fixed to it can have a
+navigator that maps rooms with that lidar, which answers the `room_map:v1` tools and resource of the
+table; they move nothing. `navigator.start_mapping` `{map_name: "lab"}` starts a map whose map frame
+is `odom` as it stands then, the base drives the room under `robot.move_base` or `robot.drive_base`,
+and `navigator.finish_mapping` saves `lab` on the navigator's machine and keeps it loaded. After the
+navigator restarts, `navigator.load_map` `{map_name: "lab"}` loads it, and
+`navigator.set_initial_pose` `{target: {frame: "map", position: [2.0, 1.0, 0.0], orientation: [0.0,
+0.0, 0.7071, 0.7071]}, search_radius_m: 0.5, search_angle_rad: 0.5}` matches the lidar's next scan
+against the map near that pose and answers with the matched pose in `current_pose`, or fails with
+`no_match`. A client that does not know where the base stands calls
+`navigator.reinitialize_global_localization`, which searches the whole map, and turns the base in
+place with `robot.drive_base` until `navigator.map_pose` reports it `localized`. To map the room
+again, `navigator.remove_map` `{map_name: "lab"}` unloads and removes `lab`, and
+`navigator.start_mapping` `{map_name: "lab"}` starts over. `navigator.get_map_state` and
+`navigator.map_pose` report the loaded map, whether mapping or a search runs, where the robot frame
+stands in `map` and whether the base is localized there.
+
 `robot.recent_calls` is the endpoint's own tool: the last 200 calls of every tool that is not read
 only, tasks included, newest first, with the client that made each, its arguments and how it ended,
 with the failure kind and the message of a call that a robot refused or that failed, so a client
@@ -200,7 +229,8 @@ that finds a robot in a state it did not command can tell whether another client
 did it. A motion a teleoperation or another node commanded is not in it.
 
 Every contract is pinned by sha256 to the document this exposure was written against. The
-cameras' brightness and contrast stay private. The server's `instructions` tell a model:
+cameras' brightness and contrast and the navigator's occupancy grid, `map_grids`, stay private.
+The server's `instructions` tell a model:
 
 - to list first, and that what a robot cannot do through these tools, it cannot do;
 - how to address the limbs, that a mobile base has none, which units apply, and the frame rule:
@@ -209,16 +239,20 @@ cameras' brightness and contrast stay private. The server's `instructions` tell 
 - how a mobile base moves, in which frame each base move places its target or its velocity and
   gives its result, and that a base runs one move at a time, a navigator goal replacing the
   navigator's goal that runs;
+- how a navigator maps a room, saves and loads the map and localizes the base in it, and the map
+  rule: the loaded map, the map frame, when the base is localized, the map names, where the maps are
+  saved, the read of the base's odometry source that three of its tools wait for, and the order of a
+  map tool's refusals;
 - that a robot's motor health and alerts are resources, one of each per component named under
   `members`;
 - to call `robot.move_to_ready` before any `robot.move_arm`;
 - that no move of the `robot.` tools checks the floor, a table, an object or a held item, and no
-  base move of them an obstacle, and that the `navigator.` tools drive a base around what the
-  robot's sensors see;
+  base move of them an obstacle, and that the moves of the `navigator.` tools drive a base around
+  what the robot's sensors see;
 - how a call that a robot refuses, or that fails, ends: with `outcome`, `failure_kind` and
   `message`, the kinds of every robot and the kinds of the tools (`unreachable`, `blocked`,
-  `not_localized`, `leader_streaming`, `not_found`), how a cancelled move gives its reason and
-  its result, and that a robot stop during a silence of the base's motion sensing ends a
+  `not_localized`, `leader_streaming`, `not_found`, `no_match`), how a cancelled move gives its
+  reason and its result, and that a robot stop during a silence of the base's motion sensing ends a
   navigator goal with `resource_unavailable`;
 - that an arm move completes only once the measured arm settled within the tolerances the call
   names, and fails with `timeout` otherwise, and that a gripper move never fails on its settle;
@@ -230,8 +264,9 @@ robot's name there is its name here, how its world frame maps to the robot frame
 completes a task. The rule and its test are in
 [The robots' endpoint names no other endpoint](../README.md#the-robots-endpoint-names-no-other-endpoint).
 
-The description of each move and of `robot.stop` says what holds after the call. That sentence
-begins with `After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.
+The description of each move, of `robot.stop`, and of each setter of the motion planner, the
+navigator and the brain's model says what holds after the call. That sentence begins with
+`After the call,`, as [Writing tool texts](../README.md#writing-tool-texts) requires.
 
 ## Launching it
 
@@ -243,12 +278,12 @@ its frames stands. An arm robot is listed with its limb state and where its desi
 on an OpenArm with its collision readout too, on an OpenArm v2 with its motion planner, on the
 physical robots with their drivers' motor health and alerts, with the backbone's moves, and with its
 brain and recorder whenever they run. A mobile base is listed with its base state and its moves, its
-backbone's, and its navigator's when it runs one. A robot's camera rig adds the cameras, `cameras`
-on hardware and `cameras_sim` in simulation, so a robot without a rig is listed with no camera. The
-server reads one clock, the simulation's beside a simulation and wall time on the physical robots,
-so a stack under it is real or simulated. A join adds its robot to the running server and a removal
-takes it out, whether it comes from the command line or from `stack.join` and `stack.remove` on the
-framework's endpoint:
+backbone's, and its navigator's when it runs one, and with the navigator's map tools when its copy
+runs a room mapper. A robot's camera rig adds the cameras, `cameras` on hardware and `cameras_sim`
+in simulation, so a robot without a rig is listed with no camera. The server reads one clock, the
+simulation's beside a simulation and wall time on the physical robots, so a stack under it is real
+or simulated. A join adds its robot to the running server and a removal takes it out, whether it
+comes from the command line or from `stack.join` and `stack.remove` on the framework's endpoint:
 
 ```sh
 peppy stack launch simulation_mcp                                                   # Waldo, this endpoint beside the simulated world's and the framework's, no robot listed

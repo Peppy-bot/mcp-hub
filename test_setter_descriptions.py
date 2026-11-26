@@ -23,10 +23,11 @@ count.
 Each target of each exposure document is in one of two explicit lists, so
 its author decides whether the rule covers it. COVERED_TARGETS holds every
 target of the simulated world's document, the posture, limb and base moves,
-the stop, the motion planner, the navigator and the brain's model of the
-robots' document, and the stack and the fleet of the framework's document.
-A target that names a daemon interface is read as a target that names a
-contract: its setters are the entries of its services and actions too.
+the stop, the motion planner, the navigator, the navigator's maps and the
+brain's model of the robots' document, and the stack and the fleet of the
+framework's document. A target that names a daemon interface is read as a
+target that names a contract: its setters are the entries of its services
+and actions too.
 UNCOVERED_TARGETS
 holds every other target, with the reason. A target in no list fails here, and so does a target in both lists.
 A target left out because it has no setter fails here when it gets one. The
@@ -87,7 +88,10 @@ COVERED_TARGETS = {
         "world",
         "sweep",
     ),
-    ROBOT_DOCUMENT: ("postures", "limb_motion", "robot_stop", "base_motion", "planner", "navigator", "brain_model"),
+    ROBOT_DOCUMENT: (
+        "postures", "limb_motion", "robot_stop", "base_motion", "planner", "navigator", "room_map",
+        "brain_model",
+    ),
     FRAMEWORK_DOCUMENT: ("stack", "fleet"),
     WORKFLOW_DOCUMENT: ("director",),
 }
@@ -190,6 +194,12 @@ COVERED_SETTERS = {
             "navigator.drive_on_heading",
             "navigator.back_up",
             "navigator.clear_grid",
+            "navigator.start_mapping",
+            "navigator.finish_mapping",
+            "navigator.remove_map",
+            "navigator.load_map",
+            "navigator.set_initial_pose",
+            "navigator.reinitialize_global_localization",
             "brain.switch_model",
             "brain.forget",
         }
@@ -240,6 +250,7 @@ STAMPED_TOOLS = {
             "planner.plan_cartesian_path",
             "planner.apply_collision_objects",
             "navigator.navigate_to_pose",
+            "navigator.set_initial_pose",
             "brain.grab_item",
             "brain.place_item",
         }
